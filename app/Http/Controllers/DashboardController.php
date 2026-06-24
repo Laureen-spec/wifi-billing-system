@@ -1,0 +1,59 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Customer;
+use App\Models\InternetPackage;
+use App\Models\Isp;
+use App\Models\MikrotikRouter;
+use Illuminate\Http\Request;
+
+class DashboardController extends Controller
+{
+    public function index(Request $request)
+    {
+        $user = $request->user();
+
+        if ($this->isPlatformUser($user)) {
+            return view('dashboards.super-admin', [
+                'totalIsps' => Isp::count(),
+                'activeIsps' => Isp::where('status', 'active')->count(),
+                'packageCount' => InternetPackage::count(),
+                'customerCount' => Customer::count(),
+                'routerCount' => MikrotikRouter::count(),
+            ]);
+        }
+
+        $isp = $this->currentIsp($user);
+        if ($isp) {
+            return view('dashboards.isp-admin', [
+                'isp' => $isp,
+                'packageCount' => $isp->internetPackages()->count(),
+                'customerCount' => $isp->customers()->count(),
+                'routerCount' => $isp->mikrotikRouters()->count(),
+            ]);
+        }
+
+        return view('dashboards.isp-admin', [
+            'isp' => null,
+            'packageCount' => 0,
+            'customerCount' => 0,
+            'routerCount' => 0,
+        ]);
+    }
+
+    private function isPlatformUser($user): bool
+    {
+        return in_array($user->type, ['superadmin', 'super_admin', 'control_isp'], true)
+            || $user->hasAnyRole(['superadmin', 'super_admin', 'control_isp']);
+    }
+
+    private function currentIsp($user): ?Isp
+    {
+        if ($user->isp_id) {
+            return Isp::find($user->isp_id);
+        }
+
+        return Isp::where('admin_user_id', $user->id)->first();
+    }
+}
