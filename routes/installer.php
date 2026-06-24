@@ -12,6 +12,7 @@ Route::prefix('install')->name('installer.')->group(function () {
     Route::get('/database', [InstallerController::class, 'database'])->name('database');
     Route::post('/database', [InstallerController::class, 'databaseStore'])->name('database.store');
     Route::get('/addons', [InstallerController::class, 'addons'])->name('addons');
+    
     Route::post('/addons', [InstallerController::class, 'addonsStore'])->name('addons.store');
     Route::get('/final', [InstallerController::class, 'final'])->name('final');
 });
