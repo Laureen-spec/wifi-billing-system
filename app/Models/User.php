@@ -100,7 +100,18 @@ class User extends Authenticatable implements MustVerifyEmail
     public static $superadmin_activated_module = [
         'ProductService',
         'LandingPage',
-        'WifiBilling',
+    ];
+
+    public static array $defaultStaffProfiles = [
+        'admin' => 'Admin',
+        'support-agent' => 'Support Agent',
+        'billing-officer' => 'Billing Officer',
+        'sales-crm' => 'Sales / CRM',
+        'network-technician' => 'Network Technician',
+        'installer' => 'Installer',
+        'marketing' => 'Marketing',
+        'inventory-manager' => 'Inventory Manager',
+        'viewer' => 'Viewer',
     ];
 
     public  $not_emp_type = [
@@ -311,6 +322,40 @@ class User extends Authenticatable implements MustVerifyEmail
             ])->get();
 
             $vendorRole->givePermissionTo($permissions);
+        }
+
+        self::ensureDefaultStaffProfiles($userId);
+    }
+
+    public static function ensureDefaultStaffProfiles($userId): void
+    {
+        if (empty($userId)) {
+            return;
+        }
+
+        $basePermissions = ModelsPermission::whereIn('name', [
+            'manage-dashboard',
+            'manage-profile',
+            'edit-profile',
+            'change-password-profile',
+        ])->get();
+
+        foreach (self::$defaultStaffProfiles as $name => $label) {
+            $role = Role::updateOrCreate(
+                [
+                    'name' => $name,
+                    'guard_name' => 'web',
+                    'created_by' => $userId,
+                ],
+                [
+                    'label' => $label,
+                    'editable' => true,
+                ]
+            );
+
+            if ($role->permissions()->count() === 0 && $basePermissions->isNotEmpty()) {
+                $role->syncPermissions($basePermissions);
+            }
         }
     }
 }

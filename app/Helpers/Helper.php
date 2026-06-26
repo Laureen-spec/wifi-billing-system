@@ -160,7 +160,8 @@ if (!function_exists('ActivatedModule')) {
             $available_modules = array_values((new Module())->allEnabled());
 
             if ($user->type == 'superadmin') {
-                $user_active_module = $available_modules;
+                $admin_modules = array_values((new Module())->allEnabledAdmin());
+                $user_active_module = array_values(array_unique(array_merge($activated_module, $admin_modules)));
             } else {
                 $active_module = [];
                 if ($user->type != 'company') {
@@ -199,7 +200,8 @@ if (!function_exists('Module_is_active')) {
             }
             if (!empty($user)) {
                 if ($user->type == 'superadmin') {
-                    return true;
+                    $active_module = array_map('strtolower', ActivatedModule($user->id));
+                    return in_array(strtolower($module), $active_module, true);
                 } else {
                     $active_module = ActivatedModule($user->id);
                     if ((count($active_module) > 0 && in_array($module, $active_module))) {

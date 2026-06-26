@@ -30,6 +30,8 @@ export interface User {
     is_enable_login: boolean;
     is_disable?: number;
     is_online?: number;
+    role_id?: number | string | null;
+    role_label?: string | null;
     avatar?: string;
     lang?: string;
     active_plan?: number;
@@ -46,7 +48,8 @@ export interface CreateUserFormData {
     password: string;
     password_confirmation: string;
     mobile_no: string;
-    type: string;
+    role_id: string;
+    type?: string;
     is_enable_login: boolean;
 }
 
@@ -54,6 +57,7 @@ export interface EditUserFormData {
     name: string;
     email: string;
     mobile_no: string;
+    role_id: string;
     is_enable_login: boolean;
 }
 
@@ -123,6 +127,7 @@ export interface UserFormErrors {
     password?: string;
     password_confirmation?: string;
     mobile_no?: string;
+    role_id?: string;
     type?: string;
     is_enable_login?: string;
 }

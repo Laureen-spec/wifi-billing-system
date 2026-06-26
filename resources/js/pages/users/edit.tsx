@@ -1,5 +1,5 @@
 import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useForm } from "@inertiajs/react";
+import { useForm, usePage } from "@inertiajs/react";
 import { useTranslation } from 'react-i18next';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,12 +11,15 @@ import { EditUserProps, EditUserFormData } from './types';
 
 export default function Edit({ user, onSuccess, roles = {} }: EditUserProps) {
     const { t } = useTranslation();
+    const { auth } = usePage().props as any;
     const { data, setData, put, processing, errors } = useForm<EditUserFormData>({
         name: user.name,
         email: user.email,
         mobile_no: user.mobile_no,
+        role_id: user.role_id ? String(user.role_id) : '',
         is_enable_login: user.is_enable_login,
     });
+    const canAssignRole = auth.user?.type !== 'superadmin' && Object.keys(roles).length > 0;
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -65,6 +68,28 @@ export default function Edit({ user, onSuccess, roles = {} }: EditUserProps) {
                         error={errors.mobile_no}
                     />
                 </div>
+
+                {canAssignRole && (
+                    <div>
+                        <Label htmlFor="edit_role_id" required>{t('Role/Profile')}</Label>
+                        <p className="text-xs text-gray-500 mb-2">
+                            {t('Select a role/profile for this staff member. Permissions can be managed from Roles.')}
+                        </p>
+                        <Select value={data.role_id} onValueChange={(value) => setData('role_id', value)}>
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {Object.entries(roles).map(([id, label]) => (
+                                    <SelectItem key={id} value={id}>
+                                        {label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <InputError message={errors.role_id} />
+                    </div>
+                )}
 
                 <div>
                     <Label htmlFor="edit_is_enable_login">{t('Login Status')}</Label>

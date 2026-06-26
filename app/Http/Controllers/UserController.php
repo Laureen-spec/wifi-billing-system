@@ -26,6 +26,7 @@ class UserController extends Controller
     {
         if(Auth::user()->can('manage-users')){
             $users = User::query()
+                ->with('roles:id,name,label,created_by')
                 ->where(function($q) {
                     if(Auth::user()->can('manage-any-users')) {
                         $q->where('created_by', creatorId());
@@ -48,10 +49,15 @@ class UserController extends Controller
 
             $users->getCollection()->transform(function ($user) {
                 $user->is_online = Cache::has("user_online_{$user->id}");
+                $role = $user->roles
+                    ->whereNotIn('name', $this->blockedRoleNames())
+                    ->first();
+                $user->role_id = $role?->id;
+                $user->role_label = $role?->label;
                 return $user;
             });
 
-            $roles = Role::where('created_by', creatorId())->pluck('label', 'id');
+            $roles = $this->assignableRolesQuery()->pluck('label', 'id');
             $plans = Plan::where('status', 1)->get();
             $activeModules = AddOn::where('is_enable', 1)->where('for_admin', false)
                 ->whereNotIn('module', User::$superadmin_activated_module)
@@ -81,7 +87,13 @@ class UserController extends Controller
             $validated = $request->validated();
             $validated['is_enable_login'] = $request->boolean('is_enable_login', true);
 
-            $role = Role::find($validated['type']);
+            $roleId = $validated['role_id'] ?? $validated['type'] ?? null;
+            $role = Auth::user()->type == 'superadmin' ? null : $this->findAssignableRole($roleId);
+
+            if (Auth::user()->type != 'superadmin' && !$role) {
+                return redirect()->route('users.index')->with('error', __('Invalid role selected.'));
+            }
+
             $enableEmailVerification = admin_setting('enableEmailVerification');
 
             $user = new User();
@@ -104,7 +116,9 @@ class UserController extends Controller
                 $role = Role::findByName('company');
             }
 
-            $user->assignRole($role);
+            if ($role) {
+                $user->assignRole($role);
+            }
 
             // Dispatch event for packages to handle their fields
             CreateUser::dispatch($request, $user);
@@ -149,6 +163,18 @@ class UserController extends Controller
             $user->mobile_no = $validated['mobile_no'];
             $user->is_enable_login = $validated['is_enable_login'];
             $user->save();
+
+            if ($request->filled('role_id')) {
+                $role = $this->findAssignableRole($validated['role_id']);
+
+                if (!$role) {
+                    return back()->with('error', __('Invalid role selected.'));
+                }
+
+                $user->type = $role->name;
+                $user->save();
+                $user->syncRoles([$role]);
+            }
 
             return back()->with('success', __('The user details are updated successfully.'));
         }
@@ -259,7 +285,9 @@ class UserController extends Controller
                 ->where('is_enable_login', false)
                 ->count();
 
-            $roles = Role::where('created_by', $user->id)->pluck('label', 'id');
+            $roles = Role::where('created_by', $user->id)
+                ->whereNotIn('name', $this->blockedRoleNames())
+                ->pluck('label', 'id');
             $activePlan = Plan::find($user->active_plan);
 
             return Inertia::render('users/admin-hub', [
@@ -377,7 +405,7 @@ class UserController extends Controller
                 ->paginate(request('per_page', 10))
                 ->withQueryString();
 
-            $roles = Role::where('created_by', creatorId())->pluck('label', 'name');
+            $roles = $this->assignableRolesQuery()->pluck('label', 'name');
 
             return Inertia::render('users/login-history', [
                 'loginHistories' => $loginHistories,
@@ -387,5 +415,28 @@ class UserController extends Controller
         else{
             return back()->with('error', __('Permission denied'));
         }
+    }
+
+    private function assignableRolesQuery()
+    {
+        return Role::query()
+            ->where('guard_name', 'web')
+            ->where('created_by', creatorId())
+            ->whereNotIn('name', $this->blockedRoleNames())
+            ->orderBy('label');
+    }
+
+    private function findAssignableRole($roleId): ?Role
+    {
+        if (empty($roleId)) {
+            return null;
+        }
+
+        return $this->assignableRolesQuery()->whereKey($roleId)->first();
+    }
+
+    private function blockedRoleNames(): array
+    {
+        return ['superadmin', 'super admin', 'super_admin'];
     }
 }

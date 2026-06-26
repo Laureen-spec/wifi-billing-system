@@ -55,6 +55,12 @@ export default function Addons({ modules }: Props) {
     };
 
     const startInstallation = () => {
+        if (modules.length === 0) {
+            setCompleted(true);
+            setError('');
+            return;
+        }
+
         setCurrentModuleIndex(0);
         setInstalledModules([]);
         setCompleted(false);
@@ -88,7 +94,7 @@ export default function Addons({ modules }: Props) {
                         )}
 
                         <p className="text-gray-600 mb-4">
-                            {t('This step will install and enable all available add-on modules one by one.')}
+                            {t('This step will install and enable all available StudyRoom TechLab modules one by one.')}
                         </p>
 
                         <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
@@ -97,12 +103,17 @@ export default function Addons({ modules }: Props) {
                             <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
                                 <div 
                                     className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                                    style={{ width: `${(installedModules.length / modules.length) * 100}%` }}
+                                    style={{ width: `${modules.length === 0 ? 100 : (installedModules.length / modules.length) * 100}%` }}
                                 ></div>
                             </div>
 
-                            <div className="max-h-60 overflow-y-auto space-y-2">
-                                {modules.map((module, index) => (
+                            {modules.length === 0 ? (
+                                <div className="p-3 rounded border bg-white border-gray-200 text-gray-700">
+                                    {t('No StudyRoom TechLab add-on modules are pending installation.')}
+                                </div>
+                            ) : (
+                                <div className="max-h-60 overflow-y-auto space-y-2">
+                                    {modules.map((module, index) => (
                                     <div key={module.name} className={`p-2 rounded border ${
                                         installedModules.includes(module.name) ? 'bg-green-100 border-green-300' :
                                         index === currentModuleIndex && installing ? 'bg-yellow-100 border-yellow-300' :
@@ -123,8 +134,9 @@ export default function Addons({ modules }: Props) {
                                             </div>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex justify-between">

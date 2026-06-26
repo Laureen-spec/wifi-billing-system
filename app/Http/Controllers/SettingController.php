@@ -16,6 +16,11 @@ class SettingController extends Controller
 {
     public function index()
     {
+        if(!Auth::user()->hasRole('superadmin'))
+        {
+            return back()->with('error', __('Only super admin can access settings.'));
+        }
+
         if(Auth::user()->can('manage-settings'))
         {
             $globalSettings = getCompanyAllSetting();

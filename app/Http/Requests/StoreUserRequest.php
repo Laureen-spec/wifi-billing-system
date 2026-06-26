@@ -13,7 +13,7 @@ class StoreUserRequest extends FormRequest
 
     public function rules(): array
     {
-        $typeRule = auth()->user()->type === 'superadmin' ? 'nullable' : 'required|exists:roles,id';
+        $roleRule = auth()->user()->type === 'superadmin' ? 'nullable' : 'required_without:type|exists:roles,id';
         return [
             'name' => 'required|string|max:255',
             'email' => [
@@ -23,7 +23,8 @@ class StoreUserRequest extends FormRequest
             ],
             'mobile_no' => 'nullable|string|regex:/^\+\d{1,3}\d{9,13}$/',
             'password' => 'required|confirmed|min:6',
-            'type' => $typeRule,
+            'role_id' => $roleRule,
+            'type' => 'nullable|exists:roles,id',
             'is_enable_login' => 'boolean',
         ];
     }
@@ -31,7 +32,7 @@ class StoreUserRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'type.required' => __('Role is required.'),
+            'role_id.required_without' => __('Role is required.'),
         ];
     }
 }

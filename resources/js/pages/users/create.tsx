@@ -18,7 +18,7 @@ export default function Create({ onSuccess, roles = {} }: CreateUserProps) {
         password: '',
         password_confirmation: '',
         mobile_no: '',
-        type: '',
+        role_id: '',
         is_enable_login: true,
     });
 
@@ -100,8 +100,11 @@ export default function Create({ onSuccess, roles = {} }: CreateUserProps) {
                 <div className={`grid ${isSuperAdmin ? 'grid-cols-1' : 'grid-cols-2'} gap-4`}>
                     {!isSuperAdmin && (
                         <div>
-                            <Label htmlFor="type" required>{t('Role')}</Label>
-                            <Select value={data.type} onValueChange={(value) => setData('type', value)}>
+                            <Label htmlFor="role_id" required>{t('Role/Profile')}</Label>
+                            <p className="text-xs text-gray-500 mb-2">
+                                {t('Select a role/profile for this staff member. Permissions can be managed from Roles.')}
+                            </p>
+                            <Select value={data.role_id} onValueChange={(value) => setData('role_id', value)}>
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
@@ -118,7 +121,7 @@ export default function Create({ onSuccess, roles = {} }: CreateUserProps) {
                                     {t('Create role here.')} <button onClick={() => router.get(route('roles.create'))} className="text-blue-600 hover:underline">{t('Create role')}</button>
                                 </p>
                             )}
-                            <InputError message={errors.type} />
+                            <InputError message={errors.role_id || errors.type} />
                         </div>
                     )}
                     <div>

@@ -7,6 +7,7 @@ use Spatie\Permission\Models\Permission;
 use App\Http\Requests\StoreRoleRequest;
 use App\Http\Requests\UpdateRoleRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class RoleController extends Controller
@@ -37,15 +38,9 @@ class RoleController extends Controller
     public function create()
     {
         if(Auth::user()->can('create-roles')){
-            $allPermissions = Auth::user()->getAllPermissions()->select('id', 'name', 'label', 'add_on', 'module');
-            $permissions = $allPermissions->groupBy('add_on')
-                ->filter(function ($addOnPermissions, $addOn) {
-                    return $addOn === 'general' || Module_is_active($addOn);
-                })
-                ->map(function ($addOnPermissions) {
-                    return $addOnPermissions->groupBy('module');
-                });
-            return Inertia::render('roles/create', ['permissions' => $permissions]);
+            return Inertia::render('roles/create', [
+                'permissions' => $this->assignablePermissions(),
+            ]);
         }
         else{
             return back()->with('error', __('Permission denied'));
@@ -60,7 +55,7 @@ class RoleController extends Controller
             $role->label = $request->label;
             $role->created_by = creatorId();
             $role->save();
-            $role->syncPermissions($request->permissions ?? []);
+            $role->syncPermissions($this->filterAssignablePermissionNames($request->permissions ?? []));
             return redirect()->route('roles.index')->with('success', __('The role has been created successfully.'));
         }
         else{
@@ -71,18 +66,10 @@ class RoleController extends Controller
     public function edit(Role $role)
     {
         if(Auth::user()->can('edit-roles')){
-            $allPermissions = Auth::user()->getAllPermissions()->select('id', 'name', 'label', 'add_on', 'module','editable');
-            $permissions = $allPermissions->groupBy('add_on')
-                ->filter(function ($addOnPermissions, $addOn) {
-                    return $addOn === 'general' || Module_is_active($addOn);
-                })
-                ->map(function ($addOnPermissions) {
-                    return $addOnPermissions->groupBy('module');
-                });
             $rolePermissions = $role->permissions->pluck('name')->toArray();
             return Inertia::render('roles/edit', [
                 'role' => $role,
-                'permissions' => $permissions,
+                'permissions' => $this->assignablePermissions(),
                 'rolePermissions' => $rolePermissions
             ]);
         }
@@ -98,7 +85,7 @@ class RoleController extends Controller
                 'name' => $request->name,
                 'label' => $request->label
             ]);
-            $role->syncPermissions($request->permissions ?? []);
+            $role->syncPermissions($this->filterAssignablePermissionNames($request->permissions ?? []));
             return redirect()->route('roles.index')->with('success', __('The role details are updated successfully.'));
         }
         else{
@@ -118,5 +105,65 @@ class RoleController extends Controller
         else{
             return redirect()->route('roles.index')->with('error', __('Permission denied'));
         }
+    }
+
+    private function assignablePermissions()
+    {
+        return Permission::query()
+            ->select('id', 'name', 'label', 'add_on', 'module', 'guard_name')
+            ->where('guard_name', 'web')
+            ->orderBy('add_on')
+            ->orderBy('module')
+            ->orderBy('label')
+            ->get()
+            ->filter(fn (Permission $permission) => $this->permissionIsAssignable($permission))
+            ->map(function (Permission $permission) {
+                $addOn = trim((string) $permission->add_on);
+                $module = trim((string) $permission->module);
+                $label = trim((string) $permission->label);
+
+                return [
+                    'id' => $permission->id,
+                    'name' => $permission->name,
+                    'label' => $label !== '' ? $label : Str::headline(str_replace(['-', '_'], ' ', $permission->name)),
+                    'module' => $module !== '' ? $module : 'General',
+                    'add_on' => $addOn !== '' ? $addOn : 'Core',
+                    'guard_name' => $permission->guard_name,
+                ];
+            })
+            ->groupBy('add_on')
+            ->map(fn ($addOnPermissions) => $addOnPermissions->groupBy('module')->map(fn ($modulePermissions) => $modulePermissions->values()))
+            ->toArray();
+    }
+
+    private function permissionIsAssignable(Permission $permission): bool
+    {
+        $addOn = trim((string) $permission->add_on);
+
+        if ($addOn === '' || strcasecmp($addOn, 'general') === 0 || strcasecmp($addOn, 'core') === 0) {
+            return true;
+        }
+
+        if (Module_is_active($addOn)) {
+            return true;
+        }
+
+        $activeModules = collect(ActivatedModule(creatorId()))
+            ->map(fn ($module) => strtolower((string) $module))
+            ->all();
+
+        return in_array(strtolower($addOn), $activeModules, true);
+    }
+
+    private function filterAssignablePermissionNames(array $permissionNames): array
+    {
+        $assignable = collect($this->assignablePermissions())
+            ->flatMap(fn ($modules) => collect($modules)->flatMap(fn ($permissions) => collect($permissions)->pluck('name')))
+            ->flip();
+
+        return collect($permissionNames)
+            ->filter(fn ($permissionName) => $assignable->has($permissionName))
+            ->values()
+            ->all();
     }
 }

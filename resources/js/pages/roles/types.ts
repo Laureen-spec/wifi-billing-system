@@ -34,16 +34,20 @@ export interface Permission {
     name: string;
     label: string;
     module: string;
+    add_on: string;
+    guard_name: string;
 }
 
+export type PermissionGroups = Record<string, Record<string, Permission[]>>;
+
 export interface RoleCreateProps {
-    permissions: Record<string, Permission[]>;
+    permissions: PermissionGroups;
     [key: string]: any;
 }
 
 export interface RoleEditProps {
     role: Role & { editable: boolean };
-    permissions: Record<string, Permission[]>;
+    permissions: PermissionGroups;
     rolePermissions: string[];
     [key: string]: any;
 }

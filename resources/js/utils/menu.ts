@@ -108,6 +108,7 @@ const filterByPermission = (items: NavItem[], userPermissions: string[]): NavIte
         if (!item.permission) {
             if (item.children) {
                 item.children = filterByPermission(item.children, userPermissions);
+                return item.children.length > 0;
             }
             return true;
         }

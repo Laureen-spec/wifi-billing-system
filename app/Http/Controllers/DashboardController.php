@@ -54,6 +54,24 @@ class DashboardController extends Controller
             return Isp::find($user->isp_id);
         }
 
-        return Isp::where('admin_user_id', $user->id)->first();
+        $isp = Isp::where('admin_user_id', $user->id)->first();
+        if ($isp) {
+            $user->forceFill(['isp_id' => $isp->id])->save();
+            return $isp;
+        }
+
+        $isp = Isp::create([
+            'name' => $user->name ?: 'StudyRoom ISP',
+            'email' => $user->email,
+            'phone' => $user->mobile_no ?? null,
+            'status' => 'active',
+            'admin_user_id' => $user->id,
+            'created_by' => $user->created_by ?: $user->id,
+            'updated_by' => $user->id,
+        ]);
+
+        $user->forceFill(['isp_id' => $isp->id])->save();
+
+        return $isp;
     }
 }

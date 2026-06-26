@@ -20,17 +20,12 @@ class ModuleController extends Controller
         if (Auth::user()->can('manage-add-on')) {
             $modules = $this->getAllModules();
 
-            try {
-                $response = file_get_contents('https://dash-demo.workdo.io/cronjob/dash-addon.json');
-                $addOns = json_decode($response, true) ?? [];
-            } catch (\Exception $e) {
-                $addOns = [];
-            }
+            $addOns = [];
 
             return Inertia::render('modules/index', [
                 'modules' => $modules,
                 'addOns' => $addOns,
-                'exploreUrl' => 'https://workdo.io/product-category/dash-saas-add-ons/?utm_source=demo&utm_medium=dash&utm_campaign=btn',
+                'exploreUrl' => null,
                 'systemVersion' => config('verification.system_version'),
             ]);
         } else {
@@ -68,15 +63,14 @@ class ModuleController extends Controller
                 $check_parent_module = $this->Check_Parent_Module($module);
                 if ($check_parent_module['status'] == true) 
                 {
+                    $filePath = $modulePath . '/module.json';
+                    $jsonContent = file_get_contents($filePath);
+                    $data = json_decode($jsonContent, true);
+
                     $addon = AddOn::where('module', $request->name)->first();
                     if (empty($addon)) {
                         Artisan::call('migrate --path=' . $this->relativePackagePath($modulePath, 'src/Database/Migrations') . ' --force');
                         Artisan::call('package:seed ' . $request->name);
-
-                        $filePath = $modulePath . '/module.json';
-                        $jsonContent = file_get_contents($filePath);
-                        $data = json_decode($jsonContent, true);
-
 
                         $addon = new AddOn;
                         $addon->module = $data['name'];
@@ -86,6 +80,14 @@ class ModuleController extends Controller
                         $addon->package_name = $data['package_name'];
                         $addon->for_admin = $data['for_admin'] ?? false;
                         $addon->priority = $data['priority'] ?? 0;
+                        $addon->save();
+                    } else {
+                        $addon->name = $data['alias'] ?? $addon->name;
+                        $addon->monthly_price = $data['monthly_price'] ?? $addon->monthly_price;
+                        $addon->yearly_price = $data['yearly_price'] ?? $addon->yearly_price;
+                        $addon->package_name = $data['package_name'] ?? $addon->package_name;
+                        $addon->for_admin = (bool) ($data['for_admin'] ?? false);
+                        $addon->priority = $data['priority'] ?? $addon->priority;
                         $addon->save();
                     }
 

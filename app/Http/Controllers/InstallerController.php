@@ -162,6 +162,11 @@ class InstallerController extends Controller
 
     public function final()
     {
+        Artisan::call('db:seed', [
+            '--class' => 'Database\\Seeders\\DefaultLoginUserSeeder',
+            '--force' => true,
+        ]);
+
         $this->createInstalledFile();
 
         $credentials = [
@@ -314,7 +319,7 @@ class InstallerController extends Controller
     private function getAllAvailableModules()
     {
         $modules = [];
-        $packagesPath = base_path('packages/workdo');
+        $packagesPath = base_path('packages/studyroomtechlab');
 
         if (!File::exists($packagesPath)) {
             return $modules;
@@ -334,6 +339,7 @@ class InstallerController extends Controller
                         'alias' => $moduleData['alias'],
                         'description' => $moduleData['description'] ?? '',
                         'priority' => $moduleData['priority'] ?? 10,
+                        'vendor' => 'studyroomtechlab',
                     ];
                 }
             }
@@ -360,27 +366,29 @@ class InstallerController extends Controller
 
     private function enableModule($moduleName)
     {
-        // Validate module name to prevent path traversal
         if (!preg_match('/^[a-zA-Z0-9_-]+$/', $moduleName)) {
             throw new \Exception('Invalid module name');
         }
 
+        $packagePath = base_path('packages/studyroomtechlab/' . $moduleName);
+        $filePath = $packagePath . '/module.json';
+
+        if (!file_exists($filePath)) {
+            throw new \Exception('Module configuration not found');
+        }
+
+        $jsonContent = file_get_contents($filePath);
+        $data = json_decode($jsonContent, true);
+
+        if (!$data) {
+            throw new \Exception('Invalid module configuration');
+        }
+
         $addon = AddOn::where('module', $moduleName)->first();
         if (empty($addon)) {
-            $filePath = base_path('packages/workdo/' . $moduleName . '/module.json');
-
-            if (!file_exists($filePath)) {
-                throw new \Exception('Module configuration not found');
+            if (File::exists($packagePath . '/src/Database/Migrations')) {
+                Artisan::call('migrate --path=/packages/studyroomtechlab/' . $moduleName . '/src/Database/Migrations --force');
             }
-
-            $jsonContent = file_get_contents($filePath);
-            $data = json_decode($jsonContent, true);
-
-            if (!$data) {
-                throw new \Exception('Invalid module configuration');
-            }
-
-            Artisan::call('migrate --path=/packages/workdo/' . $moduleName . '/src/Database/Migrations --force');
             Artisan::call('package:seed ' . $moduleName);
 
             $addon = new AddOn;
@@ -395,8 +403,16 @@ class InstallerController extends Controller
             $addon->is_enable = 1;
             $addon->save();
         } else {
-            Artisan::call('migrate --path=/packages/workdo/' . $moduleName . '/src/Database/Migrations --force');
+            if (File::exists($packagePath . '/src/Database/Migrations')) {
+                Artisan::call('migrate --path=/packages/studyroomtechlab/' . $moduleName . '/src/Database/Migrations --force');
+            }
             Artisan::call('package:seed ' . $moduleName);
+            $addon->name = $data['alias'] ?? $addon->name;
+            $addon->monthly_price = $data['monthly_price'] ?? $addon->monthly_price;
+            $addon->yearly_price = $data['yearly_price'] ?? $addon->yearly_price;
+            $addon->package_name = $data['package_name'] ?? $addon->package_name;
+            $addon->for_admin = (bool) ($data['for_admin'] ?? false);
+            $addon->priority = $data['priority'] ?? $addon->priority;
             $addon->is_enable = 1;
             $addon->save();
         }

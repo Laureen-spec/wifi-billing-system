@@ -8,7 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('customers', function (Blueprint $table) {
+        if (Schema::hasTable('isp_customers')) {
+            return;
+        }
+
+        Schema::create('isp_customers', function (Blueprint $table) {
             $table->id();
             $table->foreignId('isp_id')->constrained('isps')->cascadeOnDelete();
             $table->foreignId('internet_package_id')->nullable()->constrained('internet_packages')->nullOnDelete();
@@ -31,6 +35,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('customers');
+        Schema::dropIfExists('isp_customers');
     }
 };

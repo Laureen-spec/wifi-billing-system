@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\InternetPackage;
 use App\Models\Isp;
+use App\Services\IspTenantResolver;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -12,6 +13,8 @@ class CustomerController extends Controller
 {
     public function index(Request $request)
     {
+        abort_unless($request->user()->can('view-isp-customers') || $request->user()->can('manage-isp-customers'), 403);
+
         return view('isp-customers.index', [
             'customers' => $this->customerQuery($request)->with(['isp', 'internetPackage'])->latest()->paginate(15),
         ]);
@@ -19,6 +22,8 @@ class CustomerController extends Controller
 
     public function create(Request $request)
     {
+        abort_unless($request->user()->can('create-isp-customers'), 403);
+
         $isp = $this->isPlatform($request) ? null : $this->resolveIsp($request);
 
         return view('isp-customers.create', [
@@ -33,6 +38,8 @@ class CustomerController extends Controller
 
     public function store(Request $request)
     {
+        abort_unless($request->user()->can('create-isp-customers'), 403);
+
         $data = $this->validated($request);
         $isp = $this->resolveIsp($request, $data['isp_id'] ?? null);
         $packageId = $data['internet_package_id'] ?? null;
@@ -61,6 +68,8 @@ class CustomerController extends Controller
 
     public function edit(Request $request, Customer $customer)
     {
+        abort_unless($request->user()->can('edit-isp-customers'), 403);
+
         $this->authorizeIspRecord($request, $customer->isp_id);
 
         return view('isp-customers.edit', [
@@ -72,6 +81,8 @@ class CustomerController extends Controller
 
     public function update(Request $request, Customer $customer)
     {
+        abort_unless($request->user()->can('edit-isp-customers'), 403);
+
         $this->authorizeIspRecord($request, $customer->isp_id);
         $data = $this->validated($request);
         $isp = $this->resolveIsp($request, $data['isp_id'] ?? $customer->isp_id);
@@ -131,17 +142,7 @@ class CustomerController extends Controller
 
     private function resolveIsp(Request $request, $ispId = null): Isp
     {
-        if ($this->isPlatform($request)) {
-            $isp = $ispId ? Isp::find($ispId) : Isp::first();
-        } else {
-            $user = $request->user();
-            $isp = $user->isp_id ? Isp::find($user->isp_id) : Isp::where('admin_user_id', $user->id)->first();
-        }
-
-        abort_if(! $isp, 403, 'No ISP is assigned to this account.');
-        $this->authorizeIspRecord($request, $isp->id);
-
-        return $isp;
+        return app(IspTenantResolver::class)->resolve($request, $ispId);
     }
 
     private function authorizePackage(int $ispId, $packageId): void
@@ -151,20 +152,30 @@ class CustomerController extends Controller
         }
     }
 
-    private function authorizeIspRecord(Request $request, int $ispId): void
+    private function authorizeIspRecord(Request $request, ?int $ispId): void
     {
-        if ($this->isPlatform($request)) {
-            return;
-        }
-
-        $user = $request->user();
-        abort_if((int) $user->isp_id !== $ispId && ! Isp::where('id', $ispId)->where('admin_user_id', $user->id)->exists(), 403);
+        app(IspTenantResolver::class)->authorize($request, $ispId);
     }
 
     private function isPlatform(Request $request): bool
     {
-        $user = $request->user();
-        return in_array($user->type, ['superadmin', 'super_admin', 'control_isp'], true)
-            || $user->hasAnyRole(['superadmin', 'super_admin', 'control_isp']);
+        return app(IspTenantResolver::class)->isPlatform($request);
+    }
+
+    private function createUserIsp($user): Isp
+    {
+        $isp = Isp::create([
+            'name' => $user->name ?: 'StudyRoom ISP',
+            'email' => $user->email,
+            'phone' => $user->mobile_no ?? null,
+            'status' => 'active',
+            'admin_user_id' => $user->id,
+            'created_by' => $user->created_by ?: $user->id,
+            'updated_by' => $user->id,
+        ]);
+
+        $user->forceFill(['isp_id' => $isp->id])->save();
+
+        return $isp;
     }
 }

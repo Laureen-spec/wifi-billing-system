@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import InputError from '@/components/ui/input-error';
-import { RoleEditProps } from './types';
+import { Permission, PermissionGroups, RoleEditProps } from './types';
 import { getPackageAlias } from '@/utils/helpers';
 import { useState } from 'react';
 
@@ -38,8 +38,8 @@ export default function Edit() {
         }
     };
 
-    const handleModuleChange = (modulePermissions: any[], checked: boolean) => {
-        const modulePermissionNames = modulePermissions.map(p => p.name);
+    const handlePermissionsChange = (permissionList: Permission[], checked: boolean) => {
+        const modulePermissionNames = permissionList.map(p => p.name);
         if (checked) {
             const newPermissions = [...new Set([...data.permissions, ...modulePermissionNames])];
             setData('permissions', newPermissions);
@@ -48,8 +48,8 @@ export default function Edit() {
         }
     };
 
-    const getModuleCheckState = (modulePermissions: any[]) => {
-        const modulePermissionNames = modulePermissions.map(p => p.name);
+    const getPermissionListCheckState = (permissionList: Permission[]) => {
+        const modulePermissionNames = permissionList.map(p => p.name);
         const checkedCount = modulePermissionNames.filter(name => data.permissions.includes(name)).length;
 
         if (checkedCount === 0) return { checked: false, indeterminate: false };
@@ -57,9 +57,39 @@ export default function Edit() {
         return { checked: false, indeterminate: true };
     };
 
-    const filteredAddOns = Object.keys(permissions).filter(addOn =>
-        getPackageAlias(addOn)?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const getAddOnPermissions = (modules: Record<string, Permission[]>) => Object.values(modules).flat();
+    const getAllPermissions = (groups: PermissionGroups) => Object.values(groups).flatMap((modules) => getAddOnPermissions(modules));
+
+    const filteredPermissions = Object.entries(permissions).reduce((groups, [addOn, modules]) => {
+        const term = searchTerm.trim().toLowerCase();
+        const addOnLabel = (getPackageAlias(addOn) || addOn).toLowerCase();
+        const addOnMatches = term === '' || addOn.toLowerCase().includes(term) || addOnLabel.includes(term);
+        const filteredModules = Object.entries(modules).reduce((moduleGroups, [module, modulePermissions]) => {
+            const moduleMatches = module.toLowerCase().includes(term);
+            const filteredModulePermissions = addOnMatches || moduleMatches
+                ? modulePermissions
+                : modulePermissions.filter((permission) =>
+                    permission.name.toLowerCase().includes(term) ||
+                    permission.label.toLowerCase().includes(term)
+                );
+
+            if (filteredModulePermissions.length > 0) {
+                moduleGroups[module] = filteredModulePermissions;
+            }
+
+            return moduleGroups;
+        }, {} as Record<string, Permission[]>);
+
+        if (Object.keys(filteredModules).length > 0) {
+            groups[addOn] = filteredModules;
+        }
+
+        return groups;
+    }, {} as PermissionGroups);
+
+    const filteredAddOns = Object.keys(filteredPermissions);
+    const allVisiblePermissions = getAllPermissions(filteredPermissions);
+    const allVisibleState = getPermissionListCheckState(allVisiblePermissions);
 
     return (
         <AuthenticatedLayout
@@ -103,12 +133,24 @@ export default function Edit() {
 
                         <div>
                             <div className="mt-2 mb-4">
-                                <Input
-                                    placeholder={t('Search add-ons...')}
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="max-w-sm"
-                                />
+                                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                    <Input
+                                        placeholder={t('Search permissions...')}
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="max-w-sm"
+                                    />
+                                    {allVisiblePermissions.length > 0 && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handlePermissionsChange(allVisiblePermissions, !allVisibleState.checked)}
+                                        >
+                                            {allVisibleState.checked ? t('Clear All') : t('Select All')}
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
                             <Tabs defaultValue={filteredAddOns[0] || 'default'} className="mt-2">
                                 <TabsList className="mb-3 w-full justify-start overflow-x-auto overflow-y-hidden h-auto p-1">
@@ -121,31 +163,53 @@ export default function Edit() {
                                 </TabsList>
                                 <Label>{t('Permissions')}</Label>
                                 {filteredAddOns.map((addOn) => {
-                                    const modules = permissions[addOn];
+                                    const modules = filteredPermissions[addOn];
+                                    const addOnPermissions = getAddOnPermissions(modules);
+                                    const addOnState = getPermissionListCheckState(addOnPermissions);
                                     return (
                                     <TabsContent key={addOn} value={addOn}>
                                         <div className="space-y-4">
+                                            <div className="flex justify-end">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => handlePermissionsChange(addOnPermissions, !addOnState.checked)}
+                                                >
+                                                    {addOnState.checked ? t('Clear Add-on') : t('Select Add-on')}
+                                                </Button>
+                                            </div>
                                             {Object.entries(modules).map(([module, modulePermissions]) => {
-                                                const moduleState = getModuleCheckState(modulePermissions as any);
+                                                const moduleState = getPermissionListCheckState(modulePermissions);
                                                 return (
                                                 <div key={module} className="border p-4 rounded">
-                                                    <div className="flex items-center space-x-2 mb-3">
-                                                        <Checkbox
-                                                            id={`module-${module}`}
-                                                            checked={moduleState.checked}
-                                                            ref={(el) => {
-                                                                if (el) (el as any).indeterminate = moduleState.indeterminate;
-                                                            }}
-                                                            onCheckedChange={(checked) =>
-                                                                handleModuleChange(modulePermissions as any, checked as boolean)
-                                                            }
-                                                        />
-                                                        <Label htmlFor={`module-${module}`} className="font-medium capitalize">
-                                                            {module}
-                                                        </Label>
+                                                    <div className="flex items-center justify-between gap-3 mb-3">
+                                                        <div className="flex items-center space-x-2">
+                                                            <Checkbox
+                                                                id={`module-${addOn}-${module}`}
+                                                                checked={moduleState.checked}
+                                                                ref={(el) => {
+                                                                    if (el) (el as any).indeterminate = moduleState.indeterminate;
+                                                                }}
+                                                                onCheckedChange={(checked) =>
+                                                                    handlePermissionsChange(modulePermissions, checked as boolean)
+                                                                }
+                                                            />
+                                                            <Label htmlFor={`module-${addOn}-${module}`} className="font-medium capitalize">
+                                                                {module}
+                                                            </Label>
+                                                        </div>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handlePermissionsChange(modulePermissions, !moduleState.checked)}
+                                                        >
+                                                            {moduleState.checked ? t('Clear Module') : t('Select Module')}
+                                                        </Button>
                                                     </div>
                                                     <div className="grid grid-cols-3 gap-2">
-                                                        {(modulePermissions as any).map((permission: any) => (
+                                                        {modulePermissions.map((permission) => (
                                                             <div key={permission.name} className="flex items-center space-x-2">
                                                                 <Checkbox
                                                                     id={permission.name}

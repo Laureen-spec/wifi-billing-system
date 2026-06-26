@@ -3,7 +3,7 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "node --max-old-space-size=12288 ./node_modules/.bin/tsc && node --max-old-space-size=8192 ./node_modules/.bin/vite build"
+        "build": "tsc && vite build"
     },
     "devDependencies": {
         "@headlessui/react": "^1.4.2",

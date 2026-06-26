@@ -8,6 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (Schema::hasTable('mikrotik_routers')) {
+            return;
+        }
+
         Schema::create('mikrotik_routers', function (Blueprint $table) {
             $table->id();
             $table->foreignId('isp_id')->constrained('isps')->cascadeOnDelete();

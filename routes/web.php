@@ -9,6 +9,7 @@ use App\Http\Controllers\IspController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\MikrotikRouterController;
 use App\Http\Controllers\PlanController;
+use App\Http\Controllers\ProvisioningController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
@@ -44,10 +45,10 @@ Route::get('/', function () {
     return auth()->check()
         ? redirect()->route('billing.dashboard')
         : redirect()->route('login');
-});
+})->name('landing.page');
 
-Route::get('/provision/{token}', [MikrotikRouterController::class, 'provisionScript'])
-    ->name('mikrotik.provision.script');
+Route::get('/provision/{token}/heartbeat', [ProvisioningController::class, 'heartbeat'])->name('provision.heartbeat');
+Route::get('/provision/{token}', [ProvisioningController::class, 'show'])->name('provision.show');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/billing-dashboard', [DashboardController::class, 'index'])->name('billing.dashboard');
@@ -69,10 +70,22 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/isp/routers', [MikrotikRouterController::class, 'index'])->name('isp.routers.index');
     Route::get('/isp/routers/create', [MikrotikRouterController::class, 'create'])->name('isp.routers.create');
     Route::post('/isp/routers', [MikrotikRouterController::class, 'store'])->name('isp.routers.store');
+    Route::get('/isp/routers/{router}', [MikrotikRouterController::class, 'show'])->name('isp.routers.show');
     Route::get('/isp/routers/{router}/edit', [MikrotikRouterController::class, 'edit'])->name('isp.routers.edit');
     Route::patch('/isp/routers/{router}', [MikrotikRouterController::class, 'update'])->name('isp.routers.update');
     Route::get('/isp/routers/{router}/setup-script', [MikrotikRouterController::class, 'setupScript'])->name('isp.routers.setup-script');
     Route::post('/isp/routers/{router}/test', [MikrotikRouterController::class, 'test'])->name('isp.routers.test');
+    Route::post('/isp/routers/{router}/regenerate-winbox', [MikrotikRouterController::class, 'regenerateWinbox'])->name('isp.routers.regenerate-winbox');
+    Route::post('/isp/routers/{router}/enable-winbox', [MikrotikRouterController::class, 'enableWinbox'])->name('isp.routers.enable-winbox');
+    Route::post('/isp/routers/{router}/reprovision', [MikrotikRouterController::class, 'reprovision'])->name('isp.routers.reprovision');
+    Route::post('/isp/routers/{router}/sync-hotspot', [MikrotikRouterController::class, 'syncHotspot'])->name('isp.routers.sync-hotspot');
+    Route::post('/isp/routers/{router}/sync-time', [MikrotikRouterController::class, 'syncTime'])->name('isp.routers.sync-time');
+    Route::delete('/isp/routers/{router}', [MikrotikRouterController::class, 'destroy'])->name('isp.routers.destroy');
+
+    Route::get('/isp/provisioning', [ProvisioningController::class, 'index'])->name('isp.provisioning.index');
+    Route::post('/isp/provisioning/generate', [ProvisioningController::class, 'generate'])->name('isp.provisioning.generate');
+    Route::get('/isp/provisioning/{token}', [ProvisioningController::class, 'details'])->name('isp.provisioning.show');
+    Route::post('/isp/provisioning/{token}/deactivate', [ProvisioningController::class, 'deactivate'])->name('isp.provisioning.deactivate');
 });
 
 

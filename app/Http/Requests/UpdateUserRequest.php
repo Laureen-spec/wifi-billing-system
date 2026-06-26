@@ -23,6 +23,7 @@ class UpdateUserRequest extends FormRequest
                 'unique:users,email,' . $userId . ',id,created_by,' . creatorId()
             ],
             'mobile_no' => 'nullable|string|regex:/^\+\d{1,3}\d{9,13}$/',
+            'role_id' => 'nullable|exists:roles,id',
             'is_enable_login' => 'boolean',
         ];
     }

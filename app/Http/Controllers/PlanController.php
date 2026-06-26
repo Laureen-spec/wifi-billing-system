@@ -48,7 +48,7 @@ class PlanController extends Controller
                     return [
                         'module' => $addon->module,
                         'alias' => $addon->name,
-                        'image' => $addon->image ?: url('/packages/workdo/' . $addon->module . '/favicon.png'),
+                        'image' => $this->addonImage($addon),
                         'monthly_price' => $addon->monthly_price ?? 0,
                         'yearly_price' => $addon->yearly_price ?? 0,
                     ];
@@ -97,7 +97,7 @@ class PlanController extends Controller
                     return [
                         'module' => $addon->module,
                         'alias' => $addon->name,
-                        'image' => $addon->image ?: url('/packages/workdo/' . $addon->module . '/favicon.png'),
+                        'image' => $this->addonImage($addon),
                     ];
                 })->values()->toArray();
             } else {
@@ -110,7 +110,7 @@ class PlanController extends Controller
                     return [
                         'module' => $addon->module,
                         'alias' => $addon->name,
-                        'image' => $addon->image ?: url('/packages/workdo/' . $addon->module . '/favicon.png'),
+                        'image' => $this->addonImage($addon),
                     ];
                 })->values()->toArray();
             }
@@ -178,7 +178,7 @@ class PlanController extends Controller
                     return [
                         'module' => $addon->module,
                         'alias' => $addon->name,
-                        'image' => $addon->image ?: url('/packages/workdo/' . $addon->module . '/favicon.png'),
+                        'image' => $this->addonImage($addon),
                     ];
                 })->values()->toArray();
             } else {
@@ -191,7 +191,7 @@ class PlanController extends Controller
                     return [
                         'module' => $addon->module,
                         'alias' => $addon->name,
-                        'image' => $addon->image ?: url('/packages/workdo/' . $addon->module . '/favicon.png'),
+                        'image' => $this->addonImage($addon),
                     ];
                 })->values()->toArray();
             }
@@ -341,7 +341,7 @@ class PlanController extends Controller
                     return [
                         'module' => $addon->module,
                         'alias' => $addon->name,
-                        'image' => $addon->image ?: url('/packages/workdo/' . $addon->module . '/favicon.png'),
+                        'image' => $this->addonImage($addon),
                         'monthly_price' => $addon->monthly_price ?? 0,
                         'yearly_price' => $addon->yearly_price ?? 0,
                     ];
@@ -446,5 +446,18 @@ class PlanController extends Controller
         } else {
             return back()->with('error', __('Permission denied'));
         }
+    }
+
+    private function addonImage(AddOn $addon): string
+    {
+        if ($addon->image) {
+            return $addon->image;
+        }
+
+        if (file_exists(base_path('packages/studyroomtechlab/' . $addon->module . '/favicon.png'))) {
+            return url('/packages/studyroomtechlab/' . $addon->module . '/favicon.png');
+        }
+
+        return url('/packages/workdo/' . $addon->module . '/favicon.png');
     }
 }

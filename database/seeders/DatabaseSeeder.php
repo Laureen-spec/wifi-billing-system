@@ -14,15 +14,22 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        (new DefaultLoginUserSeeder())->run();
         (new PermissionRoleSeeder())->run();
+        (new DefaultLoginUserSeeder())->run();
+        (new StaffRoleSeeder())->run();
         (new IspRoleSeeder())->run();
         (new DefultSetting())->run();
         (new PlanSeeder())->run();
         (new EmailTemplatesSeeder())->run();
         (new NotificationsTableSeeder())->run();
+        (new StudyRoomAddOnSeeder())->run();
 
-        $userId = User::where('email', 'company@example.com')->first()->id;
-        User::CompanySetting($userId);
+        $company = User::where('email', 'company@example.com')->first();
+        $userId = $company?->id;
+        if ($company) {
+            User::CompanySetting($company->id);
+        }
 
         if(config('app.run_demo_seeder'))
         {

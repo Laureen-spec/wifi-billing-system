@@ -4,9 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Customer extends Model
 {
+    protected $table = 'isp_customers';
+
     protected $fillable = [
         'isp_id',
         'internet_package_id',
@@ -42,5 +45,10 @@ class Customer extends Model
     public function internetPackage(): BelongsTo
     {
         return $this->belongsTo(InternetPackage::class);
+    }
+
+    public function provisioningTokens(): HasMany
+    {
+        return $this->hasMany(ProvisioningToken::class);
     }
 }

@@ -10,7 +10,7 @@
 <td>{{ $customer->isp?->name }}</td><td>{{ $customer->internetPackage?->name ?: '-' }}</td>
 <td><span class="badge">{{ ucfirst($customer->connection_status) }}</span></td>
 <td><span class="badge {{ $customer->billing_status === 'paid' ? 'ok' : ($customer->billing_status === 'overdue' ? 'bad' : 'warn') }}">{{ ucfirst($customer->billing_status) }}</span><div class="muted">{{ number_format($customer->monthly_amount, 2) }}</div></td>
-<td>{{ $customer->next_due_date?->format('Y-m-d') ?: '-' }}</td><td><a class="btn secondary" href="{{ route('isp.customers.edit', $customer) }}">Edit</a></td>
+<td>{{ $customer->next_due_date?->format('Y-m-d') ?: '-' }}</td><td><div class="actions"><a class="btn secondary" href="{{ route('isp.customers.edit', $customer) }}">Edit</a><form method="POST" action="{{ route('isp.provisioning.generate') }}">@csrf<input type="hidden" name="customer_id" value="{{ $customer->id }}"><input type="hidden" name="internet_package_id" value="{{ $customer->internet_package_id }}"><button class="btn secondary" type="submit">Generate Provisioning</button></form></div></td>
 </tr>
 @empty
 <tr><td colspan="7" class="muted">No customers found.</td></tr>

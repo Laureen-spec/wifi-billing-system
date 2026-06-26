@@ -21,8 +21,25 @@ class PlanModuleCheck
             return $next($request);
         }
 
-        // Skip check for superadmin
-        if ($user->hasRole('superadmin')) {
+        $moduleNames = [];
+        if ($moduleName !== null) {
+            $moduleNames = array_values(array_filter(explode('-', $moduleName)));
+        }
+
+        // Super Admin is a platform owner. It should not get an operational bypass
+        // into tenant/company-only modules such as WiFi Billing.
+        $isSuperAdmin = $user->type === 'superadmin' || $user->hasRole('superadmin');
+        if ($isSuperAdmin) {
+            if (!empty($moduleNames)) {
+                foreach ($moduleNames as $m) {
+                    if (module_is_active($m, $user->id)) {
+                        return $next($request);
+                    }
+                }
+
+                return redirect()->route('dashboard')->with('error', __('Tenant module is only available inside a company account.'));
+            }
+
             return $next($request);
         } elseif ($user->hasRole('company')) {
             $planExpired = $user->plan_expire_date && now()->gt($user->plan_expire_date);
@@ -52,19 +69,13 @@ class PlanModuleCheck
             }
         }
 
-        if($moduleName != null)
-        {
-            $moduleName =  explode('-',$moduleName);
-            $status = false;
-            foreach($moduleName as $m)
-            {
-                $status = module_is_active($m);
-                if($status == true)
-                {
-                    $response = $next($request);
-                    return $response;
+        if (!empty($moduleNames)) {
+            foreach ($moduleNames as $m) {
+                if (module_is_active($m, $user->id)) {
+                    return $next($request);
                 }
             }
+
             return redirect()->route('dashboard')->with('error', __('Permission denied '));
         }
 
