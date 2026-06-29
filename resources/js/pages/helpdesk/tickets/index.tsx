@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import { useFlashMessages } from '@/hooks/useFlashMessages';
@@ -10,7 +10,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
 import { Pagination } from '@/components/ui/pagination';
-import { SearchInput } from '@/components/ui/search-input';
+import { PerPageSelector } from '@/components/ui/per-page-selector';
+import { Input } from '@/components/ui/input';
 import {
     AlertTriangle,
     CheckCircle2,
@@ -21,11 +22,13 @@ import {
     Headphones,
     MessageSquare,
     Plus,
+    Search,
     ShieldCheck,
     Sparkles,
     Ticket,
     Trash2,
     UserRound,
+    X,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Create from './create';
@@ -77,6 +80,7 @@ export default function Index() {
         data: null,
     });
     const [showFilters, setShowFilters] = useState(false);
+    const didMountSearch = useRef(false);
 
     useFlashMessages();
 
@@ -112,6 +116,19 @@ export default function Index() {
         router.get(route('helpdesk-tickets.index'), { per_page: perPage });
     };
 
+    useEffect(() => {
+        if (!didMountSearch.current) {
+            didMountSearch.current = true;
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            applyFilters(filters);
+        }, 450);
+
+        return () => window.clearTimeout(timer);
+    }, [filters.title]);
+
     const openModal = (mode: 'add' | 'edit', data: HelpdeskTicket | null = null) => {
         setModalState({ isOpen: true, mode, data });
     };
@@ -141,7 +158,7 @@ export default function Index() {
             value: tickets.total,
             helper: t('all support records'),
             icon: Ticket,
-            tone: 'bg-primary/10 text-primary',
+            tone: 'bg-emerald-50 text-emerald-700',
         },
         {
             label: t('Open cases'),
@@ -284,7 +301,7 @@ export default function Index() {
             breadcrumbs={[{ label: t('Helpdesk') }, { label: t('All Tickets') }]}
             pageTitle={t('Support Desk')}
             pageActions={canCreate ? (
-                <Button onClick={() => openModal('add')} className="rounded-xl bg-primary px-4 text-primary-foreground hover:bg-primary/90">
+                <Button onClick={() => openModal('add')} className="rounded-xl bg-emerald-600 px-4 text-white hover:bg-emerald-700">
                     <Plus className="mr-2 h-4 w-4" />
                     {t('New Ticket')}
                 </Button>
@@ -293,17 +310,17 @@ export default function Index() {
             <Head title={t('Support Tickets')} />
 
             <div className="space-y-6">
-                <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-card via-card to-primary/5 p-6 text-foreground shadow-sm">
-                    <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
-                    <div className="absolute bottom-0 left-1/3 h-32 w-32 rounded-full bg-emerald-500/10 blur-3xl" />
+                <section className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-white via-emerald-50/50 to-slate-50 p-6 text-slate-950 shadow-sm">
+                    <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-emerald-200/60 blur-3xl" />
+                    <div className="absolute bottom-0 left-1/3 h-32 w-32 rounded-full bg-sky-100/70 blur-3xl" />
                     <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                         <div className="max-w-2xl">
-                            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700 shadow-sm">
                                 <Sparkles className="h-3.5 w-3.5" />
                                 {t('Service Desk')}
                             </div>
                             <h1 className="text-3xl font-black tracking-tight md:text-4xl">{t('Helpdesk command center')}</h1>
-                            <p className="mt-3 text-sm leading-6 text-muted-foreground md:text-base">
+                            <p className="mt-3 text-sm leading-6 text-slate-600 md:text-base">
                                 {t('Track support tickets, assign priority, and keep every customer conversation moving from one clean workspace.')}
                             </p>
                         </div>
@@ -311,13 +328,13 @@ export default function Index() {
                             {metricCards.map((item) => {
                                 const Icon = item.icon;
                                 return (
-                                    <div key={item.label} className="rounded-2xl border border-border bg-background/85 p-4 shadow-sm">
+                                    <div key={item.label} className="rounded-2xl border border-slate-200 bg-white/85 p-4 shadow-sm backdrop-blur">
                                         <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${item.tone}`}>
                                             <Icon className="h-5 w-5" />
                                         </div>
                                         <p className="text-2xl font-black">{item.value}</p>
-                                        <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-foreground">{item.label}</p>
-                                        <p className="mt-1 text-xs text-muted-foreground">{item.helper}</p>
+                                        <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-600">{item.label}</p>
+                                        <p className="mt-1 text-xs text-slate-500">{item.helper}</p>
                                     </div>
                                 );
                             })}
@@ -327,8 +344,8 @@ export default function Index() {
 
                 <Card className="overflow-hidden rounded-3xl border-slate-200 shadow-sm">
                     <CardContent className="border-b border-slate-200 bg-white p-4 sm:p-5">
-                        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                            <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-col gap-5">
+                            <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
                                 {statusTabs.map((tab) => {
                                     const active = filters.status === tab.value;
                                     return (
@@ -336,14 +353,14 @@ export default function Index() {
                                             key={tab.value || 'all'}
                                             type="button"
                                             onClick={() => setStatusFilter(tab.value)}
-                                            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                                            className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
                                                 active
-                                                    ? 'bg-primary text-primary-foreground shadow-sm'
-                                                    : 'border border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700'
+                                                    ? 'border-emerald-500 bg-emerald-600 text-white shadow-sm shadow-emerald-100'
+                                                    : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700'
                                             }`}
                                         >
                                             {tab.label}
-                                            <span className={`rounded-full px-2 py-0.5 text-xs ${active ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-slate-100 text-slate-500'}`}>
+                                            <span className={`rounded-full px-2 py-0.5 text-xs ${active ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
                                                 {tab.count}
                                             </span>
                                         </button>
@@ -351,15 +368,31 @@ export default function Index() {
                                 })}
                             </div>
 
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                                <SearchInput
-                                    value={filters.title}
-                                    onChange={(value) => setFilters({ ...filters, title: value })}
-                                    onSearch={() => applyFilters()}
-                                    placeholder={t('Search by ticket, title, customer...')}
-                                    className="sm:w-80"
-                                />
-                                <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className="relative rounded-xl">
+                            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                <div className="relative w-full lg:max-w-xl">
+                                    <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                    <Input
+                                        value={filters.title}
+                                        onChange={(e) => setFilters({ ...filters, title: e.target.value })}
+                                        placeholder={t('Search by ticket, title, customer...')}
+                                        className="h-12 rounded-2xl border-slate-200 bg-white pl-11 pr-10 shadow-sm focus-visible:ring-emerald-500/20"
+                                    />
+                                    {filters.title && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const nextFilters = { ...filters, title: '' };
+                                                setFilters(nextFilters);
+                                                applyFilters(nextFilters);
+                                            }}
+                                            className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                            aria-label={t('Clear search')}
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </button>
+                                    )}
+                                </div>
+                                <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className="relative h-12 rounded-2xl px-5">
                                     <Filter className="mr-2 h-4 w-4" />
                                     {t('Filters')}
                                     {activeFilters > 0 && (
@@ -422,7 +455,7 @@ export default function Index() {
                                     </div>
                                 )}
                                 <div className="flex items-end gap-2">
-                                    <Button onClick={() => applyFilters()} className="flex-1 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">{t('Apply')}</Button>
+                                    <Button onClick={() => applyFilters()} className="flex-1 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">{t('Apply')}</Button>
                                     <Button variant="outline" onClick={clearFilters} className="rounded-xl">{t('Clear')}</Button>
                                 </div>
                             </div>
@@ -441,20 +474,27 @@ export default function Index() {
                                 description={t('Get started by creating your first support ticket.')}
                                 hasFilters={activeFilters > 0}
                                 onClearFilters={clearFilters}
-                                createPermission="create-helpdesk-tickets"
-                                onCreateClick={() => openModal('add')}
-                                createButtonText={t('Create Ticket')}
                                 className="h-auto rounded-2xl bg-white py-14"
                             />
                         )}
                     </CardContent>
 
                     <CardContent className="border-t border-slate-200 bg-white px-4 py-3 sm:px-5">
-                        <Pagination
-                            data={tickets}
-                            routeName="helpdesk-tickets.index"
-                            filters={{ ...filters, per_page: perPage }}
-                        />
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <PerPageSelector
+                                routeName="helpdesk-tickets.index"
+                                filters={{ ...filters }}
+                                defaultValue={perPage}
+                                className="h-11 w-36 rounded-xl border-slate-200 bg-white"
+                            />
+                            <div className="flex-1">
+                                <Pagination
+                                    data={tickets}
+                                    routeName="helpdesk-tickets.index"
+                                    filters={{ ...filters, per_page: perPage }}
+                                />
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
 
