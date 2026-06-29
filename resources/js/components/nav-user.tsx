@@ -1,15 +1,18 @@
 "use client"
 
+import React from "react"
 import {
   BadgeCheck,
   ChevronsUpDown,
+  Languages,
   LogOut,
-  Moon,
-  Sun,
   Monitor,
+  Moon,
+  Settings as SettingsIcon,
+  Sun,
 } from "lucide-react"
-import { useTranslation } from 'react-i18next'
-import { LanguageSwitcher } from './language-switcher'
+import { useTranslation } from "react-i18next"
+import { LanguageSwitcher } from "./language-switcher"
 
 import {
   Avatar,
@@ -31,15 +34,41 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import {User} from "@/types";
-import {Link, router, usePage} from "@inertiajs/react";
-import {useTheme} from "next-themes";
-import { Button } from "@/components/ui/button";
-import { getImagePath } from "@/utils/helpers";
-import React from "react";
-import { PageProps } from "@/types";
+import { Button } from "@/components/ui/button"
+import { User, PageProps } from "@/types"
+import { Link, router, usePage } from "@inertiajs/react"
+import { useTheme } from "next-themes"
+import { getImagePath } from "@/utils/helpers"
 
+const normaliseAccountType = (value?: string | null) => {
+  const type = String(value || "company").replace(/[_-]+/g, " ").trim()
+  return type ? type.charAt(0).toUpperCase() + type.slice(1) : "Company"
+}
 
+const workspaceTitle = (user: User) => {
+  const type = String((user as any).type || "").toLowerCase()
+  const name = user.name || "Company"
+
+  if (type === "superadmin" || name.toLowerCase().includes("super admin")) {
+    return "Super Admin Workspace"
+  }
+
+  if (type === "company") {
+    return `${name} Workspace`
+  }
+
+  return `${name} Workspace`
+}
+
+const workspaceSubtitle = (user: User) => {
+  const type = String((user as any).type || "company").toLowerCase()
+
+  if (type === "superadmin") {
+    return "platform account"
+  }
+
+  return `${normaliseAccountType(type).toLowerCase()} account`
+}
 
 export function NavUser({
   user,
@@ -49,72 +78,129 @@ export function NavUser({
   inHeader?: boolean
 }) {
   const { isMobile } = useSidebar()
-  const {setTheme} = useTheme()
+  const { setTheme } = useTheme()
   const { i18n, t } = useTranslation()
   const { auth } = usePage<PageProps>().props
+
+  const roles = ((auth.user as any)?.roles || []) as any[]
+  const permissions = auth.user?.permissions || []
+  const isSuperAdmin = roles.some((role: any) => role?.name === "superadmin" || role === "superadmin")
+  const canManageProfile = permissions.includes("manage-profile")
+  const canManageSettings = permissions.includes("manage-settings")
+  const canManageLanguages = isSuperAdmin || permissions.includes("manage-languages") || permissions.includes("create-languages")
+
+  const initial = (user.name || "U").charAt(0).toUpperCase()
+  const title = workspaceTitle(user)
+  const subtitle = workspaceSubtitle(user)
+  const languageSettingsHref = canManageLanguages ? route("languages.manage") : route("settings.index")
 
   React.useEffect(() => {
     if (user.lang) {
       i18n.changeLanguage(user.lang)
     }
-  }, [user.lang])
+  }, [user.lang, i18n])
 
   if (inHeader) {
     return (
       <div className="flex items-center gap-3">
-        <LanguageSwitcher />
+        <LanguageSwitcher variant="header" />
 
         <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="flex items-center gap-2 h-9 px-2 rounded-lg hover:bg-accent transition-colors">
-            <Avatar className="h-8 w-8 rounded-full ring-2 ring-gray-200 dark:ring-gray-700">
-              {(user as any).avatar && <AvatarImage src={getImagePath((user as any).avatar)} alt={user.name} />}
-              <AvatarFallback className="bg-primary/10 text-primary rounded-full font-semibold">{user.name?.charAt(0)?.toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="hidden md:flex flex-col items-start">
-              <span className="text-sm font-medium leading-none">{user.name}</span>
-              <span className="text-xs text-muted-foreground leading-none mt-0.5">{(user as any).type || 'User'}</span>
-            </div>
-            <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-64 rounded-xl shadow-lg border-gray-200/50 dark:border-gray-700/50">
-          <DropdownMenuLabel className="pb-2">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10 rounded-full ring-2 ring-gray-200 dark:ring-gray-700">
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              className="h-11 gap-3 rounded-2xl border-border/80 bg-background px-3 py-2 shadow-sm hover:bg-muted/40 data-[state=open]:bg-muted/50"
+            >
+              <Avatar className="h-9 w-9 rounded-full ring-4 ring-primary/10">
                 {(user as any).avatar && <AvatarImage src={getImagePath((user as any).avatar)} alt={user.name} />}
-                <AvatarFallback className="bg-primary/10 text-primary rounded-full font-semibold">{user.name?.charAt(0)?.toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="rounded-full bg-primary/10 font-semibold text-primary">
+                  {initial}
+                </AvatarFallback>
               </Avatar>
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-semibold">{user.name}</p>
-                <p className="text-xs text-muted-foreground">{user.email}</p>
+
+              <div className="hidden min-w-0 text-left md:block">
+                <div className="flex items-center gap-2">
+                  <span className="max-w-[170px] truncate text-sm font-semibold text-foreground">
+                    {title}
+                  </span>
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    {t("Active")}
+                  </span>
+                </div>
+                <p className="mt-0.5 max-w-[170px] truncate text-xs text-muted-foreground">
+                  {subtitle}
+                </p>
               </div>
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            {auth.user?.permissions?.includes('manage-profile') && (
-              <DropdownMenuItem asChild className="cursor-pointer">
-                <Link href={route('profile.edit')}>
-                  <BadgeCheck className="mr-2 h-4 w-4" />
-                  {t('Edit Profile')}
+
+              <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent
+            align="end"
+            sideOffset={10}
+            className="w-80 rounded-2xl border-border/80 p-2 shadow-xl"
+          >
+            <DropdownMenuLabel className="p-0 font-normal">
+              <div className="flex items-center gap-3 rounded-xl bg-muted/60 p-3 text-left">
+                <Avatar className="h-12 w-12 rounded-full ring-4 ring-primary/10">
+                  {(user as any).avatar && <AvatarImage src={getImagePath((user as any).avatar)} alt={user.name} />}
+                  <AvatarFallback className="rounded-full bg-primary/10 text-base font-semibold text-primary">
+                    {initial}
+                  </AvatarFallback>
+                </Avatar>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-semibold text-foreground">{title}</p>
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      {t("Active")}
+                    </span>
+                  </div>
+                  <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+                  <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                </div>
+              </div>
+            </DropdownMenuLabel>
+
+            <DropdownMenuSeparator className="my-2" />
+
+            <DropdownMenuGroup>
+              {canManageProfile && (
+                <DropdownMenuItem asChild className="cursor-pointer rounded-xl px-3 py-2.5">
+                  <Link href={route("profile.edit")}>
+                    <BadgeCheck className="mr-2 h-4 w-4" />
+                    {t("Edit Profile")}
+                  </Link>
+                </DropdownMenuItem>
+              )}
+
+              <DropdownMenuItem asChild className="cursor-pointer rounded-xl px-3 py-2.5">
+                <Link href={languageSettingsHref}>
+                  <Languages className="mr-2 h-4 w-4" />
+                  {t("Language Settings")}
                 </Link>
               </DropdownMenuItem>
-            )}
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem asChild className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20">
-            <Link
-              className="w-full"
-              href={route("logout")}
-              method={"post"}
-              as={"button"}
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              {t('Log out')}
-            </Link>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
+
+              {canManageSettings && (
+                <DropdownMenuItem asChild className="cursor-pointer rounded-xl px-3 py-2.5">
+                  <Link href={route("settings.index") + "#payment-gateway-settings"}>
+                    <SettingsIcon className="mr-2 h-4 w-4" />
+                    {t("Settings")}
+                  </Link>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuGroup>
+
+            <DropdownMenuSeparator className="my-2" />
+
+            <DropdownMenuItem asChild className="cursor-pointer rounded-xl px-3 py-2.5 text-red-600 focus:bg-red-50 focus:text-red-600 dark:focus:bg-red-950/20">
+              <Link className="w-full" href={route("logout")} method="post" as="button">
+                <LogOut className="mr-2 h-4 w-4" />
+                {t("Log out")}
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
         </DropdownMenu>
       </div>
     )
@@ -131,7 +217,7 @@ export function NavUser({
             >
               <Avatar className="h-8 w-8 rounded-md">
                 {(user as any).avatar && <AvatarImage src={getImagePath((user as any).avatar)} alt={user.name} />}
-                <AvatarFallback className="rounded-md">{user.name?.charAt(0)?.toUpperCase()}</AvatarFallback>
+                <AvatarFallback className="rounded-md">{initial}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">{user.name}</span>
@@ -150,7 +236,7 @@ export function NavUser({
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-md">
                   {(user as any).avatar && <AvatarImage src={getImagePath((user as any).avatar)} alt={user.name} />}
-                  <AvatarFallback className="rounded-md">{user.name?.charAt(0)?.toUpperCase()}</AvatarFallback>
+                  <AvatarFallback className="rounded-md">{initial}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">{user.name}</span>
@@ -160,11 +246,11 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              {auth.user?.permissions?.includes('manage-profile') && (
+              {canManageProfile && (
                 <DropdownMenuItem asChild>
-                  <Link href={route('profile.edit')}>
+                  <Link href={route("profile.edit")}>
                     <BadgeCheck className="mr-2 h-4 w-4" />
-                    {t('Edit Profile')}
+                    {t("Edit Profile")}
                   </Link>
                 </DropdownMenuItem>
               )}
@@ -173,20 +259,20 @@ export function NavUser({
             <DropdownMenuGroup>
               <DropdownMenuItem onClick={() => setTheme("light")}>
                 <Sun className="mr-2 h-4 w-4" />
-                {t('Light')}
+                {t("Light")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setTheme("dark")}>
                 <Moon className="mr-2 h-4 w-4" />
-                {t('Dark')}
+                {t("Dark")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setTheme("system")}>
                 <Monitor className="mr-2 h-4 w-4" />
-                {t('System')}
+                {t("System")}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuLabel className="px-2 py-1.5 text-sm font-semibold">{t('Language')}</DropdownMenuLabel>
+              <DropdownMenuLabel className="px-2 py-1.5 text-sm font-semibold">{t("Language")}</DropdownMenuLabel>
               <div className="px-2">
                 <LanguageSwitcher />
               </div>
@@ -194,14 +280,9 @@ export function NavUser({
             <DropdownMenuSeparator />
 
             <DropdownMenuItem asChild>
-              <Link
-                  className="w-full"
-                  href={route("logout")}
-                  method={"post"}
-                  as={"button"}
-              >
+              <Link className="w-full" href={route("logout")} method="post" as="button">
                 <LogOut className="mr-2 h-4 w-4" />
-                {t('Log out')}
+                {t("Log out")}
               </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>

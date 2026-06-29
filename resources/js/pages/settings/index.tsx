@@ -16,10 +16,32 @@ const getHashSection = () => {
   return window.location.hash.replace('#', '');
 };
 
+const settingDescription = (component?: string, t?: (key: string) => string) => {
+  if (!t) return '';
+
+  if (component === 'payment-gateway-settings') {
+    return t('Configure platform payment methods, M-Pesa credentials, and collection rules.');
+  }
+
+  if (component === 'currency-settings') {
+    return t('Manage default currency and invoice formatting.');
+  }
+
+  if (component === 'brand-settings') {
+    return t('Update logo, colors, branding, and product identity.');
+  }
+
+  if (component === 'system-settings') {
+    return t('Manage system preferences and platform behavior.');
+  }
+
+  return t('Update the selected system configuration page.');
+};
+
 export default function Settings() {
   const { t } = useTranslation();
   const { auth, globalSettings = {}, emailProviders = {}, cacheSize = '0.00', mpesaPaymentSettings = null } = usePage().props as any;
-  const [activeSection, setActiveSection] = useState(() => getHashSection() || 'brand-settings');
+  const [activeSection, setActiveSection] = useState(() => getHashSection());
 
   const userPermissions = auth?.user?.permissions || [];
   const userRoles = auth?.user?.roles || [];
@@ -61,7 +83,12 @@ export default function Settings() {
     const stillVisible = visibleSections.some((item) => item.href.replace('#', '') === activeSection);
 
     if (!stillVisible) {
-      setActiveSection(visibleSections[0].href.replace('#', ''));
+      const firstSection = visibleSections[0].href.replace('#', '');
+      setActiveSection(firstSection);
+
+      if (typeof window !== 'undefined' && firstSection) {
+        window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${firstSection}`);
+      }
     }
   }, [visibleSections, activeSection]);
 
@@ -69,79 +96,94 @@ export default function Settings() {
 
   return (
     <AuthenticatedLayout
-      breadcrumbs={[{ label: t('Settings') }]}
-      pageTitle={t('Settings')}
+      breadcrumbs={[{ label: t('Settings') }, ...(activeItem ? [{ label: activeItem.title }] : [])]}
     >
-      <Head title={t('Settings')} />
+      <Head title={activeItem?.title || t('Settings')} />
 
-      <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-        {/* Sidebar Navigation */}
-        <aside className="min-w-0">
-          <div className="sticky top-4 rounded-2xl border bg-card p-3 shadow-sm">
-            <div className="px-3 py-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {t('Settings Menu')}
-              </p>
-            </div>
+      <div className="space-y-6">
+        <div className="rounded-3xl border bg-card px-6 py-5 shadow-sm">
+          <p className="text-sm text-muted-foreground">{t('Settings')}</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
+            {activeItem?.title || t('Settings')}
+          </h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            {settingDescription(activeItem?.component, t)}
+          </p>
+        </div>
 
-            <ScrollArea className="h-[calc(100vh-12rem)] pr-2">
-              <div className="space-y-1">
-                {visibleSections.map((item) => {
-                  const itemId = item.href.replace('#', '');
-                  const isActive = activeSection === itemId;
-
-                  return (
-                    <Button
-                      key={`${item.href}-${item.component}`}
-                      variant="ghost"
-                      className={cn(
-                        'w-full justify-start gap-3 rounded-xl px-3 py-5 text-left text-sm font-medium',
-                        isActive && 'bg-primary/10 text-primary shadow-none hover:bg-primary/10 hover:text-primary'
-                      )}
-                      onClick={() => handleNavClick(item.href)}
-                    >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{item.title}</span>
-                    </Button>
-                  );
-                })}
+        <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
+          <aside className="min-w-0">
+            <div className="sticky top-20 rounded-3xl border bg-card p-3 shadow-sm">
+              <div className="px-3 py-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t('Settings Menu')}
+                </p>
               </div>
-            </ScrollArea>
-          </div>
-        </aside>
 
-        {/* Single active settings page */}
-        <main className="min-w-0">
-          <div className="mb-5 rounded-2xl border bg-card px-6 py-5 shadow-sm">
-            <p className="text-sm text-muted-foreground">{t('Settings')}</p>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {activeItem?.title || t('Settings')}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {activeItem?.component === 'payment-gateway-settings'
-                ? t('Configure platform payment methods and M-Pesa collection rules from one clean page.')
-                : t('Update the selected system configuration page.')}
-            </p>
-          </div>
+              <ScrollArea className="h-[calc(100vh-15rem)] pr-2">
+                <div className="space-y-1">
+                  {visibleSections.map((item) => {
+                    const itemId = item.href.replace('#', '');
+                    const isActive = activeSection === itemId;
 
-          <div id={activeItem?.href.replace('#', '')} className="min-w-0">
-            <Suspense fallback={<div className="rounded-2xl border bg-card p-6 shadow-sm">{t('Loading...')}</div>}>
-              {ActiveComponent ? (
-                <ActiveComponent
-                  userSettings={globalSettings}
-                  auth={auth}
-                  emailProviders={emailProviders}
-                  cacheSize={cacheSize}
-                  mpesaPaymentSettings={mpesaPaymentSettings}
-                />
-              ) : (
-                <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
-                  {t('This settings page is not available.')}
+                    return (
+                      <Button
+                        key={`${item.href}-${item.component}`}
+                        variant="ghost"
+                        className={cn(
+                          'h-auto w-full justify-start gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium',
+                          isActive && 'bg-primary/10 text-primary shadow-none hover:bg-primary/10 hover:text-primary'
+                        )}
+                        onClick={() => handleNavClick(item.href)}
+                      >
+                        <span className={cn(
+                          'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border bg-background text-muted-foreground',
+                          isActive && 'border-primary/20 bg-primary/10 text-primary'
+                        )}>
+                          <item.icon className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate">{item.title}</span>
+                          <span className="block truncate text-xs font-normal text-muted-foreground">
+                            {item.component === 'payment-gateway-settings'
+                              ? t('Manage payment gateways')
+                              : item.component === 'brand-settings'
+                                ? t('Logo, colors and branding')
+                                : item.component === 'system-settings'
+                                  ? t('General system preferences')
+                                  : item.component === 'currency-settings'
+                                    ? t('Manage currencies')
+                                    : t('Configure settings')}
+                          </span>
+                        </span>
+                      </Button>
+                    );
+                  })}
                 </div>
-              )}
-            </Suspense>
-          </div>
-        </main>
+              </ScrollArea>
+            </div>
+          </aside>
+
+          <main className="min-w-0">
+            <div id={activeItem?.href.replace('#', '')} className="min-w-0">
+              <Suspense fallback={<div className="rounded-3xl border bg-card p-6 shadow-sm">{t('Loading...')}</div>}>
+                {ActiveComponent ? (
+                  <ActiveComponent
+                    userSettings={globalSettings}
+                    auth={auth}
+                    emailProviders={emailProviders}
+                    cacheSize={cacheSize}
+                    mpesaPaymentSettings={mpesaPaymentSettings}
+                  />
+                ) : (
+                  <div className="rounded-3xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
+                    {t('This settings page is not available.')}
+                  </div>
+                )}
+              </Suspense>
+            </div>
+          </main>
+        </div>
       </div>
     </AuthenticatedLayout>
   );

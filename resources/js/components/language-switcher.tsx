@@ -5,6 +5,7 @@ import { Globe, Settings, Plus } from 'lucide-react';
 import { usePage, router } from '@inertiajs/react';
 import { CreateLanguageModal } from './create-language-modal';
 import languagesData from '@/../lang/language.json';
+import { cn } from '@/lib/utils';
 
 interface Language {
     code: string;
@@ -12,6 +13,10 @@ interface Language {
     countryCode: string;
     enabled?: boolean;
     flag?: string;
+}
+
+interface LanguageSwitcherProps {
+    variant?: 'default' | 'header';
 }
 
 const getCountryFlag = (countryCode: string): string => {
@@ -22,13 +27,12 @@ const getCountryFlag = (countryCode: string): string => {
     return String.fromCodePoint(...codePoints);
 };
 
-export function LanguageSwitcher() {
+export function LanguageSwitcher({ variant = 'default' }: LanguageSwitcherProps) {
     const { i18n, t } = useTranslation();
     const { auth, availableLanguages } = usePage().props as any;
     const [currentLanguage, setCurrentLanguage] = useState(auth?.lang || i18n.language || 'en');
     const [showCreateModal, setShowCreateModal] = useState(false);
 
-    // Use availableLanguages from props instead of static languagesData
     const languages: Language[] = (availableLanguages || languagesData)
         .filter((lang: Language) => lang.enabled !== false)
         .map((lang: Language) => ({
@@ -36,12 +40,10 @@ export function LanguageSwitcher() {
             flag: getCountryFlag(lang.countryCode)
         }));
 
-    // Check if user is superadmin
     const isSuperAdmin = auth?.user?.roles?.some((role: any) =>
         role.name === 'superadmin' || role === 'superadmin'
     );
 
-    // Check permissions
     const hasCreatePermission = auth?.user?.permissions?.includes('create-languages');
     const hasManagePermission = auth?.user?.permissions?.includes('manage-languages');
 
@@ -74,11 +76,17 @@ export function LanguageSwitcher() {
     return (
         <>
             <Select value={currentLanguage} onValueChange={handleLanguageChange}>
-                <SelectTrigger className="w-auto border-none shadow-none bg-transparent hover:bg-muted/50">
+                <SelectTrigger
+                    className={cn(
+                        'w-auto gap-2 shadow-none',
+                        variant === 'header'
+                            ? 'h-10 rounded-xl border border-border/80 bg-background px-4 shadow-sm hover:bg-muted/40'
+                            : 'border-none bg-transparent hover:bg-muted/50'
+                    )}
+                >
                     <div className="flex items-center gap-2">
-                        <Globe className="h-4 w-4" />
-                        <span className="text-sm">{currentLang.flag}</span>
-                        <span className="text-sm">{currentLang.name}</span>
+                        <Globe className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">{currentLang?.name || t('English')}</span>
                     </div>
                 </SelectTrigger>
                 <SelectContent align="end">

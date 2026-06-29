@@ -4,7 +4,6 @@ import { getCompanySettings } from './menus/company-setting';
 
 let packageSettingsCache: Record<string, SettingMenuItem[]> = {};
 
-
 const packageNameCandidates = (packageName: string): string[] => {
     const raw = String(packageName || '').trim();
     const normalized = raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -34,7 +33,6 @@ const packageNameCandidates = (packageName: string): string[] => {
     ].filter(Boolean) as string[]));
 };
 
-// Get role-based core settings items
 const getCoreSettingsItems = (userRoles: string[], t: (key: string) => string): SettingMenuItem[] => {
     if (userRoles.includes('superadmin')) {
         return getSuperAdminSettings(t);
@@ -42,10 +40,9 @@ const getCoreSettingsItems = (userRoles: string[], t: (key: string) => string): 
     return getCompanySettings(t);
 };
 
-// Auto-load package settings based on activated packages
 const getPackageSettingsItems = (userRoles: string[], activatedPackages: string[], t: (key: string) => string): SettingMenuItem[] => {
     const cacheKey = `${userRoles.join(',')}-${[...activatedPackages].sort().join(',')}`;
-    
+
     if (packageSettingsCache[cacheKey]) {
         return packageSettingsCache[cacheKey];
     }
@@ -85,6 +82,14 @@ const getPackageSettingsItems = (userRoles: string[], activatedPackages: string[
 const normaliseSettingKey = (value: string): string =>
     String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
+const isPaymentSettingsItem = (item: SettingMenuItem): boolean => {
+    const key = `${item.title} ${item.href} ${item.component}`.toLowerCase();
+
+    return key.includes('payment-gateway')
+        || key.includes('payment settings')
+        || key.includes('payment gateway');
+};
+
 const dedupeSettingsItems = (items: SettingMenuItem[]): SettingMenuItem[] => {
     const seenStrict = new Set<string>();
     const seenTitles = new Set<string>();
@@ -98,8 +103,6 @@ const dedupeSettingsItems = (items: SettingMenuItem[]): SettingMenuItem[] => {
             return;
         }
 
-        // Prevent duplicated package registrations from showing two identical sidebar labels,
-        // for example two separate "Payment Gateway" entries when the same addon is loaded twice.
         if (seenTitles.has(titleKey)) {
             return;
         }
@@ -112,17 +115,27 @@ const dedupeSettingsItems = (items: SettingMenuItem[]): SettingMenuItem[] => {
     return deduped;
 };
 
-// Main function to get filtered settings items
+const sortSettingsItems = (items: SettingMenuItem[]): SettingMenuItem[] => {
+    return [...items].sort((a, b) => {
+        const aPriority = isPaymentSettingsItem(a) ? 0 : 1;
+        const bPriority = isPaymentSettingsItem(b) ? 0 : 1;
+
+        if (aPriority !== bPriority) {
+            return aPriority - bPriority;
+        }
+
+        return (a.order || 999) - (b.order || 999);
+    });
+};
+
 export const allSettingsItems = (userPermissions: string[], userRoles: string[], activatedPackages: string[], t: (key: string) => string): SettingMenuItem[] => {
     const coreSettingsItems = getCoreSettingsItems(userRoles, t);
     const packageSettingsItems = getPackageSettingsItems(userRoles, activatedPackages, t);
 
     const allItems = [...coreSettingsItems, ...packageSettingsItems];
 
-    // Sort by order, filter by permission, and remove duplicated addon menu entries.
     return dedupeSettingsItems(
-        allItems
-            .sort((a, b) => (a.order || 999) - (b.order || 999))
+        sortSettingsItems(allItems)
             .filter(item => userPermissions.includes(item.permission))
     );
 };
