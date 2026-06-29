@@ -141,7 +141,7 @@ export default function Index() {
             value: tickets.total,
             helper: t('all support records'),
             icon: Ticket,
-            tone: 'bg-slate-950 text-white',
+            tone: 'bg-primary/10 text-primary',
         },
         {
             label: t('Open cases'),
@@ -284,7 +284,7 @@ export default function Index() {
             breadcrumbs={[{ label: t('Helpdesk') }, { label: t('All Tickets') }]}
             pageTitle={t('Support Desk')}
             pageActions={canCreate ? (
-                <Button onClick={() => openModal('add')} className="rounded-xl bg-emerald-600 px-4 text-white hover:bg-emerald-700">
+                <Button onClick={() => openModal('add')} className="rounded-xl bg-primary px-4 text-primary-foreground hover:bg-primary/90">
                     <Plus className="mr-2 h-4 w-4" />
                     {t('New Ticket')}
                 </Button>
@@ -293,17 +293,17 @@ export default function Index() {
             <Head title={t('Support Tickets')} />
 
             <div className="space-y-6">
-                <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-950 p-6 text-white shadow-sm">
-                    <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-emerald-500/20 blur-3xl" />
-                    <div className="absolute bottom-0 left-1/3 h-32 w-32 rounded-full bg-sky-500/10 blur-3xl" />
+                <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-card via-card to-primary/5 p-6 text-foreground shadow-sm">
+                    <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+                    <div className="absolute bottom-0 left-1/3 h-32 w-32 rounded-full bg-emerald-500/10 blur-3xl" />
                     <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                         <div className="max-w-2xl">
-                            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-100">
+                            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
                                 <Sparkles className="h-3.5 w-3.5" />
                                 {t('Service Desk')}
                             </div>
                             <h1 className="text-3xl font-black tracking-tight md:text-4xl">{t('Helpdesk command center')}</h1>
-                            <p className="mt-3 text-sm leading-6 text-slate-300 md:text-base">
+                            <p className="mt-3 text-sm leading-6 text-muted-foreground md:text-base">
                                 {t('Track support tickets, assign priority, and keep every customer conversation moving from one clean workspace.')}
                             </p>
                         </div>
@@ -311,13 +311,13 @@ export default function Index() {
                             {metricCards.map((item) => {
                                 const Icon = item.icon;
                                 return (
-                                    <div key={item.label} className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur">
+                                    <div key={item.label} className="rounded-2xl border border-border bg-background/85 p-4 shadow-sm">
                                         <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${item.tone}`}>
                                             <Icon className="h-5 w-5" />
                                         </div>
                                         <p className="text-2xl font-black">{item.value}</p>
-                                        <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-300">{item.label}</p>
-                                        <p className="mt-1 text-xs text-slate-400">{item.helper}</p>
+                                        <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-foreground">{item.label}</p>
+                                        <p className="mt-1 text-xs text-muted-foreground">{item.helper}</p>
                                     </div>
                                 );
                             })}
@@ -338,12 +338,12 @@ export default function Index() {
                                             onClick={() => setStatusFilter(tab.value)}
                                             className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
                                                 active
-                                                    ? 'bg-slate-950 text-white shadow-sm'
+                                                    ? 'bg-primary text-primary-foreground shadow-sm'
                                                     : 'border border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700'
                                             }`}
                                         >
                                             {tab.label}
-                                            <span className={`rounded-full px-2 py-0.5 text-xs ${active ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                            <span className={`rounded-full px-2 py-0.5 text-xs ${active ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-slate-100 text-slate-500'}`}>
                                                 {tab.count}
                                             </span>
                                         </button>
@@ -422,7 +422,7 @@ export default function Index() {
                                     </div>
                                 )}
                                 <div className="flex items-end gap-2">
-                                    <Button onClick={() => applyFilters()} className="flex-1 rounded-xl bg-slate-950 text-white hover:bg-slate-800">{t('Apply')}</Button>
+                                    <Button onClick={() => applyFilters()} className="flex-1 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">{t('Apply')}</Button>
                                     <Button variant="outline" onClick={clearFilters} className="rounded-xl">{t('Clear')}</Button>
                                 </div>
                             </div>

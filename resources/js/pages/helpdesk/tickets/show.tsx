@@ -110,7 +110,7 @@ export default function Show() {
                     <div className="relative flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
                         <div className="min-w-0 flex-1">
                             <div className="mb-4 flex flex-wrap items-center gap-2">
-                                <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-white">
+                                <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-primary">
                                     #{ticket.ticket_id}
                                 </span>
                                 {getStatusBadge(ticket.status)}

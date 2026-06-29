@@ -271,7 +271,7 @@ export default function Today() {
     };
 
     const statCards = [
-        { label: t('Total'), value: stats.total, helper: t('active support queue'), icon: Headphones, tone: 'bg-slate-950 text-white' },
+        { label: t('Total'), value: stats.total, helper: t('active support queue'), icon: Headphones, tone: 'bg-primary/10 text-primary' },
         { label: t('Urgent'), value: stats.urgent, helper: t('needs fast action'), icon: AlertTriangle, tone: 'bg-red-50 text-red-700' },
         { label: t('Open'), value: stats.open, helper: t('waiting response'), icon: Clock3, tone: 'bg-sky-50 text-sky-700' },
         { label: t('In Progress'), value: stats.in_progress, helper: t('being handled'), icon: PlayCircle, tone: 'bg-amber-50 text-amber-700' },
@@ -318,7 +318,7 @@ export default function Today() {
                                 />
                             </div>
                             {searchQuery && <Button type="button" variant="outline" onClick={clearSearch} className="rounded-xl">{t('Clear')}</Button>}
-                            <Button type="submit" className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">{t('Search')}</Button>
+                            <Button type="submit" className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">{t('Search')}</Button>
                         </form>
                     </div>
 
