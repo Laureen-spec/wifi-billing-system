@@ -104,7 +104,7 @@ export default function SmsSettings({ pageTitle, subtitle, setting, platformSett
     const usingSystemSms = data.mode === 'platform';
     const balance = Number(data.sms_balance || 0);
     const threshold = Number(data.low_balance_alert_threshold || 10);
-    const lowBalance = usingSystemSms && balance <= threshold && data.free_sms_remaining <= 0;
+    const lowBalance = !isPlatform && usingSystemSms && balance <= threshold && data.free_sms_remaining <= 0;
     const selectedProvider = providers.find((provider) => provider.value === data.provider);
 
     return (
@@ -129,12 +129,14 @@ export default function SmsSettings({ pageTitle, subtitle, setting, platformSett
                 {!hasSmsTables && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">SMS settings tables are not migrated yet.</div>}
                 {lowBalance && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"><strong>System alert:</strong> SMS balance is below {threshold}. Top up before sending more system SMS. {data.low_balance_alert_phone ? `Low-balance alerts will be sent to ${data.low_balance_alert_phone}.` : 'Configure an alert phone number below.'}</div>}
 
-                <div className="grid gap-4 lg:grid-cols-4">
-                    <MetricCard icon={<Wallet className="h-5 w-5" />} label="System balance" value={balance.toFixed(2)} hint="charged after starter SMS" />
-                    <MetricCard icon={<MessageSquare className="h-5 w-5" />} label="Free SMS" value={String(data.free_sms_remaining)} hint="starter credits" />
-                    <MetricCard icon={<Coins className="h-5 w-5" />} label="Cost / SMS" value={Number(data.estimated_cost_per_sms || 0).toFixed(2)} hint="system SMS estimate" />
-                    <MetricCard icon={<BellRing className="h-5 w-5" />} label="Low balance alert" value={data.low_balance_alert_enabled ? 'On' : 'Off'} hint={`threshold ${threshold}`} />
-                </div>
+                {!isPlatform && (
+                    <div className="grid gap-4 lg:grid-cols-4">
+                        <MetricCard icon={<Wallet className="h-5 w-5" />} label="System balance" value={balance.toFixed(2)} hint="charged after starter SMS" />
+                        <MetricCard icon={<MessageSquare className="h-5 w-5" />} label="Free SMS" value={String(data.free_sms_remaining)} hint="starter credits" />
+                        <MetricCard icon={<Coins className="h-5 w-5" />} label="Cost / SMS" value={Number(data.estimated_cost_per_sms || 0).toFixed(2)} hint="system SMS estimate" />
+                        <MetricCard icon={<BellRing className="h-5 w-5" />} label="Low balance alert" value={data.low_balance_alert_enabled ? 'On' : 'Off'} hint={`threshold ${threshold}`} />
+                    </div>
+                )}
 
                 <form onSubmit={submit} className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_390px]">
                     <div className="space-y-5">
@@ -174,7 +176,7 @@ export default function SmsSettings({ pageTitle, subtitle, setting, platformSett
                             </CardContent>
                         </Card>
 
-                        {usingSystemSms ? (
+                        {usingSystemSms && !isPlatform ? (
                             <Card>
                                 <CardHeader className="border-b py-4"><CardTitle className="text-base">System SMS balance and alerts</CardTitle></CardHeader>
                                 <CardContent className="grid gap-4 p-5 md:grid-cols-3">
@@ -189,7 +191,7 @@ export default function SmsSettings({ pageTitle, subtitle, setting, platformSett
                             </Card>
                         ) : (
                             <Card>
-                                <CardHeader className="border-b py-4"><CardTitle className="text-base">Own SMS API configuration</CardTitle></CardHeader>
+                                <CardHeader className="border-b py-4"><CardTitle className="text-base">{isPlatform ? 'Platform SMS gateway configuration' : 'Own SMS API configuration'}</CardTitle></CardHeader>
                                 <CardContent className="grid gap-4 p-5 md:grid-cols-2">
                                     <div className="space-y-2 md:col-span-2">
                                         <Label htmlFor="sms-provider">Available gateway</Label>
@@ -218,15 +220,29 @@ export default function SmsSettings({ pageTitle, subtitle, setting, platformSett
                     </div>
 
                     <div className="space-y-5">
-                        <Card>
-                            <CardHeader className="border-b py-4"><CardTitle className="text-base">System alert</CardTitle></CardHeader>
-                            <CardContent className="space-y-4 p-5 text-sm">
-                                <div className={`rounded-2xl border p-4 ${lowBalance ? 'border-amber-200 bg-amber-50 text-amber-900' : 'bg-muted/20 text-muted-foreground'}`}>
-                                    <div className="flex items-start gap-3"><BellRing className="mt-0.5 h-5 w-5" /><div><p className="font-medium text-foreground">Low balance monitor</p><p className="mt-1">Alert phone: {data.low_balance_alert_phone || 'Not configured'}</p><p>Threshold: {data.low_balance_alert_threshold || '10'}</p>{current?.low_balance_alerted_at && <p>Last alert: {current.low_balance_alerted_at}</p>}</div></div>
-                                </div>
-                                {routes.topUp && <Button className="w-full" asChild><Link href={routes.topUp}><Wallet className="h-4 w-4" />Go to purchase / top-up</Link></Button>}
-                            </CardContent>
-                        </Card>
+                        {!isPlatform ? (
+                            <Card>
+                                <CardHeader className="border-b py-4"><CardTitle className="text-base">System alert</CardTitle></CardHeader>
+                                <CardContent className="space-y-4 p-5 text-sm">
+                                    <div className={`rounded-2xl border p-4 ${lowBalance ? 'border-amber-200 bg-amber-50 text-amber-900' : 'bg-muted/20 text-muted-foreground'}`}>
+                                        <div className="flex items-start gap-3"><BellRing className="mt-0.5 h-5 w-5" /><div><p className="font-medium text-foreground">Low balance monitor</p><p className="mt-1">Alert phone: {data.low_balance_alert_phone || 'Not configured'}</p><p>Threshold: {data.low_balance_alert_threshold || '10'}</p>{current?.low_balance_alerted_at && <p>Last alert: {current.low_balance_alerted_at}</p>}</div></div>
+                                    </div>
+                                    {routes.topUp && <Button className="w-full" asChild><Link href={routes.topUp}><Wallet className="h-4 w-4" />Go to SMS checkout</Link></Button>}
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <Card>
+                                <CardHeader className="border-b py-4"><CardTitle className="text-base">Super admin SMS gateway</CardTitle></CardHeader>
+                                <CardContent className="space-y-3 p-5 text-sm text-muted-foreground">
+                                    <div className="rounded-2xl border bg-muted/20 p-4">
+                                        Configure the platform SMS provider here. Admins who pick system SMS will use this gateway and pay from their SMS balance.
+                                    </div>
+                                    <div className="rounded-2xl border bg-muted/20 p-4">
+                                        Admin wallet balance, starter SMS, and low-balance alerts stay on the admin side only.
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        )}
 
                         <Card>
                             <CardHeader className="border-b py-4"><CardTitle className="text-base">Gateway summary</CardTitle></CardHeader>

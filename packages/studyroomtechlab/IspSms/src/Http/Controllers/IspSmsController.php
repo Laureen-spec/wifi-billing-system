@@ -148,7 +148,7 @@ class IspSmsController extends Controller
         abort_unless(Schema::hasTable('isp_sms_messages'), 500, 'SMS tables are not migrated yet.');
 
         $data = $request->validate([
-            'audience' => ['required', Rule::in(['specific', 'segment', 'mikrotik', 'everyone'])],
+            'audience' => ['required', Rule::in(['specific', 'segment', 'mikrotik', 'everyone', 'online', 'offline'])],
             'customer_ids' => ['array'],
             'customer_ids.*' => ['integer', 'exists:isp_customers,id'],
             'segment' => ['nullable', Rule::in(array_keys($this->segmentDefinitions()))],
@@ -165,6 +165,11 @@ class IspSmsController extends Controller
 
         $isPlatform = $this->isPlatform($request);
         $isp = $isPlatform ? null : $this->resolveIsp($request);
+
+        if (! $isPlatform && $isp) {
+            $this->assertAdminSmsConfigured((int) $isp->id);
+        }
+
         $recipients = $this->resolveComposerRecipients($request, $data, $isp?->id ? (int) $isp->id : null);
 
         if (empty($recipients)) {
@@ -260,7 +265,7 @@ class IspSmsController extends Controller
                 'newMessage' => route('isp.sms.new-message'),
                 'save' => route('isp.sms.settings.save'),
                 'templates' => route('isp.sms.templates.index'),
-                'topUp' => Route::has('purchase-invoices.index') ? route('purchase-invoices.index') : route('plans.index'),
+                'topUp' => $isPlatform ? null : route('isp.sms.topup'),
             ],
         ]);
     }
@@ -333,6 +338,10 @@ class IspSmsController extends Controller
             throw ValidationException::withMessages([
                 'phone' => 'The selected recipient does not have a phone number.',
             ]);
+        }
+
+        if (! $isPlatform) {
+            $this->assertAdminSmsConfigured((int) $isp->id);
         }
 
         $setting = $this->activeSetting((int) $isp->id);
@@ -616,6 +625,18 @@ class IspSmsController extends Controller
             $query->where('mikrotik_router_id', $routerId);
         }
 
+        if ($audience === 'online') {
+            $query->whereIn('connection_status', ['online', 'active', 'connected']);
+        }
+
+        if ($audience === 'offline') {
+            $query->where(function ($offlineQuery) {
+                $offlineQuery
+                    ->whereNull('connection_status')
+                    ->orWhereNotIn('connection_status', ['online', 'active', 'connected']);
+            });
+        }
+
         $customers = $query
             ->whereNotNull('phone')
             ->where('phone', '<>', '')
@@ -845,6 +866,57 @@ class IspSmsController extends Controller
         abort_unless($isp, 403, 'No ISP context was found for this SMS.');
 
         return [$isp, $customer, $recipientUser, $phone];
+    }
+
+
+    private function assertAdminSmsConfigured(int $ispId): void
+    {
+        if (! Schema::hasTable('isp_sms_settings')) {
+            throw ValidationException::withMessages([
+                'message' => 'SMS is not configured. Configure now from SMS Settings.',
+            ]);
+        }
+
+        $setting = IspSmsSetting::where('scope', 'isp')
+            ->where('isp_id', $ispId)
+            ->first();
+
+        if (! $setting || ! $setting->is_active) {
+            throw ValidationException::withMessages([
+                'message' => 'SMS is not configured. Configure now from SMS Settings.',
+            ]);
+        }
+
+        if ($setting->mode === 'platform') {
+            $platformSetting = IspSmsSetting::where('scope', 'platform')
+                ->whereNull('isp_id')
+                ->where('is_active', true)
+                ->first();
+
+            if (! ($setting->allow_system_sms ?? true) || ! $platformSetting) {
+                throw ValidationException::withMessages([
+                    'message' => 'System SMS is not configured. Configure now from SMS Settings.',
+                ]);
+            }
+
+            return;
+        }
+
+        if ($setting->mode === 'own') {
+            $provider = (string) ($setting->provider ?: '');
+
+            if (! ($setting->allow_own_sms ?? true) || $provider === '' || $provider === 'platform') {
+                throw ValidationException::withMessages([
+                    'message' => 'Own SMS API is not configured. Configure now from SMS Settings.',
+                ]);
+            }
+
+            if ($provider === 'custom_http' && ! $setting->callback_url) {
+                throw ValidationException::withMessages([
+                    'message' => 'Custom SMS gateway URL is missing. Configure now from SMS Settings.',
+                ]);
+            }
+        }
     }
 
     private function activeSetting(int $ispId): ?IspSmsSetting
