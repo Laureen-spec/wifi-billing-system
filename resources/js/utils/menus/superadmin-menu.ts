@@ -1,4 +1,4 @@
-import { LayoutGrid, Users, Building2, Settings, Shield, Image, Package, CreditCard, FileText, Ticket, Mail, Bell, Headphones, Clock, SlidersHorizontal} from 'lucide-react';
+import { Gauge, UsersRound, Settings2, Images, Boxes, WalletCards, Mails, BellRing, Headset, SlidersHorizontal } from 'lucide-react';
 import { NavItem } from '@/types';
 
 type SuperAdminNavItem = NavItem & {
@@ -12,20 +12,20 @@ export const getSuperAdminMenu = (t: (key: string) => string): NavItem[] => ([
     {
         title: t('Dashboard'),
         href: route('dashboard'),
-        icon: LayoutGrid,
+        icon: Gauge,
         permission: 'manage-dashboard',
         order: 1,
     },
     {
         title: t('Users'),
         href: route('users.index'),
-        icon: Users,
+        icon: UsersRound,
         permission: 'manage-users',
         order: 20,
     },
     {
         title: t('Helpdesk'),
-        icon: Headphones,
+        icon: Headset,
         permission: 'manage-helpdesk-tickets',
         order: 2750,
         children: [
@@ -48,7 +48,7 @@ export const getSuperAdminMenu = (t: (key: string) => string): NavItem[] => ([
     },
     {
         title: t('Subscription'),
-        icon: CreditCard,
+        icon: WalletCards,
         permission: 'manage-plans',
         order: 2800,
         children: [
@@ -77,28 +77,28 @@ export const getSuperAdminMenu = (t: (key: string) => string): NavItem[] => ([
     {
         title: t('Email Templates'),
         href: route('email-templates.index'),
-        icon: Mail,
+        icon: Mails,
         permission: 'manage-email-templates',
         order: 2850,
     },
     {
         title: t('Notification Templates'),
         href: route('notification-templates.index'),
-        icon: Bell,
+        icon: BellRing,
         permission: 'manage-notification-templates',
         order: 2900,
     },
     {
         title: t('Media Library'),
         href: route('media-library'),
-        icon: Image,
+        icon: Images,
         permission: 'manage-media',
         order: 2950,
     },
     {
         title: t('Add-ons Manager'),
         href: route('add-ons.index'),
-        icon: Package,
+        icon: Boxes,
         permission: 'manage-add-on',
         order: 3000,
     },
@@ -111,7 +111,7 @@ export const getSuperAdminMenu = (t: (key: string) => string): NavItem[] => ([
     {
         title: t('Settings'),
         href: route('settings.index'),
-        icon: Settings,
+        icon: Settings2,
         permission: 'manage-settings',
         order: 3050,
     },

@@ -48,9 +48,31 @@ export function NavMain({ items = [], searchQuery = "" }: { items: NavItem[], se
         });
     };
 
+    const renderIcon = (item: NavItem, isActive = false, className = '') => {
+        if (!item.icon) {
+            return null;
+        }
+
+        const Icon = item.icon;
+        return (
+            <span
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border transition-all ${
+                    isActive
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm'
+                        : 'border-slate-200 bg-slate-50/80 text-slate-500 group-hover/menu-item:border-emerald-100 group-hover/menu-item:bg-emerald-50/70 group-hover/menu-item:text-emerald-700'
+                } ${className}`}
+            >
+                <Icon className="h-4 w-4" />
+            </span>
+        );
+    };
+
     return (
-        <SidebarGroup>
-            <SidebarMenu>
+        <SidebarGroup className="px-0 py-0">
+            <SidebarGroupLabel className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+                Navigation
+            </SidebarGroupLabel>
+            <SidebarMenu className="gap-1.5">
                 {filteredItems.map((item) => {
                   const itemPath = item.href ? new URL(item.href, window.location.origin).pathname : '';
                   const isActive = !!(itemPath && isUrlActive(itemPath));
@@ -65,13 +87,17 @@ export function NavMain({ items = [], searchQuery = "" }: { items: NavItem[], se
                                 <Collapsible asChild defaultOpen={shouldBeActive} className="group/collapsible group-data-[collapsible=icon]:hidden">
                                     <div>
                                         <CollapsibleTrigger asChild>
-                                            <SidebarMenuButton tooltip={item.title} isActive={shouldBeActive}>
-                                                {item.icon && <item.icon />}
-                                                <span>{item.title}</span>
-                                                <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                                            <SidebarMenuButton
+                                                tooltip={item.title}
+                                                isActive={shouldBeActive}
+                                                className="group/menu-item h-11 rounded-2xl px-2.5 text-[14px] font-medium"
+                                            >
+                                                {renderIcon(item, shouldBeActive)}
+                                                <span className="min-w-0 flex-1 truncate">{item.title}</span>
+                                                <ChevronDown className="ml-auto h-4 w-4 text-slate-400 transition-transform group-data-[state=open]/collapsible:rotate-180" />
                                             </SidebarMenuButton>
                                         </CollapsibleTrigger>
-                                        <CollapsibleContent>
+                                        <CollapsibleContent className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
                                             <SidebarMenuSub>
                                                 {item.children.map((subItem) => {
                                                     const subItemActive = !!(subItem.href && isUrlActive(new URL(subItem.href, window.location.origin).pathname));
@@ -84,10 +110,10 @@ export function NavMain({ items = [], searchQuery = "" }: { items: NavItem[], se
                                                                 <Collapsible asChild defaultOpen={subItemShouldBeActive} className="group/subcollapsible">
                                                                     <div>
                                                                         <CollapsibleTrigger asChild>
-                                                                            <SidebarMenuSubButton isActive={subItemShouldBeActive}>
+                                                                            <SidebarMenuSubButton isActive={subItemShouldBeActive} className="h-9 rounded-xl px-3">
                                                                                 {subItem.icon && <subItem.icon className="h-4 w-4" />}
                                                                                 <span>{subItem.title}</span>
-                                                                                <ChevronDown className="ml-auto h-3 w-3 transition-transform group-data-[state=open]/subcollapsible:rotate-180" />
+                                                                                <ChevronDown className="ml-auto h-3 w-3 text-slate-400 transition-transform group-data-[state=open]/subcollapsible:rotate-180" />
                                                                             </SidebarMenuSubButton>
                                                                         </CollapsibleTrigger>
                                                                         <CollapsibleContent>
@@ -97,7 +123,7 @@ export function NavMain({ items = [], searchQuery = "" }: { items: NavItem[], se
                                                                                         <SidebarMenuSubButton
                                                                                             asChild
                                                                                             isActive={!!(subSubItem.href && isUrlActive(new URL(subSubItem.href, window.location.origin).pathname))}
-                                                                                            className="text-sm"
+                                                                                            className="h-8 rounded-lg text-sm"
                                                                                         >
                                                                                             <Link href={subSubItem.href!}>
                                                                                                 {subSubItem.icon && <subSubItem.icon className="h-3 w-3" />}
@@ -119,6 +145,7 @@ export function NavMain({ items = [], searchQuery = "" }: { items: NavItem[], se
                                                             <SidebarMenuSubButton
                                                                 asChild
                                                                 isActive={subItemActive}
+                                                                className="h-9 rounded-xl px-3"
                                                             >
                                                                 <Link href={subItem.href!}>
                                                                     {subItem.icon && <subItem.icon className="h-4 w-4" />}
@@ -140,28 +167,29 @@ export function NavMain({ items = [], searchQuery = "" }: { items: NavItem[], se
                                             <SidebarMenuButton
                                                 tooltip={item.title}
                                                 isActive={shouldBeActive}
+                                                className="group/menu-item rounded-xl"
                                             >
-                                                {item.icon && <item.icon />}
+                                                {item.icon && <item.icon className="h-4 w-4" />}
                                                 <span>{item.title}</span>
                                             </SidebarMenuButton>
                                         </DropdownMenuTrigger>
-                                        <DropdownMenuContent side="right" align="start" className="w-48">
+                                        <DropdownMenuContent side="right" align="start" className="w-56 rounded-2xl border-slate-200/80 bg-white/95 p-2 shadow-xl backdrop-blur">
                                             {item.children.map((subItem) => {
                                                 if (subItem.children && subItem.children.length > 0) {
                                                     return (
                                                         <DropdownMenu key={subItem.title}>
                                                             <DropdownMenuTrigger asChild>
-                                                                <DropdownMenuItem className="flex items-center gap-2 cursor-pointer">
-                                                                    {subItem.icon && <subItem.icon className="h-4 w-4" />}
+                                                                <DropdownMenuItem className="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2.5 text-sm">
+                                                                    {subItem.icon && <subItem.icon className="h-4 w-4 text-slate-500" />}
                                                                     <span>{subItem.title}</span>
                                                                     <ChevronDown className="ml-auto h-3 w-3" />
                                                                 </DropdownMenuItem>
                                                             </DropdownMenuTrigger>
-                                                            <DropdownMenuContent side="right" align="start" className="w-44">
+                                                            <DropdownMenuContent side="right" align="start" className="w-48 rounded-2xl border-slate-200/80 bg-white/95 p-2 shadow-xl backdrop-blur">
                                                                 {subItem.children.map((subSubItem) => (
-                                                                    <DropdownMenuItem key={subSubItem.title} asChild>
+                                                                    <DropdownMenuItem key={subSubItem.title} asChild className="rounded-xl px-3 py-2.5">
                                                                         <Link href={subSubItem.href!} className="flex items-center gap-2">
-                                                                            {subSubItem.icon && <subSubItem.icon className="h-3 w-3" />}
+                                                                            {subSubItem.icon && <subSubItem.icon className="h-3 w-3 text-slate-500" />}
                                                                             <span className="text-sm">{subSubItem.title}</span>
                                                                         </Link>
                                                                     </DropdownMenuItem>
@@ -172,9 +200,9 @@ export function NavMain({ items = [], searchQuery = "" }: { items: NavItem[], se
                                                 }
 
                                                 return (
-                                                    <DropdownMenuItem key={subItem.title} asChild>
+                                                    <DropdownMenuItem key={subItem.title} asChild className="rounded-xl px-3 py-2.5">
                                                         <Link href={subItem.href!} className="flex items-center gap-2">
-                                                            {subItem.icon && <subItem.icon className="h-4 w-4" />}
+                                                            {subItem.icon && <subItem.icon className="h-4 w-4 text-slate-500" />}
                                                             <span>{subItem.title}</span>
                                                         </Link>
                                                     </DropdownMenuItem>
@@ -192,11 +220,12 @@ export function NavMain({ items = [], searchQuery = "" }: { items: NavItem[], se
                             <SidebarMenuButton
                                 asChild
                                 isActive={shouldBeActive}
-                tooltip={item.title}
+                                tooltip={item.title}
+                                className="group/menu-item h-11 rounded-2xl px-2.5 text-[14px] font-medium"
                             >
                                 <Link href={item.href!}>
-                                    {item.icon && <item.icon />}
-                                    <span>{item.title}</span>
+                                    {renderIcon(item, shouldBeActive)}
+                                    <span className="min-w-0 flex-1 truncate">{item.title}</span>
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
