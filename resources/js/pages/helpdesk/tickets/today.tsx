@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Edit from './edit';
 import { HelpdeskTicket, TodayTicketsProps, HelpdeskTicketModalState } from './types';
-import { AlertTriangle, CheckCircle2, Clock3, Edit as EditIcon, Eye, Filter, Headphones, MessageSquare, PlayCircle, Search, Trash2, UserRound } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock3, Edit as EditIcon, Eye, Filter, Headphones, MessageSquare, PlayCircle, Search, Trash2, UserRound, X } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type PriorityKey = 'low' | 'medium' | 'high' | 'urgent';
@@ -58,14 +58,6 @@ export default function Today() {
         routeName: 'helpdesk-tickets.destroy',
         defaultMessage: t('Are you sure you want to delete this ticket?'),
     });
-
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        router.get(route('helpdesk-tickets.today'), { search: searchQuery }, {
-            preserveState: true,
-            replace: true,
-        });
-    };
 
     const clearSearch = () => {
         setSearchQuery('');
@@ -285,18 +277,20 @@ export default function Today() {
             <Head title={t('Today\'s Tickets')} />
 
             <div className="space-y-6">
-                <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+                <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-slate-300" />
+                    <div className="absolute right-0 top-0 h-44 w-44 rounded-full bg-emerald-100/70 blur-3xl" />
+                    <div className="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
                         <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.28em] text-emerald-700">{t('Helpdesk — Today')}</p>
+                            <p className="text-xs font-bold uppercase tracking-[0.26em] text-emerald-700">{t('Helpdesk — Today')}</p>
                             <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">{t('Response board')}</h1>
                             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
                                 {t('A priority-based board for tickets that need attention today.')}
                             </p>
                         </div>
-                        <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                             <Select value={activePriorityFilter} onValueChange={(value) => setActivePriorityFilter(value)}>
-                                <SelectTrigger className="rounded-xl bg-white sm:w-[170px]">
+                                <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white shadow-sm sm:w-[180px]">
                                     <div className="flex items-center"><Filter className="mr-2 h-4 w-4" /> <SelectValue /></div>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -314,19 +308,27 @@ export default function Today() {
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder={t('Search tickets...')}
-                                    className="rounded-xl pl-10 sm:w-72"
+                                    className="h-12 rounded-2xl border-slate-200 bg-white pl-10 pr-10 shadow-sm sm:w-80"
                                 />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={clearSearch}
+                                        className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                        aria-label={t('Clear search')}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                )}
                             </div>
-                            {searchQuery && <Button type="button" variant="outline" onClick={clearSearch} className="rounded-xl">{t('Clear')}</Button>}
-                            <Button type="submit" className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">{t('Search')}</Button>
-                        </form>
+                        </div>
                     </div>
 
-                    <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="relative mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         {statCards.map((item) => {
                             const Icon = item.icon;
                             return (
-                                <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
                                     <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${item.tone}`}>
                                         <Icon className="h-5 w-5" />
                                     </div>

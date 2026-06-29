@@ -1,17 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import { useFlashMessages } from '@/hooks/useFlashMessages';
 import AuthenticatedLayout from '@/layouts/authenticated-layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
-import { SearchInput } from '@/components/ui/search-input';
 import { PerPageSelector } from '@/components/ui/per-page-selector';
 import { Pagination } from '@/components/ui/pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Edit, Mail } from 'lucide-react';
+import { Edit, Mail, Search, X } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { FilterButton } from '@/components/ui/filter-button';
 import NoRecordsFound from '@/components/no-records-found';
@@ -70,6 +69,7 @@ export default function Index() {
     const [perPage] = useState(urlParams.get('per_page') || '10');
     const [sortField, setSortField] = useState(urlParams.get('sort') || '');
     const [sortDirection, setSortDirection] = useState(urlParams.get('direction') || 'asc');
+    const firstSearchRender = useRef(true);
 
 
     useFlashMessages();
@@ -96,7 +96,30 @@ export default function Index() {
         router.get(route('email-templates.index'), {per_page: perPage});
     };
 
+    const clearSearch = () => {
+        const nextFilters = {...filters, name: ''};
+        setFilters(nextFilters);
+        router.get(route('email-templates.index'), {...nextFilters, per_page: perPage, sort: sortField, direction: sortDirection}, {
+            preserveState: true,
+            replace: true
+        });
+    };
 
+    useEffect(() => {
+        if (firstSearchRender.current) {
+            firstSearchRender.current = false;
+            return;
+        }
+
+        const timeout = window.setTimeout(() => {
+            router.get(route('email-templates.index'), {...filters, per_page: perPage, sort: sortField, direction: sortDirection}, {
+                preserveState: true,
+                replace: true
+            });
+        }, 450);
+
+        return () => window.clearTimeout(timeout);
+    }, [filters.name]);
 
     const tableColumns = [
         {
@@ -146,24 +169,41 @@ export default function Index() {
         >
             <Head title={t('Email Templates')} />
 
-            {/* Main Content Card */}
             <Card className="shadow-sm">
-                {/* Search & Controls Header */}
-                <CardContent className="p-6 border-b bg-gray-50/50">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1 max-w-md">
-                            <SearchInput
-                                value={filters.name}
-                                onChange={(value) => setFilters({...filters, name: value})}
-                                onSearch={handleFilter}
-                                placeholder={t('Search email templates...')}
-                            />
+                <CardContent className="border-b bg-gradient-to-r from-slate-50 via-white to-emerald-50/40 p-5">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                        <div className="flex min-w-0 flex-1 flex-col gap-1">
+                            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700/80">
+                                {t('Message Template Library')}
+                            </div>
+                            <div className="relative w-full max-w-2xl">
+                                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                <Input
+                                    value={filters.name}
+                                    onChange={(e) => setFilters({...filters, name: e.target.value})}
+                                    placeholder={t('Search email templates by name...')}
+                                    className="h-12 rounded-2xl border-slate-200 bg-white/90 pl-11 pr-11 text-base shadow-sm transition focus-visible:ring-emerald-500"
+                                />
+                                {filters.name && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={clearSearch}
+                                        className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full p-0 text-muted-foreground hover:text-foreground"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                {t('Typing automatically filters email templates. Use filters to narrow by module.')}
+                            </p>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <PerPageSelector
-                                routeName="email-templates.index"
-                                filters={filters}
-                            />
+                        <div className="flex flex-wrap items-center gap-3">
+                            <span className="inline-flex h-10 items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700">
+                                {t('List View')}
+                            </span>
                             <div className="relative">
                                 <FilterButton
                                     showFilters={showFilters}
@@ -172,7 +212,7 @@ export default function Index() {
                                 {(() => {
                                     const activeFilters = [filters.module_name].filter(Boolean).length;
                                     return activeFilters > 0 && (
-                                        <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                                        <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
                                             {activeFilters}
                                         </span>
                                     );
@@ -233,13 +273,21 @@ export default function Index() {
                     </div>
                 </CardContent>
 
-                {/* Pagination Footer */}
-                <CardContent className="px-4 py-2 border-t bg-gray-50/30">
-                    <Pagination
-                        data={emailTemplates}
-                        routeName="email-templates.index"
-                        filters={{...filters, per_page: perPage}}
-                    />
+                <CardContent className="border-t bg-slate-50/70 px-5 py-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <PerPageSelector
+                            routeName="email-templates.index"
+                            filters={{...filters, sort: sortField, direction: sortDirection}}
+                            className="h-11 w-40 rounded-xl bg-white"
+                        />
+                        <div className="flex-1">
+                            <Pagination
+                                data={emailTemplates}
+                                routeName="email-templates.index"
+                                filters={{...filters, per_page: perPage, sort: sortField, direction: sortDirection}}
+                            />
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
 

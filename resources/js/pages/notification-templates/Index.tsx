@@ -1,16 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import { useFlashMessages } from '@/hooks/useFlashMessages';
 import AuthenticatedLayout from '@/layouts/authenticated-layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
-import { SearchInput } from '@/components/ui/search-input';
 import { PerPageSelector } from '@/components/ui/per-page-selector';
 import { Pagination } from '@/components/ui/pagination';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Edit, Bell } from 'lucide-react';
+import { Edit, Bell, Search, X } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import NoRecordsFound from '@/components/no-records-found';
 import { getPackageAlias } from '@/utils/helpers';
@@ -56,6 +56,7 @@ export default function Index() {
     const [perPage] = useState(urlParams.get('per_page') || '10');
     const [sortField, setSortField] = useState(urlParams.get('sort') || '');
     const [sortDirection, setSortDirection] = useState(urlParams.get('direction') || 'asc');
+    const firstSearchRender = useRef(true);
 
     useFlashMessages();
 
@@ -66,12 +67,29 @@ export default function Index() {
         });
     };
 
-    const handleSearch = () => {
-        router.get(route('notification-templates.index'), {type: activeType, action: searchValue, per_page: perPage, sort: sortField, direction: sortDirection}, {
+    const clearSearch = () => {
+        setSearchValue('');
+        router.get(route('notification-templates.index'), {type: activeType, action: '', per_page: perPage, sort: sortField, direction: sortDirection}, {
             preserveState: true,
             replace: true
         });
     };
+
+    useEffect(() => {
+        if (firstSearchRender.current) {
+            firstSearchRender.current = false;
+            return;
+        }
+
+        const timeout = window.setTimeout(() => {
+            router.get(route('notification-templates.index'), {type: activeType, action: searchValue, per_page: perPage, sort: sortField, direction: sortDirection}, {
+                preserveState: true,
+                replace: true
+            });
+        }, 450);
+
+        return () => window.clearTimeout(timeout);
+    }, [searchValue]);
 
     const handleSort = (field: string) => {
         const direction = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
@@ -146,19 +164,39 @@ export default function Index() {
             )}
 
             <Card className="shadow-sm">
-                <CardContent className="p-6 border-b bg-gray-50/50">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1 max-w-md">
-                            <SearchInput
-                                value={searchValue}
-                                onChange={(value) => setSearchValue(value)}
-                                onSearch={handleSearch}
-                                placeholder={t('Search notification templates...')}
-                            />
+                <CardContent className="border-b bg-gradient-to-r from-slate-50 via-white to-emerald-50/40 p-5">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                        <div className="flex min-w-0 flex-1 flex-col gap-1">
+                            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700/80">
+                                {t('Notification Template Library')}
+                            </div>
+                            <div className="relative w-full max-w-2xl">
+                                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                <Input
+                                    value={searchValue}
+                                    onChange={(e) => setSearchValue(e.target.value)}
+                                    placeholder={t('Search notification templates by subject...')}
+                                    className="h-12 rounded-2xl border-slate-200 bg-white/90 pl-11 pr-11 text-base shadow-sm transition focus-visible:ring-emerald-500"
+                                />
+                                {searchValue && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={clearSearch}
+                                        className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full p-0 text-muted-foreground hover:text-foreground"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                {t('Typing automatically filters notification templates for the selected type.')}
+                            </p>
                         </div>
-                        <PerPageSelector
-                            routeName="notification-templates.index"
-                        />
+                        <span className="inline-flex h-10 w-fit items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700">
+                            {t('List View')}
+                        </span>
                     </div>
                 </CardContent>
 
@@ -188,12 +226,21 @@ export default function Index() {
                     </div>
                 </CardContent>
 
-                <CardContent className="px-4 py-2 border-t bg-gray-50/30">
-                    <Pagination
-                        data={notificationTemplates}
-                        routeName="notification-templates.index"
-                        filters={{type: activeType, action: searchValue, per_page: perPage}}
-                    />
+                <CardContent className="border-t bg-slate-50/70 px-5 py-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <PerPageSelector
+                            routeName="notification-templates.index"
+                            filters={{type: activeType, action: searchValue, sort: sortField, direction: sortDirection}}
+                            className="h-11 w-40 rounded-xl bg-white"
+                        />
+                        <div className="flex-1">
+                            <Pagination
+                                data={notificationTemplates}
+                                routeName="notification-templates.index"
+                                filters={{type: activeType, action: searchValue, per_page: perPage, sort: sortField, direction: sortDirection}}
+                            />
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
         </AuthenticatedLayout>
