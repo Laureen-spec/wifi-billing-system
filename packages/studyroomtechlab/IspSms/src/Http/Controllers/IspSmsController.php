@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -92,8 +93,8 @@ class IspSmsController extends Controller
         }
 
         return Inertia::render('sms/index', [
-            'pageTitle' => 'SMS Messages',
-            'subtitle' => 'Send and monitor ISP customer SMS logs from the main app workspace.',
+            'pageTitle' => 'Email / SMS Log',
+            'subtitle' => 'Monitor outbound SMS records, delivery status, gateway responses, and future email communication logs from one workspace.',
             'messages' => $messages,
             'stats' => $stats,
             'hasSmsTables' => Schema::hasTable('isp_sms_messages'),
@@ -259,6 +260,7 @@ class IspSmsController extends Controller
                 'newMessage' => route('isp.sms.new-message'),
                 'save' => route('isp.sms.settings.save'),
                 'templates' => route('isp.sms.templates.index'),
+                'topUp' => Route::has('purchase-invoices.index') ? route('purchase-invoices.index') : route('plans.index'),
             ],
         ]);
     }
@@ -432,6 +434,15 @@ class IspSmsController extends Controller
             'sender_id' => $setting->sender_id,
             'username' => $setting->username,
             'callback_url' => $setting->callback_url,
+            'allow_system_sms' => (bool) ($setting->allow_system_sms ?? true),
+            'allow_own_sms' => (bool) ($setting->allow_own_sms ?? true),
+            'free_sms_remaining' => (int) ($setting->free_sms_remaining ?? 5),
+            'sms_balance' => (float) ($setting->sms_balance ?? 0),
+            'estimated_cost_per_sms' => (float) ($setting->estimated_cost_per_sms ?? 1),
+            'low_balance_alert_enabled' => (bool) ($setting->low_balance_alert_enabled ?? true),
+            'low_balance_alert_threshold' => (float) ($setting->low_balance_alert_threshold ?? 10),
+            'low_balance_alert_phone' => $setting->low_balance_alert_phone,
+            'low_balance_alerted_at' => $this->dateTimeValue($setting->low_balance_alerted_at ?? null),
             'is_active' => (bool) $setting->is_active,
             'updated_at' => $this->dateTimeValue($setting->updated_at),
         ];
@@ -734,9 +745,13 @@ class IspSmsController extends Controller
             'company_name' => (string) ($customer->isp?->name ?? config('app.name')),
         ];
 
-        return (string) preg_replace_callback('/{{\s*([a-zA-Z0-9_]+)\s*}}/', function (array $matches) use ($variables) {
+        $withCurlies = (string) preg_replace_callback('/{{\s*([a-zA-Z0-9_]+)\s*}}/', function (array $matches) use ($variables) {
             return $variables[$matches[1]] ?? $matches[0];
         }, $body);
+
+        return (string) preg_replace_callback('/@([a-zA-Z0-9_]+)/', function (array $matches) use ($variables) {
+            return $variables[$matches[1]] ?? $matches[0];
+        }, $withCurlies);
     }
 
     private function dateValue($value): ?string

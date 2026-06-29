@@ -3,11 +3,11 @@
 namespace StudyRoomTechLab\IspSms\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use StudyRoomTechLab\IspSms\Models\IspSmsSetting;
 use App\Services\IspTenantResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
+use StudyRoomTechLab\IspSms\Models\IspSmsSetting;
 
 class IspSmsSettingsController extends Controller
 {
@@ -39,10 +39,10 @@ class IspSmsSettingsController extends Controller
             'isPlatform' => $isPlatform,
         ], [
             'title' => 'SMS Settings',
-            'subtitle' => 'Choose whether this ISP uses platform SMS or its own SMS gateway.',
+            'subtitle' => 'Choose whether this ISP uses system SMS or its own SMS gateway, then manage balance, free credits, and provider credentials.',
             'status' => 'Ready for setup',
             'columns' => ['Mode', 'Provider', 'Sender ID', 'Status'],
-            'note' => 'SMS settings are local to WiFi Billing and separate from sample communication modules.',
+            'note' => 'System SMS gives each admin 5 starter SMS credits. After that, the admin needs to top up the SMS balance to continue sending.',
         ]);
     }
 
@@ -64,6 +64,14 @@ class IspSmsSettingsController extends Controller
             'username' => ['nullable', 'string', 'max:255'],
             'callback_url' => ['nullable', 'url', 'max:500'],
             'is_active' => ['nullable', 'boolean'],
+            'allow_system_sms' => ['nullable', 'boolean'],
+            'allow_own_sms' => ['nullable', 'boolean'],
+            'free_sms_remaining' => ['nullable', 'integer', 'min:0', 'max:100000'],
+            'sms_balance' => ['nullable', 'numeric', 'min:0'],
+            'estimated_cost_per_sms' => ['nullable', 'numeric', 'min:0'],
+            'low_balance_alert_enabled' => ['nullable', 'boolean'],
+            'low_balance_alert_threshold' => ['nullable', 'numeric', 'min:0'],
+            'low_balance_alert_phone' => ['nullable', 'string', 'max:40'],
         ]);
 
         $scope = $data['scope'] ?? 'isp';
@@ -80,7 +88,6 @@ class IspSmsSettingsController extends Controller
         }
 
         $provider = $data['provider'] ?? null;
-
         if ($data['mode'] === 'platform') {
             $provider = 'platform';
         }
@@ -92,6 +99,11 @@ class IspSmsSettingsController extends Controller
 
         if (! $setting->exists) {
             $setting->created_by = $request->user()->id;
+            if ($scope === 'isp') {
+                $setting->free_sms_remaining = 5;
+                $setting->sms_balance = 0;
+                $setting->estimated_cost_per_sms = 1;
+            }
         }
 
         $setting->fill([
@@ -103,6 +115,14 @@ class IspSmsSettingsController extends Controller
             'username' => $data['username'] ?? null,
             'callback_url' => $data['callback_url'] ?? null,
             'is_active' => $request->boolean('is_active', true),
+            'allow_system_sms' => $request->boolean('allow_system_sms', true),
+            'allow_own_sms' => $request->boolean('allow_own_sms', true),
+            'free_sms_remaining' => $data['free_sms_remaining'] ?? ($setting->free_sms_remaining ?? 5),
+            'sms_balance' => $data['sms_balance'] ?? ($setting->sms_balance ?? 0),
+            'estimated_cost_per_sms' => $data['estimated_cost_per_sms'] ?? ($setting->estimated_cost_per_sms ?? 1),
+            'low_balance_alert_enabled' => $request->boolean('low_balance_alert_enabled', true),
+            'low_balance_alert_threshold' => $data['low_balance_alert_threshold'] ?? ($setting->low_balance_alert_threshold ?? 10),
+            'low_balance_alert_phone' => $data['low_balance_alert_phone'] ?? null,
             'updated_by' => $request->user()->id,
         ]);
 

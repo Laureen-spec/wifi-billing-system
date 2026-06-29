@@ -1,4 +1,5 @@
 import AuthenticatedLayout from '@/layouts/authenticated-layout';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -6,8 +7,8 @@ import { Input } from '@/components/ui/input';
 import InputError from '@/components/ui/input-error';
 import { Label } from '@/components/ui/label';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, MessageSquare, Save, Tags } from 'lucide-react';
-import { FormEvent } from 'react';
+import { ArrowLeft, BellRing, Coins, ExternalLink, MessageSquare, Save, ShieldCheck, Tags, Wallet } from 'lucide-react';
+import { FormEvent, ReactNode } from 'react';
 
 type Setting = {
     scope: string;
@@ -16,6 +17,15 @@ type Setting = {
     sender_id?: string | null;
     username?: string | null;
     callback_url?: string | null;
+    allow_system_sms?: boolean;
+    allow_own_sms?: boolean;
+    free_sms_remaining?: number;
+    sms_balance?: number;
+    estimated_cost_per_sms?: number;
+    low_balance_alert_enabled?: boolean;
+    low_balance_alert_threshold?: number;
+    low_balance_alert_phone?: string | null;
+    low_balance_alerted_at?: string | null;
     is_active: boolean;
     updated_at?: string | null;
 };
@@ -33,6 +43,7 @@ type Props = {
         newMessage: string;
         save: string;
         templates: string;
+        topUp?: string;
     };
 };
 
@@ -46,20 +57,43 @@ type FormData = {
     api_key: string;
     api_secret: string;
     is_active: boolean;
+    allow_system_sms: boolean;
+    allow_own_sms: boolean;
+    free_sms_remaining: number;
+    sms_balance: string;
+    estimated_cost_per_sms: string;
+    low_balance_alert_enabled: boolean;
+    low_balance_alert_threshold: string;
+    low_balance_alert_phone: string;
 };
+
+const providers = [
+    { value: 'africastalking', label: 'AfricasTalking', hint: 'Recommended for Kenya SMS delivery.' },
+    { value: 'custom_http', label: 'Custom HTTP Gateway', hint: 'Use your own HTTP endpoint.' },
+    { value: 'twilio', label: 'Twilio', hint: 'Connect Twilio credentials.' },
+    { value: 'other', label: 'Other provider', hint: 'Store provider details for manual integration.' },
+];
 
 export default function SmsSettings({ pageTitle, subtitle, setting, platformSetting, isPlatform, hasSmsTables, dryRun, routes }: Props) {
     const current = setting || platformSetting;
     const { data, setData, post, processing, errors } = useForm<FormData>({
         scope: isPlatform ? (current?.scope || 'platform') : 'isp',
         mode: current?.mode || 'platform',
-        provider: current?.provider || 'platform',
+        provider: current?.provider && current.provider !== 'platform' ? current.provider : 'africastalking',
         sender_id: current?.sender_id || '',
         username: current?.username || '',
         callback_url: current?.callback_url || '',
         api_key: '',
         api_secret: '',
         is_active: current?.is_active ?? true,
+        allow_system_sms: current?.allow_system_sms ?? true,
+        allow_own_sms: current?.allow_own_sms ?? true,
+        free_sms_remaining: current?.free_sms_remaining ?? 5,
+        sms_balance: String(current?.sms_balance ?? 0),
+        estimated_cost_per_sms: String(current?.estimated_cost_per_sms ?? 1),
+        low_balance_alert_enabled: current?.low_balance_alert_enabled ?? true,
+        low_balance_alert_threshold: String(current?.low_balance_alert_threshold ?? 10),
+        low_balance_alert_phone: current?.low_balance_alert_phone || '',
     });
 
     const submit = (event: FormEvent) => {
@@ -67,194 +101,161 @@ export default function SmsSettings({ pageTitle, subtitle, setting, platformSett
         post(routes.save, { preserveScroll: true });
     };
 
+    const usingSystemSms = data.mode === 'platform';
+    const balance = Number(data.sms_balance || 0);
+    const threshold = Number(data.low_balance_alert_threshold || 10);
+    const lowBalance = usingSystemSms && balance <= threshold && data.free_sms_remaining <= 0;
+    const selectedProvider = providers.find((provider) => provider.value === data.provider);
+
     return (
-        <AuthenticatedLayout
-            breadcrumbs={[{ label: 'ISP SMS', url: routes.messages }, { label: pageTitle }]}
-            pageTitle={pageTitle}
-        >
+        <AuthenticatedLayout breadcrumbs={[{ label: 'ISP SMS', url: routes.messages }, { label: pageTitle }]} pageTitle={pageTitle}>
             <Head title={pageTitle} />
 
             <div className="space-y-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                        <h1 className="text-2xl font-semibold tracking-normal text-foreground">{pageTitle}</h1>
-                        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{subtitle}</p>
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Communication — SMS gateway</p>
+                        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">SMS settings</h1>
+                        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{subtitle}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" asChild>
-                            <Link href={routes.messages}>
-                                <ArrowLeft className="h-4 w-4" />
-                                Messages
-                            </Link>
-                        </Button>
-                        <Button variant="outline" asChild>
-                            <Link href={routes.templates}>
-                                <Tags className="h-4 w-4" />
-                                Templates
-                            </Link>
-                        </Button>
+                        <Button variant="outline" asChild><Link href={routes.messages}><ArrowLeft className="h-4 w-4" />Email / SMS Log</Link></Button>
+                        <Button variant="outline" asChild><Link href={routes.templates}><Tags className="h-4 w-4" />Templates</Link></Button>
+                        {routes.topUp && <Button asChild><Link href={routes.topUp}><Wallet className="h-4 w-4" />Top up SMS</Link></Button>}
                     </div>
                 </div>
 
-                {dryRun && (
-                    <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                        Local safe mode is enabled. Messages move from queued to sent without calling a live SMS gateway.
-                    </div>
-                )}
+                {dryRun && <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">Safe mode is enabled. Messages are recorded and marked sent without calling a live gateway.</div>}
+                {!hasSmsTables && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">SMS settings tables are not migrated yet.</div>}
+                {lowBalance && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"><strong>System alert:</strong> SMS balance is below {threshold}. Top up before sending more system SMS. {data.low_balance_alert_phone ? `Low-balance alerts will be sent to ${data.low_balance_alert_phone}.` : 'Configure an alert phone number below.'}</div>}
 
-                {!hasSmsTables && (
-                    <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                        SMS settings tables are not migrated yet.
-                    </div>
-                )}
+                <div className="grid gap-4 lg:grid-cols-4">
+                    <MetricCard icon={<Wallet className="h-5 w-5" />} label="System balance" value={balance.toFixed(2)} hint="charged after starter SMS" />
+                    <MetricCard icon={<MessageSquare className="h-5 w-5" />} label="Free SMS" value={String(data.free_sms_remaining)} hint="starter credits" />
+                    <MetricCard icon={<Coins className="h-5 w-5" />} label="Cost / SMS" value={Number(data.estimated_cost_per_sms || 0).toFixed(2)} hint="system SMS estimate" />
+                    <MetricCard icon={<BellRing className="h-5 w-5" />} label="Low balance alert" value={data.low_balance_alert_enabled ? 'On' : 'Off'} hint={`threshold ${threshold}`} />
+                </div>
 
-                <form onSubmit={submit} className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-                    <Card>
-                        <CardHeader className="border-b py-4">
-                            <CardTitle className="text-base">Gateway</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid gap-4 p-4 md:grid-cols-2">
-                            {isPlatform && (
+                <form onSubmit={submit} className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_390px]">
+                    <div className="space-y-5">
+                        <Card>
+                            <CardHeader className="border-b py-4"><CardTitle className="text-base">SMS gateway rule</CardTitle></CardHeader>
+                            <CardContent className="grid gap-4 p-5 md:grid-cols-2">
+                                {isPlatform && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="sms-scope">Setting scope</Label>
+                                        <select id="sms-scope" value={data.scope} onChange={(event) => setData('scope', event.target.value)} className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm">
+                                            <option value="platform">Super admin platform SMS</option>
+                                            <option value="isp">ISP SMS default</option>
+                                        </select>
+                                        <InputError message={errors.scope} />
+                                    </div>
+                                )}
+
                                 <div className="space-y-2">
-                                    <Label htmlFor="sms-scope">Scope</Label>
-                                    <select
-                                        id="sms-scope"
-                                        value={data.scope}
-                                        onChange={(event) => setData('scope', event.target.value)}
-                                        className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                    >
-                                        <option value="platform">Platform setting</option>
-                                        <option value="isp">ISP setting</option>
+                                    <Label htmlFor="sms-mode">Gateway rule</Label>
+                                    <select id="sms-mode" value={data.mode} onChange={(event) => setData('mode', event.target.value)} className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm">
+                                        <option value="platform">Use system SMS balance</option>
+                                        <option value="own">Use own SMS API</option>
                                     </select>
-                                    <InputError message={errors.scope} />
+                                    <InputError message={errors.mode} />
                                 </div>
-                            )}
 
-                            <div className="space-y-2">
-                                <Label htmlFor="sms-mode">Mode</Label>
-                                <select
-                                    id="sms-mode"
-                                    value={data.mode}
-                                    onChange={(event) => {
-                                        const mode = event.target.value;
-                                        setData('mode', mode);
-                                        if (mode === 'platform') {
-                                            setData('provider', 'platform');
-                                        }
-                                    }}
-                                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                >
-                                    <option value="platform">Use platform gateway</option>
-                                    <option value="own">Use own gateway</option>
-                                </select>
-                                <InputError message={errors.mode} />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="sms-provider">Provider</Label>
-                                <select
-                                    id="sms-provider"
-                                    value={data.provider}
-                                    onChange={(event) => setData('provider', event.target.value)}
-                                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                >
-                                    <option value="platform">Platform</option>
-                                    <option value="custom_http">Custom HTTP</option>
-                                    <option value="africastalking">AfricasTalking</option>
-                                    <option value="twilio">Twilio</option>
-                                    <option value="other">Other</option>
-                                </select>
-                                <InputError message={errors.provider} />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="sms-sender">Sender ID</Label>
-                                <Input
-                                    id="sms-sender"
-                                    value={data.sender_id}
-                                    onChange={(event) => setData('sender_id', event.target.value)}
-                                    placeholder="StudyRoom"
-                                />
-                                <InputError message={errors.sender_id} />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="sms-username">Username</Label>
-                                <Input
-                                    id="sms-username"
-                                    value={data.username}
-                                    onChange={(event) => setData('username', event.target.value)}
-                                    placeholder="Gateway username"
-                                />
-                                <InputError message={errors.username} />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="sms-url">Custom HTTP URL</Label>
-                                <Input
-                                    id="sms-url"
-                                    value={data.callback_url}
-                                    onChange={(event) => setData('callback_url', event.target.value)}
-                                    placeholder="https://gateway.example/send"
-                                />
-                                <InputError message={errors.callback_url} />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="sms-key">API key</Label>
-                                <Input
-                                    id="sms-key"
-                                    value={data.api_key}
-                                    onChange={(event) => setData('api_key', event.target.value)}
-                                    placeholder={current ? 'Leave blank to keep existing key' : 'API key'}
-                                />
-                                <InputError message={errors.api_key} />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="sms-secret">API secret</Label>
-                                <Input
-                                    id="sms-secret"
-                                    type="password"
-                                    value={data.api_secret}
-                                    onChange={(event) => setData('api_secret', event.target.value)}
-                                    placeholder={current ? 'Leave blank to keep existing secret' : 'API secret'}
-                                />
-                                <InputError message={errors.api_secret} />
-                            </div>
-
-                            <Label className="flex items-center gap-3 rounded-md border bg-muted/40 p-3 md:col-span-2">
-                                <Checkbox
-                                    checked={data.is_active}
-                                    onCheckedChange={(checked) => setData('is_active', checked === true)}
-                                />
-                                <span className="text-sm">Gateway setting is active</span>
-                            </Label>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="self-start">
-                        <CardHeader className="border-b py-4">
-                            <CardTitle className="text-base">Status</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4 p-4">
-                            <div className="flex items-center gap-3 rounded-md border bg-muted/40 p-3">
-                                <MessageSquare className="h-5 w-5 text-primary" />
-                                <div>
-                                    <p className="font-medium">{current ? 'Configured' : 'Not configured'}</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {current?.updated_at ? `Updated ${current.updated_at}` : 'No saved setting yet.'}
-                                    </p>
+                                <div className="md:col-span-2 grid gap-4 md:grid-cols-2">
+                                    <div className="flex items-center gap-3 rounded-xl border p-4">
+                                        <Checkbox checked={data.allow_system_sms} onCheckedChange={(value) => setData('allow_system_sms', Boolean(value))} />
+                                        <div><p className="font-medium">Allow system SMS</p><p className="text-xs text-muted-foreground">Admin uses platform gateway and pays from SMS balance.</p></div>
+                                    </div>
+                                    <div className="flex items-center gap-3 rounded-xl border p-4">
+                                        <Checkbox checked={data.allow_own_sms} onCheckedChange={(value) => setData('allow_own_sms', Boolean(value))} />
+                                        <div><p className="font-medium">Allow own API</p><p className="text-xs text-muted-foreground">Admin can connect AfricasTalking or another provider.</p></div>
+                                    </div>
                                 </div>
-                            </div>
-                            <Button type="submit" disabled={processing || !hasSmsTables} className="w-full">
-                                <Save className="h-4 w-4" />
-                                Save Settings
-                            </Button>
-                        </CardContent>
-                    </Card>
+                            </CardContent>
+                        </Card>
+
+                        {usingSystemSms ? (
+                            <Card>
+                                <CardHeader className="border-b py-4"><CardTitle className="text-base">System SMS balance and alerts</CardTitle></CardHeader>
+                                <CardContent className="grid gap-4 p-5 md:grid-cols-3">
+                                    <div className="space-y-2"><Label htmlFor="free-sms">Free SMS remaining</Label><Input id="free-sms" type="number" min="0" value={data.free_sms_remaining} onChange={(e) => setData('free_sms_remaining', Number(e.target.value || 0))} /><InputError message={errors.free_sms_remaining} /></div>
+                                    <div className="space-y-2"><Label htmlFor="sms-balance">SMS balance</Label><Input id="sms-balance" type="number" min="0" step="0.01" value={data.sms_balance} onChange={(e) => setData('sms_balance', e.target.value)} /><InputError message={errors.sms_balance} /></div>
+                                    <div className="space-y-2"><Label htmlFor="sms-cost">Cost per SMS</Label><Input id="sms-cost" type="number" min="0" step="0.01" value={data.estimated_cost_per_sms} onChange={(e) => setData('estimated_cost_per_sms', e.target.value)} /><InputError message={errors.estimated_cost_per_sms} /></div>
+                                    <div className="flex items-center gap-3 rounded-xl border p-4 md:col-span-3"><Checkbox checked={data.low_balance_alert_enabled} onCheckedChange={(value) => setData('low_balance_alert_enabled', Boolean(value))} /><div><p className="font-medium">Send low-balance SMS alert</p><p className="text-xs text-muted-foreground">When balance drops below your threshold, notify the configured phone number.</p></div></div>
+                                    <div className="space-y-2"><Label htmlFor="alert-phone">Alert phone number</Label><Input id="alert-phone" value={data.low_balance_alert_phone} onChange={(e) => setData('low_balance_alert_phone', e.target.value)} placeholder="0712345678" /><InputError message={errors.low_balance_alert_phone} /></div>
+                                    <div className="space-y-2"><Label htmlFor="alert-threshold">Alert below balance</Label><Input id="alert-threshold" type="number" min="0" step="0.01" value={data.low_balance_alert_threshold} onChange={(e) => setData('low_balance_alert_threshold', e.target.value)} /><InputError message={errors.low_balance_alert_threshold} /></div>
+                                    <div className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground"><p className="font-medium text-foreground">Top-up rule</p><p className="mt-1">After free SMS are depleted, every system SMS is deducted from this balance. Use the top-up button when balance is low.</p></div>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <Card>
+                                <CardHeader className="border-b py-4"><CardTitle className="text-base">Own SMS API configuration</CardTitle></CardHeader>
+                                <CardContent className="grid gap-4 p-5 md:grid-cols-2">
+                                    <div className="space-y-2 md:col-span-2">
+                                        <Label htmlFor="sms-provider">Available gateway</Label>
+                                        <select id="sms-provider" value={data.provider} onChange={(event) => setData('provider', event.target.value)} className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm">
+                                            {providers.map((provider) => <option key={provider.value} value={provider.value}>{provider.label}</option>)}
+                                        </select>
+                                        {selectedProvider && <p className="text-xs text-muted-foreground">{selectedProvider.hint}</p>}
+                                        <InputError message={errors.provider} />
+                                    </div>
+                                    <div className="space-y-2"><Label htmlFor="sms-sender">Sender ID</Label><Input id="sms-sender" value={data.sender_id} onChange={(event) => setData('sender_id', event.target.value)} placeholder="StudyRoom" /><InputError message={errors.sender_id} /></div>
+                                    <div className="space-y-2"><Label htmlFor="sms-username">Username</Label><Input id="sms-username" value={data.username} onChange={(event) => setData('username', event.target.value)} placeholder="Gateway username" /><InputError message={errors.username} /></div>
+                                    <div className="space-y-2"><Label htmlFor="sms-key">API key</Label><Input id="sms-key" value={data.api_key} onChange={(event) => setData('api_key', event.target.value)} placeholder={current ? 'Leave blank to keep existing key' : 'API key'} /><InputError message={errors.api_key} /></div>
+                                    <div className="space-y-2"><Label htmlFor="sms-secret">API secret</Label><Input id="sms-secret" type="password" value={data.api_secret} onChange={(event) => setData('api_secret', event.target.value)} placeholder={current ? 'Leave blank to keep existing secret' : 'API secret'} /><InputError message={errors.api_secret} /></div>
+                                    {data.provider === 'custom_http' && <div className="space-y-2 md:col-span-2"><Label htmlFor="sms-url">Custom HTTP send URL</Label><Input id="sms-url" value={data.callback_url} onChange={(event) => setData('callback_url', event.target.value)} placeholder="https://gateway.example/send" /><InputError message={errors.callback_url} /></div>}
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        <Card>
+                            <CardHeader className="border-b py-4"><CardTitle className="text-base">Gateway status</CardTitle></CardHeader>
+                            <CardContent className="flex items-center justify-between gap-4 p-5">
+                                <div className="flex items-center gap-3"><Checkbox checked={data.is_active} onCheckedChange={(value) => setData('is_active', Boolean(value))} /><div><p className="font-medium">Gateway active</p><p className="text-xs text-muted-foreground">Disable this to pause new SMS sending.</p></div></div>
+                                <Button type="submit" disabled={processing}><Save className="h-4 w-4" />Save settings</Button>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <div className="space-y-5">
+                        <Card>
+                            <CardHeader className="border-b py-4"><CardTitle className="text-base">System alert</CardTitle></CardHeader>
+                            <CardContent className="space-y-4 p-5 text-sm">
+                                <div className={`rounded-2xl border p-4 ${lowBalance ? 'border-amber-200 bg-amber-50 text-amber-900' : 'bg-muted/20 text-muted-foreground'}`}>
+                                    <div className="flex items-start gap-3"><BellRing className="mt-0.5 h-5 w-5" /><div><p className="font-medium text-foreground">Low balance monitor</p><p className="mt-1">Alert phone: {data.low_balance_alert_phone || 'Not configured'}</p><p>Threshold: {data.low_balance_alert_threshold || '10'}</p>{current?.low_balance_alerted_at && <p>Last alert: {current.low_balance_alerted_at}</p>}</div></div>
+                                </div>
+                                {routes.topUp && <Button className="w-full" asChild><Link href={routes.topUp}><Wallet className="h-4 w-4" />Go to purchase / top-up</Link></Button>}
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="border-b py-4"><CardTitle className="text-base">Gateway summary</CardTitle></CardHeader>
+                            <CardContent className="space-y-3 p-5 text-sm">
+                                <SummaryRow label="Rule" value={usingSystemSms ? 'System SMS' : 'Own API'} />
+                                <SummaryRow label="Provider" value={usingSystemSms ? 'Platform gateway' : selectedProvider?.label || 'Not selected'} />
+                                <SummaryRow label="Status" value={data.is_active ? 'Active' : 'Inactive'} />
+                                <SummaryRow label="Last updated" value={current?.updated_at || 'Not saved yet'} />
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="border-b py-4"><CardTitle className="text-base">Access rule</CardTitle></CardHeader>
+                            <CardContent className="space-y-3 p-5 text-sm text-muted-foreground">
+                                <div className="flex gap-3 rounded-xl border p-4"><ShieldCheck className="mt-0.5 h-5 w-5 text-primary" /><div><p className="font-medium text-foreground">Admin and Super Admin</p><p>Both can access SMS settings and Email / SMS Log. Super Admin controls platform gateway and charging.</p></div></div>
+                                <div className="flex gap-3 rounded-xl border p-4"><ExternalLink className="mt-0.5 h-5 w-5 text-primary" /><div><p className="font-medium text-foreground">Own API mode</p><p>Choose an available gateway, then fill only the fields required by that provider.</p></div></div>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </form>
             </div>
         </AuthenticatedLayout>
     );
+}
+
+function MetricCard({ icon, label, value, hint }: { icon: ReactNode; label: string; value: string; hint: string }) {
+    return <Card><CardContent className="flex items-center gap-3 p-4"><div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">{icon}</div><div><p className="text-sm text-muted-foreground">{label}</p><p className="text-2xl font-semibold">{value}</p><p className="text-xs text-muted-foreground">{hint}</p></div></CardContent></Card>;
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+    return <div className="flex items-center justify-between rounded-xl border px-3 py-2"><span className="text-muted-foreground">{label}</span><span className="font-medium text-foreground">{value}</span></div>;
 }
