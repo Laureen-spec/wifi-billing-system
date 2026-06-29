@@ -3,25 +3,59 @@ import { Head, usePage, router } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import { useFlashMessages } from '@/hooks/useFlashMessages';
 import { useDeleteHandler } from '@/hooks/useDeleteHandler';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PerPageSelector } from '@/components/ui/per-page-selector';
-import AuthenticatedLayout from "@/layouts/authenticated-layout";
+import AuthenticatedLayout from '@/layouts/authenticated-layout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from "@/components/ui/card";
-import { DataTable } from "@/components/ui/data-table";
-import { Dialog } from "@/components/ui/dialog";
+import { Card, CardContent } from '@/components/ui/card';
+import { Dialog } from '@/components/ui/dialog';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
-import { Plus, Edit as EditIcon, Trash2, Eye, Ticket } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { FilterButton } from '@/components/ui/filter-button';
-import { Pagination } from "@/components/ui/pagination";
-import { SearchInput } from "@/components/ui/search-input";
-import { ListGridToggle } from '@/components/ui/list-grid-toggle';
+import { Pagination } from '@/components/ui/pagination';
+import { SearchInput } from '@/components/ui/search-input';
+import {
+    AlertTriangle,
+    CheckCircle2,
+    Clock3,
+    Edit as EditIcon,
+    Eye,
+    Filter,
+    Headphones,
+    MessageSquare,
+    Plus,
+    ShieldCheck,
+    Sparkles,
+    Ticket,
+    Trash2,
+    UserRound,
+} from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Create from './create';
 import Edit from './edit';
 import NoRecordsFound from '@/components/no-records-found';
-import { HelpdeskTicketsIndexProps, HelpdeskTicketFilters, HelpdeskTicketModalState } from './types';
+import { HelpdeskTicket, HelpdeskTicketsIndexProps, HelpdeskTicketFilters, HelpdeskTicketModalState } from './types';
+
+type StatusKey = 'open' | 'in_progress' | 'resolved' | 'closed';
+type PriorityKey = 'low' | 'medium' | 'high' | 'urgent';
+
+const statusStyles: Record<StatusKey, string> = {
+    open: 'border-sky-200 bg-sky-50 text-sky-700',
+    in_progress: 'border-amber-200 bg-amber-50 text-amber-700',
+    resolved: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    closed: 'border-slate-200 bg-slate-50 text-slate-600',
+};
+
+const priorityStyles: Record<PriorityKey, string> = {
+    low: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    medium: 'border-yellow-200 bg-yellow-50 text-yellow-700',
+    high: 'border-orange-200 bg-orange-50 text-orange-700',
+    urgent: 'border-red-200 bg-red-50 text-red-700',
+};
+
+const priorityRail: Record<PriorityKey, string> = {
+    low: 'bg-emerald-500',
+    medium: 'bg-yellow-500',
+    high: 'bg-orange-500',
+    urgent: 'bg-red-500',
+};
 
 export default function Index() {
     const { t } = useTranslation();
@@ -33,17 +67,14 @@ export default function Index() {
         status: urlParams.get('status') || '',
         priority: urlParams.get('priority') || '',
         category_id: urlParams.get('category_id') || '',
-        company_id: urlParams.get('company_id') || ''
+        company_id: urlParams.get('company_id') || '',
     });
 
     const [perPage] = useState(urlParams.get('per_page') || '10');
-    const [sortField, setSortField] = useState(urlParams.get('sort') || '');
-    const [sortDirection, setSortDirection] = useState(urlParams.get('direction') || 'asc');
-    const [viewMode, setViewMode] = useState<'list' | 'grid'>(urlParams.get('view') as 'list' | 'grid' || 'list');
     const [modalState, setModalState] = useState<HelpdeskTicketModalState>({
         isOpen: false,
         mode: '',
-        data: null
+        data: null,
     });
     const [showFilters, setShowFilters] = useState(false);
 
@@ -51,495 +82,416 @@ export default function Index() {
 
     const { deleteState, openDeleteDialog, closeDeleteDialog, confirmDelete } = useDeleteHandler({
         routeName: 'helpdesk-tickets.destroy',
-        defaultMessage: t('Are you sure you want to delete this ticket?')
+        defaultMessage: t('Are you sure you want to delete this ticket?'),
     });
 
-    const handleFilter = () => {
-        router.get(route('helpdesk-tickets.index'), {...filters, per_page: perPage, sort: sortField, direction: sortDirection, view: viewMode}, {
+    const canCreate = auth.user?.permissions?.includes('create-helpdesk-tickets');
+    const canView = auth.user?.permissions?.includes('view-helpdesk-tickets');
+    const canEdit = auth.user?.permissions?.includes('edit-helpdesk-tickets');
+    const canDelete = auth.user?.permissions?.includes('delete-helpdesk-tickets');
+
+    const statusLabel = (status: string) => t(status.replace('_', ' ').replace(/\b\w/g, (char) => char.toUpperCase()));
+    const priorityLabel = (priority: string) => t(priority.charAt(0).toUpperCase() + priority.slice(1));
+
+    const applyFilters = (nextFilters: HelpdeskTicketFilters = filters) => {
+        router.get(route('helpdesk-tickets.index'), { ...nextFilters, per_page: perPage }, {
             preserveState: true,
-            replace: true
+            replace: true,
         });
     };
 
-    const handleSort = (field: string) => {
-        const direction = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
-        setSortField(field);
-        setSortDirection(direction);
-        router.get(route('helpdesk-tickets.index'), {...filters, per_page: perPage, sort: field, direction, view: viewMode}, {
-            preserveState: true,
-            replace: true
-        });
+    const setStatusFilter = (status: string) => {
+        const nextFilters = { ...filters, status };
+        setFilters(nextFilters);
+        applyFilters(nextFilters);
     };
 
     const clearFilters = () => {
-        setFilters({ title: '', status: '', priority: '', category_id: '', company_id: '' });
-        router.get(route('helpdesk-tickets.index'), {per_page: perPage, view: viewMode});
+        const nextFilters = { title: '', status: '', priority: '', category_id: '', company_id: '' };
+        setFilters(nextFilters);
+        router.get(route('helpdesk-tickets.index'), { per_page: perPage });
     };
 
-    const openModal = (mode: 'add' | 'edit', data: any = null) => {
-        setModalState({
-            isOpen: true,
-            mode,
-            data
-        });
+    const openModal = (mode: 'add' | 'edit', data: HelpdeskTicket | null = null) => {
+        setModalState({ isOpen: true, mode, data });
     };
 
     const closeModal = () => {
-        setModalState({
-            isOpen: false,
-            mode: '',
-            data: null
-        });
+        setModalState({ isOpen: false, mode: '', data: null });
     };
 
-    const getStatusBadge = (status: string) => {
-        const colors = {
-            open: 'bg-blue-100 text-blue-800',
-            in_progress: 'bg-yellow-100 text-yellow-800',
-            resolved: 'bg-green-100 text-green-800',
-            closed: 'bg-gray-100 text-gray-800'
-        };
-        return (
-            <span className={`px-2 py-1 rounded-full text-sm ${colors[status as keyof typeof colors]}`}>
-                {t(status.replace('_', ' ').charAt(0).toUpperCase() + status.replace('_', ' ').slice(1))}
-            </span>
-        );
-    };
+    const activeFilters = [filters.title, filters.status, filters.priority, filters.category_id, filters.company_id].filter(Boolean).length;
+    const pageTickets = tickets.data || [];
+    const openCount = pageTickets.filter((ticket) => ticket.status === 'open').length;
+    const progressCount = pageTickets.filter((ticket) => ticket.status === 'in_progress').length;
+    const resolvedCount = pageTickets.filter((ticket) => ticket.status === 'resolved').length;
+    const urgentCount = pageTickets.filter((ticket) => ticket.priority === 'urgent').length;
 
-    const getPriorityBadge = (priority: string) => {
-        const colors = {
-            low: 'bg-green-100 text-green-800',
-            medium: 'bg-yellow-100 text-yellow-800',
-            high: 'bg-orange-100 text-orange-800',
-            urgent: 'bg-red-100 text-red-800'
-        };
-        return (
-            <span className={`px-2 py-1 rounded-full text-sm ${colors[priority as keyof typeof colors]}`}>
-                {t(priority.charAt(0).toUpperCase() + priority.slice(1))}
-            </span>
-        );
-    };
-
-    const tableColumns = [
-        {
-            key: 'ticket_id',
-            header: t('Ticket ID'),
-            sortable: true,
-            render: (value: string, ticket: any) =>
-                auth.user?.permissions?.includes('view-helpdesk-tickets') ? (
-                    <span className="text-blue-600 hover:text-blue-700 cursor-pointer" onClick={() => router.get(route('helpdesk-tickets.show', ticket.id))}>#{value}</span>
-                ) : (
-                    `#${value}`
-                )
-        },
-        {
-            key: 'title',
-            header: t('Title'),
-            sortable: true
-        },
-        {
-            key: 'category',
-            header: t('Category'),
-            render: (_: any, ticket: any) => (
-                ticket.category ? (
-                    <div className="flex items-center gap-1.5">
-                        {ticket.category.color && (
-                            <span 
-                                className="w-2 h-2 rounded-full flex-shrink-0" 
-                                style={{ backgroundColor: ticket.category.color }}
-                            />
-                        )}
-                        <span>{ticket.category.name}</span>
-                    </div>
-                ) : '-'
-            )
-        },
-        {
-            key: 'priority',
-            header: t('Priority'),
-            sortable: true,
-            render: (value: string) => getPriorityBadge(value)
-        },
-        {
-            key: 'status',
-            header: t('Status'),
-            sortable: true,
-            render: (value: string) => getStatusBadge(value)
-        },
-        {
-            key: 'creator',
-            header: t('Created By'),
-            render: (_: any, ticket: any) => ticket.creator?.name || '-'
-        },
-        ...(auth.user?.permissions?.some((p: string) => ['view-helpdesk-tickets', 'edit-helpdesk-tickets', 'delete-helpdesk-tickets'].includes(p)) ? [{
-            key: 'actions',
-            header: t('Actions'),
-            render: (_: any, ticket: any) => (
-                <div className="flex gap-1">
-                    <TooltipProvider>
-                        {auth.user?.permissions?.includes('view-helpdesk-tickets') && (
-                            <Tooltip delayDuration={0}>
-                                <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="sm" onClick={() => router.get(route('helpdesk-tickets.show', ticket.id))} className="h-8 w-8 p-0 text-green-600 hover:text-green-700">
-                                        <Eye className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent><p>{t('View')}</p></TooltipContent>
-                            </Tooltip>
-                        )}
-                        {auth.user?.permissions?.includes('edit-helpdesk-tickets') && (
-                            <Tooltip delayDuration={0}>
-                                <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="sm" onClick={() => openModal('edit', ticket)} className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700">
-                                        <EditIcon className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent><p>{t('Edit')}</p></TooltipContent>
-                            </Tooltip>
-                        )}
-                        {auth.user?.permissions?.includes('delete-helpdesk-tickets') && (
-                            <Tooltip delayDuration={0}>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => openDeleteDialog(ticket.id)}
-                                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent><p>{t('Delete')}</p></TooltipContent>
-                            </Tooltip>
-                        )}
-                    </TooltipProvider>
-                </div>
-            )
-        }] : [])
+    const statusTabs = [
+        { label: t('All'), value: '', count: tickets.total },
+        { label: t('Open'), value: 'open', count: openCount },
+        { label: t('In Progress'), value: 'in_progress', count: progressCount },
+        { label: t('Resolved'), value: 'resolved', count: resolvedCount },
+        { label: t('Closed'), value: 'closed', count: pageTickets.filter((ticket) => ticket.status === 'closed').length },
     ];
+
+    const metricCards = [
+        {
+            label: t('Total tickets'),
+            value: tickets.total,
+            helper: t('all support records'),
+            icon: Ticket,
+            tone: 'bg-slate-950 text-white',
+        },
+        {
+            label: t('Open cases'),
+            value: openCount,
+            helper: t('need first response'),
+            icon: Clock3,
+            tone: 'bg-sky-50 text-sky-700',
+        },
+        {
+            label: t('In progress'),
+            value: progressCount,
+            helper: t('being handled'),
+            icon: Headphones,
+            tone: 'bg-amber-50 text-amber-700',
+        },
+        {
+            label: t('Urgent'),
+            value: urgentCount,
+            helper: t('priority queue'),
+            icon: AlertTriangle,
+            tone: 'bg-red-50 text-red-700',
+        },
+    ];
+
+    const renderStatusBadge = (status: string) => (
+        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${statusStyles[status as StatusKey] || statusStyles.open}`}>
+            {statusLabel(status)}
+        </span>
+    );
+
+    const renderPriorityBadge = (priority: string) => (
+        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${priorityStyles[priority as PriorityKey] || priorityStyles.medium}`}>
+            {priorityLabel(priority)}
+        </span>
+    );
+
+    const renderTicketCard = (ticket: HelpdeskTicket) => (
+        <div
+            key={ticket.id}
+            className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
+        >
+            <div className={`absolute left-0 top-0 h-full w-1.5 ${priorityRail[ticket.priority as PriorityKey] || 'bg-slate-300'}`} />
+            <div className="p-5 pl-6">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0 flex-1">
+                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                            {canView ? (
+                                <button
+                                    type="button"
+                                    onClick={() => router.get(route('helpdesk-tickets.show', ticket.id))}
+                                    className="font-mono text-sm font-bold text-emerald-700 hover:text-emerald-800"
+                                >
+                                    #{ticket.ticket_id}
+                                </button>
+                            ) : (
+                                <span className="font-mono text-sm font-bold text-slate-900">#{ticket.ticket_id}</span>
+                            )}
+                            {renderStatusBadge(ticket.status)}
+                            {renderPriorityBadge(ticket.priority)}
+                            {ticket.category && (
+                                <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
+                                    {ticket.category.color && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ticket.category.color }} />}
+                                    {ticket.category.name}
+                                </span>
+                            )}
+                        </div>
+
+                        <h3
+                            className="max-w-3xl truncate text-lg font-semibold text-slate-950 group-hover:text-emerald-800"
+                            title={ticket.title}
+                        >
+                            {ticket.title}
+                        </h3>
+
+                        <div className="mt-4 grid gap-3 text-sm text-slate-600 sm:grid-cols-2 lg:grid-cols-3">
+                            <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
+                                <UserRound className="h-4 w-4 text-slate-400" />
+                                <span className="truncate">{ticket.creator?.name || t('Unknown user')}</span>
+                            </div>
+                            <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
+                                <Clock3 className="h-4 w-4 text-slate-400" />
+                                <span>{new Date(ticket.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
+                                <MessageSquare className="h-4 w-4 text-slate-400" />
+                                <span>{ticket.replies?.length || 0} {t('replies')}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {(canView || canEdit || canDelete) && (
+                        <div className="flex shrink-0 items-center gap-2">
+                            <TooltipProvider>
+                                {canView && (
+                                    <Tooltip delayDuration={0}>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => router.get(route('helpdesk-tickets.show', ticket.id))}
+                                                className="rounded-xl"
+                                            >
+                                                <Eye className="mr-2 h-4 w-4" />
+                                                {t('Open')}
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>{t('View')}</p></TooltipContent>
+                                    </Tooltip>
+                                )}
+                                {canEdit && (
+                                    <Tooltip delayDuration={0}>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="sm" onClick={() => openModal('edit', ticket)} className="h-9 w-9 rounded-xl p-0 text-slate-500 hover:text-emerald-700">
+                                                <EditIcon className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>{t('Edit')}</p></TooltipContent>
+                                    </Tooltip>
+                                )}
+                                {canDelete && (
+                                    <Tooltip delayDuration={0}>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="sm" onClick={() => openDeleteDialog(ticket.id)} className="h-9 w-9 rounded-xl p-0 text-slate-400 hover:text-destructive">
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>{t('Delete')}</p></TooltipContent>
+                                    </Tooltip>
+                                )}
+                            </TooltipProvider>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
 
     return (
         <AuthenticatedLayout
-            breadcrumbs={[{label: t('Helpdesk')}, {label: t('All Tickets')}]}
-            pageTitle={t('Manage Tickets')}
-            pageActions={
-                <div className="flex gap-2">
-                    <TooltipProvider>
-                        {auth.user?.permissions?.includes('create-helpdesk-tickets') && (
-                            <Tooltip delayDuration={0}>
-                                <TooltipTrigger asChild>
-                                    <Button size="sm" onClick={() => openModal('add')}>
-                                        <Plus className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{t('Create')}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        )}
-                    </TooltipProvider>
-                </div>
-            }
+            breadcrumbs={[{ label: t('Helpdesk') }, { label: t('All Tickets') }]}
+            pageTitle={t('Support Desk')}
+            pageActions={canCreate ? (
+                <Button onClick={() => openModal('add')} className="rounded-xl bg-emerald-600 px-4 text-white hover:bg-emerald-700">
+                    <Plus className="mr-2 h-4 w-4" />
+                    {t('New Ticket')}
+                </Button>
+            ) : null}
         >
             <Head title={t('Support Tickets')} />
 
-            {/* Main Content Card */}
-            <Card className="shadow-sm">
-                {/* Search & Controls Header */}
-                <CardContent className="p-6 border-b bg-gray-50/50">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1 max-w-md">
-                            <SearchInput
-                                value={filters.title}
-                                onChange={(value) => setFilters({...filters, title: value})}
-                                onSearch={handleFilter}
-                                placeholder={t('Search tickets...')}
-                            />
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <ListGridToggle
-                                currentView={viewMode}
-                                routeName="helpdesk-tickets.index"
-                                filters={{...filters, per_page: perPage}}
-                            />
-                            <PerPageSelector
-                                routeName="helpdesk-tickets.index"
-                                filters={{...filters, view: viewMode}}
-                            />
-                            <div className="relative">
-                                <FilterButton
-                                    showFilters={showFilters}
-                                    onToggle={() => setShowFilters(!showFilters)}
-                                />
-                                {(() => {
-                                    const activeFilters = [filters.status, filters.priority, filters.category_id, filters.company_id].filter(Boolean).length;
-                                    return activeFilters > 0 && (
-                                        <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                                            {activeFilters}
-                                        </span>
-                                    );
-                                })()}
+            <div className="space-y-6">
+                <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-950 p-6 text-white shadow-sm">
+                    <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-emerald-500/20 blur-3xl" />
+                    <div className="absolute bottom-0 left-1/3 h-32 w-32 rounded-full bg-sky-500/10 blur-3xl" />
+                    <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                        <div className="max-w-2xl">
+                            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-100">
+                                <Sparkles className="h-3.5 w-3.5" />
+                                {t('Service Desk')}
                             </div>
+                            <h1 className="text-3xl font-black tracking-tight md:text-4xl">{t('Helpdesk command center')}</h1>
+                            <p className="mt-3 text-sm leading-6 text-slate-300 md:text-base">
+                                {t('Track support tickets, assign priority, and keep every customer conversation moving from one clean workspace.')}
+                            </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-[560px]">
+                            {metricCards.map((item) => {
+                                const Icon = item.icon;
+                                return (
+                                    <div key={item.label} className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur">
+                                        <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${item.tone}`}>
+                                            <Icon className="h-5 w-5" />
+                                        </div>
+                                        <p className="text-2xl font-black">{item.value}</p>
+                                        <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-300">{item.label}</p>
+                                        <p className="mt-1 text-xs text-slate-400">{item.helper}</p>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
-                </CardContent>
+                </section>
 
-                {/* Advanced Filters */}
-                {showFilters && (
-                    <CardContent className="p-6 bg-blue-50/30 border-b">
-                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">{t('Status')}</label>
-                                <Select value={filters.status || undefined} onValueChange={(value) => setFilters({...filters, status: value || ''})}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder={t('Filter by status')} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="open">{t('Open')}</SelectItem>
-                                        <SelectItem value="in_progress">{t('In Progress')}</SelectItem>
-                                        <SelectItem value="resolved">{t('Resolved')}</SelectItem>
-                                        <SelectItem value="closed">{t('Closed')}</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                <Card className="overflow-hidden rounded-3xl border-slate-200 shadow-sm">
+                    <CardContent className="border-b border-slate-200 bg-white p-4 sm:p-5">
+                        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                            <div className="flex flex-wrap gap-2">
+                                {statusTabs.map((tab) => {
+                                    const active = filters.status === tab.value;
+                                    return (
+                                        <button
+                                            key={tab.value || 'all'}
+                                            type="button"
+                                            onClick={() => setStatusFilter(tab.value)}
+                                            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                                                active
+                                                    ? 'bg-slate-950 text-white shadow-sm'
+                                                    : 'border border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700'
+                                            }`}
+                                        >
+                                            {tab.label}
+                                            <span className={`rounded-full px-2 py-0.5 text-xs ${active ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                {tab.count}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">{t('Priority')}</label>
-                                <Select value={filters.priority || undefined} onValueChange={(value) => setFilters({...filters, priority: value || ''})}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder={t('Filter by priority')} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="low">{t('Low')}</SelectItem>
-                                        <SelectItem value="medium">{t('Medium')}</SelectItem>
-                                        <SelectItem value="high">{t('High')}</SelectItem>
-                                        <SelectItem value="urgent">{t('Urgent')}</SelectItem>
-                                    </SelectContent>
-                                </Select>
+
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                                <SearchInput
+                                    value={filters.title}
+                                    onChange={(value) => setFilters({ ...filters, title: value })}
+                                    onSearch={() => applyFilters()}
+                                    placeholder={t('Search by ticket, title, customer...')}
+                                    className="sm:w-80"
+                                />
+                                <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className="relative rounded-xl">
+                                    <Filter className="mr-2 h-4 w-4" />
+                                    {t('Filters')}
+                                    {activeFilters > 0 && (
+                                        <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">{activeFilters}</span>
+                                    )}
+                                </Button>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">{t('Category')}</label>
-                                <Select value={filters.category_id || undefined} onValueChange={(value) => setFilters({...filters, category_id: value || ''})}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder={t('Filter by category')} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {categories?.map((category: any) => (
-                                            <SelectItem key={category.id} value={category.id.toString()}>
-                                                <div className="flex items-center gap-2">
-                                                    {category.color && (
-                                                        <span 
-                                                            className="w-2 h-2 rounded-full flex-shrink-0" 
-                                                            style={{ backgroundColor: category.color }}
-                                                        />
-                                                    )}
-                                                    <span>{category.name}</span>
-                                                </div>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            {auth.user?.type === 'superadmin' && (
+                        </div>
+                    </CardContent>
+
+                    {showFilters && (
+                        <CardContent className="border-b border-slate-200 bg-slate-50/80 p-5">
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('User')}</label>
-                                    <Select value={filters.company_id || undefined} onValueChange={(value) => setFilters({...filters, company_id: value || ''})}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder={t('Filter by User')} />
-                                        </SelectTrigger>
+                                    <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">{t('Status')}</label>
+                                    <Select value={filters.status || undefined} onValueChange={(value) => setFilters({ ...filters, status: value || '' })}>
+                                        <SelectTrigger className="rounded-xl bg-white"><SelectValue placeholder={t('Any status')} /></SelectTrigger>
                                         <SelectContent>
-                                            {companies?.map((company: any) => (
-                                                <SelectItem key={company.id} value={company.id.toString()}>
-                                                    {company.name}
-                                                </SelectItem>
+                                            <SelectItem value="open">{t('Open')}</SelectItem>
+                                            <SelectItem value="in_progress">{t('In Progress')}</SelectItem>
+                                            <SelectItem value="resolved">{t('Resolved')}</SelectItem>
+                                            <SelectItem value="closed">{t('Closed')}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">{t('Priority')}</label>
+                                    <Select value={filters.priority || undefined} onValueChange={(value) => setFilters({ ...filters, priority: value || '' })}>
+                                        <SelectTrigger className="rounded-xl bg-white"><SelectValue placeholder={t('Any priority')} /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="urgent">{t('Urgent')}</SelectItem>
+                                            <SelectItem value="high">{t('High')}</SelectItem>
+                                            <SelectItem value="medium">{t('Medium')}</SelectItem>
+                                            <SelectItem value="low">{t('Low')}</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div>
+                                    <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">{t('Category')}</label>
+                                    <Select value={filters.category_id || undefined} onValueChange={(value) => setFilters({ ...filters, category_id: value || '' })}>
+                                        <SelectTrigger className="rounded-xl bg-white"><SelectValue placeholder={t('Any category')} /></SelectTrigger>
+                                        <SelectContent>
+                                            {categories?.map((category) => (
+                                                <SelectItem key={category.id} value={category.id.toString()}>{category.name}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
-                            )}
-                            <div className="flex items-end gap-2">
-                                <Button onClick={handleFilter} size="sm">{t('Apply')}</Button>
-                                <Button variant="outline" onClick={clearFilters} size="sm">{t('Clear')}</Button>
-                            </div>
-                        </div>
-                    </CardContent>
-                )}
-
-                {/* Table Content */}
-                <CardContent className="p-0">
-                    {viewMode === 'list' ? (
-                        <div className="overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100 max-h-[70vh] rounded-none w-full">
-                            <div className="min-w-[800px]">
-                            <DataTable
-                                data={tickets.data}
-                                columns={tableColumns}
-                                onSort={handleSort}
-                                sortKey={sortField}
-                                sortDirection={sortDirection as 'asc' | 'desc'}
-                                className="rounded-none"
-                                emptyState={
-                                    <NoRecordsFound
-                                        icon={Ticket}
-                                        title={t('No tickets found')}
-                                        description={t('Get started by creating your first support ticket.')}
-                                        hasFilters={!!(filters.title || filters.status || filters.priority || filters.category_id || filters.company_id)}
-                                        onClearFilters={clearFilters}
-                                        createPermission="create-helpdesk-tickets"
-                                        onCreateClick={() => openModal('add')}
-                                        createButtonText={t('Create Ticket')}
-                                        className="h-auto"
-                                    />
-                                }
-                            />
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="overflow-auto max-h-[70vh] p-4">
-                            {tickets.data.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-                                    {tickets.data.map((ticket) => (
-                                        <Card key={ticket.id} className="border border-gray-200">
-                                            <div className="p-4">
-                                                <div className="flex items-center gap-3 mb-3">
-                                                    <div className="p-2 bg-primary/10 rounded-lg">
-                                                        <Ticket className="h-5 w-5 text-primary" />
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        {auth.user?.permissions?.includes('view-helpdesk-tickets') ? (
-                                                            <h3 className="text-base text-blue-600 hover:text-blue-700 cursor-pointer" onClick={() => router.get(route('helpdesk-tickets.show', ticket.id))}>#{ticket.ticket_id}</h3>
-                                                        ) : (
-                                                            <h3 className="text-base text-gray-900">#{ticket.ticket_id}</h3>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-3 mb-3">
-                                                    <div>
-                                                        <p className="text-xs font-medium text-gray-600 mb-2">{t('Title')}</p>
-                                                        <p className="text-xs text-gray-900 truncate" title={ticket.title}>{ticket.title}</p>
-                                                    </div>
-
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <div>
-                                                            <p className="text-xs font-medium text-gray-600 mb-1">{t('Status')}</p>
-                                                            <div className="text-xs">{getStatusBadge(ticket.status)}</div>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-xs font-medium text-gray-600 mb-1">{t('Priority')}</p>
-                                                            <div className="text-xs">{getPriorityBadge(ticket.priority)}</div>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <div>
-                                                            <p className="text-xs font-medium text-gray-600 mb-1">{t('Category')}</p>
-                                                            {ticket.category ? (
-                                                                <div className="flex items-center gap-1.5">
-                                                                    {ticket.category.color && (
-                                                                        <span 
-                                                                            className="w-2 h-2 rounded-full flex-shrink-0" 
-                                                                            style={{ backgroundColor: ticket.category.color }}
-                                                                        />
-                                                                    )}
-                                                                    <p className="text-xs text-gray-900 truncate">{ticket.category.name}</p>
-                                                                </div>
-                                                            ) : (
-                                                                <p className="text-xs text-gray-900">-</p>
-                                                            )}
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-xs font-medium text-gray-600 mb-1">{t('Created By')}</p>
-                                                            <p className="text-xs text-gray-900 truncate">{ticket.creator?.name || '-'}</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center justify-end pt-3 border-t">
-                                                    <div className="flex gap-1">
-                                                        <TooltipProvider>
-                                                            {auth.user?.permissions?.includes('view-helpdesk-tickets') && (
-                                                                <Tooltip delayDuration={300}>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button variant="ghost" size="sm" onClick={() => router.get(route('helpdesk-tickets.show', ticket.id))} className="h-8 w-8 p-0 text-green-600">
-                                                                            <Eye className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>
-                                                                        <p>{t('View')}</p>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                            )}
-                                                            {auth.user?.permissions?.includes('edit-helpdesk-tickets') && (
-                                                                <Tooltip delayDuration={300}>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button variant="ghost" size="sm" onClick={() => openModal('edit', ticket)} className="h-8 w-8 p-0 text-blue-600">
-                                                                            <EditIcon className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>
-                                                                        <p>{t('Edit')}</p>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                            )}
-                                                            {auth.user?.permissions?.includes('delete-helpdesk-tickets') && (
-                                                                <Tooltip delayDuration={300}>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="sm"
-                                                                            onClick={() => openDeleteDialog(ticket.id)}
-                                                                            className="h-8 w-8 p-0 text-red-600"
-                                                                        >
-                                                                            <Trash2 className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent>
-                                                                        <p>{t('Delete')}</p>
-                                                                    </TooltipContent>
-                                                                </Tooltip>
-                                                            )}
-                                                        </TooltipProvider>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </Card>
-                                    ))}
+                                {auth.user?.type === 'superadmin' && (
+                                    <div>
+                                        <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">{t('Company')}</label>
+                                        <Select value={filters.company_id || undefined} onValueChange={(value) => setFilters({ ...filters, company_id: value || '' })}>
+                                            <SelectTrigger className="rounded-xl bg-white"><SelectValue placeholder={t('Any company')} /></SelectTrigger>
+                                            <SelectContent>
+                                                {companies?.map((company) => (
+                                                    <SelectItem key={company.id} value={company.id.toString()}>{company.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
+                                <div className="flex items-end gap-2">
+                                    <Button onClick={() => applyFilters()} className="flex-1 rounded-xl bg-slate-950 text-white hover:bg-slate-800">{t('Apply')}</Button>
+                                    <Button variant="outline" onClick={clearFilters} className="rounded-xl">{t('Clear')}</Button>
                                 </div>
-                            ) : (
-                                <NoRecordsFound
-                                    icon={Ticket}
-                                    title={t('No tickets found')}
-                                    description={t('Get started by creating your first support ticket.')}
-                                    hasFilters={!!(filters.title || filters.status || filters.priority || filters.category_id || filters.company_id)}
-                                    onClearFilters={clearFilters}
-                                    createPermission="create-helpdesk-tickets"
-                                    onCreateClick={() => openModal('add')}
-                                    createButtonText={t('Create Ticket')}
-                                />
-                            )}
-                        </div>
+                            </div>
+                        </CardContent>
                     )}
-                </CardContent>
 
-                {/* Pagination Footer */}
-                <CardContent className="px-4 py-2 border-t bg-gray-50/30">
-                    <Pagination
-                        data={tickets}
-                        routeName="helpdesk-tickets.index"
-                        filters={{...filters, per_page: perPage, view: viewMode}}
-                    />
-                </CardContent>
-            </Card>
+                    <CardContent className="bg-slate-50/40 p-4 sm:p-5">
+                        {pageTickets.length > 0 ? (
+                            <div className="space-y-3">
+                                {pageTickets.map(renderTicketCard)}
+                            </div>
+                        ) : (
+                            <NoRecordsFound
+                                icon={Ticket}
+                                title={t('No tickets found')}
+                                description={t('Get started by creating your first support ticket.')}
+                                hasFilters={activeFilters > 0}
+                                onClearFilters={clearFilters}
+                                createPermission="create-helpdesk-tickets"
+                                onCreateClick={() => openModal('add')}
+                                createButtonText={t('Create Ticket')}
+                                className="h-auto rounded-2xl bg-white py-14"
+                            />
+                        )}
+                    </CardContent>
+
+                    <CardContent className="border-t border-slate-200 bg-white px-4 py-3 sm:px-5">
+                        <Pagination
+                            data={tickets}
+                            routeName="helpdesk-tickets.index"
+                            filters={{ ...filters, per_page: perPage }}
+                        />
+                    </CardContent>
+                </Card>
+
+                <div className="grid gap-4 lg:grid-cols-3">
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+                        <div className="flex items-start gap-3">
+                            <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-700" />
+                            <div>
+                                <p className="font-semibold text-emerald-950">{t('Cleaner support workflow')}</p>
+                                <p className="mt-1 text-sm text-emerald-800/80">{t('Use filters, priority badges, and ticket cards to quickly spot what needs attention.')}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                        <div className="flex items-start gap-3">
+                            <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-700" />
+                            <div>
+                                <p className="font-semibold text-amber-950">{t('Urgent queue')}</p>
+                                <p className="mt-1 text-sm text-amber-800/80">{t('Urgent tickets are visually marked so admins can respond before customers escalate.')}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                        <div className="flex items-start gap-3">
+                            <CheckCircle2 className="mt-0.5 h-5 w-5 text-slate-700" />
+                            <div>
+                                <p className="font-semibold text-slate-950">{t('Resolved history')}</p>
+                                <p className="mt-1 text-sm text-slate-600">{t('Resolved and closed cases stay searchable for future reference.')}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <Dialog open={modalState.isOpen} onOpenChange={closeModal}>
-                {modalState.mode === 'add' && (
-                    <Create onSuccess={closeModal} />
-                )}
-                {modalState.mode === 'edit' && modalState.data && (
-                    <Edit
-                        ticket={modalState.data}
-                        onSuccess={closeModal}
-                    />
-                )}
+                {modalState.mode === 'add' && <Create onSuccess={closeModal} />}
+                {modalState.mode === 'edit' && modalState.data && <Edit ticket={modalState.data} onSuccess={closeModal} />}
             </Dialog>
 
             <ConfirmationDialog

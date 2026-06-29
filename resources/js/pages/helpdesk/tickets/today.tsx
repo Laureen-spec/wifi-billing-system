@@ -1,19 +1,48 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import { useFlashMessages } from '@/hooks/useFlashMessages';
 import { useDeleteHandler } from '@/hooks/useDeleteHandler';
-import AuthenticatedLayout from "@/layouts/authenticated-layout";
+import AuthenticatedLayout from '@/layouts/authenticated-layout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from "@/components/ui/card";
-import { Dialog } from "@/components/ui/dialog";
+import { Card, CardContent } from '@/components/ui/card';
+import { Dialog } from '@/components/ui/dialog';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
-import { Edit as EditIcon, Trash2, Eye, MessageSquare, Clock, CheckCircle, PlayCircle, User, Filter } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Input } from "@/components/ui/input";
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Edit from './edit';
-import { TodayTicketsProps, HelpdeskTicketModalState } from './types';
+import { HelpdeskTicket, TodayTicketsProps, HelpdeskTicketModalState } from './types';
+import { AlertTriangle, CheckCircle2, Clock3, Edit as EditIcon, Eye, Filter, Headphones, MessageSquare, PlayCircle, Search, Trash2, UserRound } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+type PriorityKey = 'low' | 'medium' | 'high' | 'urgent';
+
+const priorityMeta: Record<PriorityKey, { label: string; ring: string; badge: string; rail: string }> = {
+    urgent: {
+        label: 'Urgent',
+        ring: 'border-red-200 bg-red-50',
+        badge: 'border-red-200 bg-red-100 text-red-700',
+        rail: 'bg-red-500',
+    },
+    high: {
+        label: 'High',
+        ring: 'border-orange-200 bg-orange-50',
+        badge: 'border-orange-200 bg-orange-100 text-orange-700',
+        rail: 'bg-orange-500',
+    },
+    medium: {
+        label: 'Medium',
+        ring: 'border-yellow-200 bg-yellow-50',
+        badge: 'border-yellow-200 bg-yellow-100 text-yellow-700',
+        rail: 'bg-yellow-500',
+    },
+    low: {
+        label: 'Low',
+        ring: 'border-emerald-200 bg-emerald-50',
+        badge: 'border-emerald-200 bg-emerald-100 text-emerald-700',
+        rail: 'bg-emerald-500',
+    },
+};
 
 export default function Today() {
     const { t } = useTranslation();
@@ -21,24 +50,20 @@ export default function Today() {
 
     const [searchQuery, setSearchQuery] = useState('');
     const [activePriorityFilter, setActivePriorityFilter] = useState<string>('all');
-    const [modalState, setModalState] = useState<HelpdeskTicketModalState>({
-        isOpen: false,
-        mode: '',
-        data: null
-    });
+    const [modalState, setModalState] = useState<HelpdeskTicketModalState>({ isOpen: false, mode: '', data: null });
 
     useFlashMessages();
 
     const { deleteState, openDeleteDialog, closeDeleteDialog, confirmDelete } = useDeleteHandler({
         routeName: 'helpdesk-tickets.destroy',
-        defaultMessage: t('Are you sure you want to delete this ticket?')
+        defaultMessage: t('Are you sure you want to delete this ticket?'),
     });
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         router.get(route('helpdesk-tickets.today'), { search: searchQuery }, {
             preserveState: true,
-            replace: true
+            replace: true,
         });
     };
 
@@ -47,7 +72,7 @@ export default function Today() {
         router.get(route('helpdesk-tickets.today'));
     };
 
-    const openModal = (mode: 'edit', data: any = null) => {
+    const openModal = (mode: 'edit', data: HelpdeskTicket | null = null) => {
         setModalState({ isOpen: true, mode, data });
     };
 
@@ -55,7 +80,7 @@ export default function Today() {
         setModalState({ isOpen: false, mode: '', data: null });
     };
 
-    const handleQuickStatusChange = (ticket: any, newStatus: string) => {
+    const handleQuickStatusChange = (ticket: HelpdeskTicket, newStatus: string) => {
         router.put(route('helpdesk-tickets.update', ticket.id), {
             title: ticket.title,
             description: ticket.description,
@@ -64,9 +89,7 @@ export default function Today() {
             category_id: ticket.category_id,
         }, {
             preserveState: true,
-            onSuccess: () => {
-                router.reload({ only: ['tickets', 'stats'] });
-            }
+            onSuccess: () => router.reload({ only: ['tickets', 'stats'] }),
         });
     };
 
@@ -84,427 +107,265 @@ export default function Today() {
         return `${diffInDays}d ${t('ago')}`;
     };
 
-    const isOld = (dateString: string) => {
-        const diffInHours = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / 3600000);
-        return diffInHours > 24;
-    };
-
-    const getAgeColor = (dateString: string) => {
-        const diffInHours = Math.floor((new Date().getTime() - new Date(dateString).getTime()) / 3600000);
-        if (diffInHours < 2) return 'bg-green-500';
-        if (diffInHours < 24) return 'bg-yellow-500';
-        return 'bg-red-500';
-    };
-
-    // Filter tickets based on search and priority filter
     const filteredTickets = useMemo(() => {
         let result = tickets;
-        
-        // Apply search filter
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            result = result.filter(t => 
-                t.ticket_id.toLowerCase().includes(query) ||
-                t.title.toLowerCase().includes(query) ||
-                t.description?.toLowerCase().includes(query)
+        const query = searchQuery.toLowerCase().trim();
+
+        if (query) {
+            result = result.filter((ticket) =>
+                ticket.ticket_id.toLowerCase().includes(query) ||
+                ticket.title.toLowerCase().includes(query) ||
+                ticket.description?.toLowerCase().includes(query)
             );
         }
-        
-        // Apply priority filter
+
         if (activePriorityFilter !== 'all') {
-            result = result.filter(t => t.priority === activePriorityFilter);
+            result = result.filter((ticket) => ticket.priority === activePriorityFilter);
         }
-        
+
         return result;
     }, [tickets, searchQuery, activePriorityFilter]);
 
-    // Group tickets by priority
     const groupedTickets = useMemo(() => ({
-        urgent: filteredTickets.filter(t => t.priority === 'urgent'),
-        high: filteredTickets.filter(t => t.priority === 'high'),
-        medium: filteredTickets.filter(t => t.priority === 'medium'),
-        low: filteredTickets.filter(t => t.priority === 'low'),
+        urgent: filteredTickets.filter((ticket) => ticket.priority === 'urgent'),
+        high: filteredTickets.filter((ticket) => ticket.priority === 'high'),
+        medium: filteredTickets.filter((ticket) => ticket.priority === 'medium'),
+        low: filteredTickets.filter((ticket) => ticket.priority === 'low'),
     }), [filteredTickets]);
 
-    const priorityConfig = {
-        urgent: { label: 'Urgent', textColor: 'text-red-800', bgColor: 'bg-red-100' },
-        high: { label: 'High', textColor: 'text-orange-800', bgColor: 'bg-orange-100' },
-        medium: { label: 'Medium', textColor: 'text-yellow-800', bgColor: 'bg-yellow-100' },
-        low: { label: 'Low', textColor: 'text-green-800', bgColor: 'bg-green-100' },
-    };
-
-    const renderTicketCard = (ticket: any) => {
-        const hasReplies = ticket.replies && ticket.replies.length > 0;
+    const renderTicketCard = (ticket: HelpdeskTicket) => {
+        const meta = priorityMeta[ticket.priority as PriorityKey] || priorityMeta.medium;
         const replyCount = ticket.replies?.length || 0;
-        const old = isOld(ticket.created_at);
-        const config = priorityConfig[ticket.priority as keyof typeof priorityConfig];
-        
-        // Get last reply info
-        const lastReply = hasReplies ? ticket.replies[ticket.replies.length - 1] : null;
-        const lastReplyTime = lastReply ? getTimeAgo(lastReply.created_at) : null;
-        // Check if last reply is from admin (superadmin type)
-        const lastReplyByAdmin = lastReply?.creator?.type === 'superadmin';
-        // Check if last reply is from current user
-        const lastReplyByCurrentUser = lastReply?.created_by === auth.user?.id;
+        const isOld = Math.floor((new Date().getTime() - new Date(ticket.created_at).getTime()) / 3600000) > 24;
+        const lastReply = replyCount > 0 ? ticket.replies?.[replyCount - 1] : null;
 
         return (
-            <Card 
-                key={ticket.id} 
-                className="relative hover:shadow-md transition-shadow bg-white border border-gray-200"
-            >
-                <CardContent className="p-4">
-                    {/* Header Row */}
-                    <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-2 flex-1">
-                            {/* Ticket ID */}
-                            {auth.user?.permissions?.includes('view-helpdesk-tickets') ? (
-                                <button
-                                    onClick={() => router.get(route('helpdesk-tickets.show', ticket.id))}
-                                    className="text-base font-bold text-blue-600 hover:text-blue-700 hover:underline"
-                                >
-                                    #{ticket.ticket_id}
-                                </button>
-                            ) : (
-                                <span className="text-base font-bold text-gray-900">#{ticket.ticket_id}</span>
-                            )}
-
-                            {/* Old Indicator */}
-                            {old && (
-                                <span className="px-1.5 py-0.5 text-xs font-semibold text-red-600 bg-red-100 rounded">
-                                    !
-                                </span>
-                            )}
-
-                            {/* Reply Count */}
-                            {hasReplies && (
-                                <span className="flex items-center gap-1 text-xs text-gray-500">
-                                    <MessageSquare className="h-3.5 w-3.5" />
-                                    {replyCount}
-                                </span>
-                            )}
+            <div key={ticket.id} className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md">
+                <div className={`absolute left-0 top-0 h-full w-1.5 ${meta.rail}`} />
+                <div className="pl-2">
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                            <button
+                                type="button"
+                                onClick={() => router.get(route('helpdesk-tickets.show', ticket.id))}
+                                className="font-mono text-sm font-bold text-emerald-700 hover:text-emerald-800"
+                            >
+                                #{ticket.ticket_id}
+                            </button>
+                            <h3 className="mt-1 line-clamp-2 font-semibold text-slate-950" title={ticket.title}>{ticket.title}</h3>
                         </div>
-
-                        {/* Status Badge */}
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            ticket.status === 'open' 
-                                ? 'bg-blue-100 text-blue-800' 
-                                : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                            {ticket.status === 'open' ? t('Open') : t('In Progress')}
+                        <span className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-bold ${meta.badge}`}>
+                            {t(meta.label)}
                         </span>
                     </div>
 
-                    {/* Title */}
-                    <h3 className="text-sm font-medium text-gray-900 mb-3 line-clamp-2" title={ticket.title}>
-                        {ticket.title}
-                    </h3>
-
-                    {/* Meta Info Row */}
-                    <div className="space-y-2 text-xs text-gray-600 mb-3 pb-3 border-b">
-                        {/* First Row: Category, Creator */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                            {/* Category */}
+                    <div className="mb-4 space-y-2 text-xs text-slate-600">
+                        <div className="flex flex-wrap items-center gap-2">
                             {ticket.category && (
-                                <div className="flex items-center gap-1.5">
-                                    {ticket.category.color && (
-                                        <span 
-                                            className="w-2 h-2 rounded-full" 
-                                            style={{ backgroundColor: ticket.category.color }}
-                                        />
-                                    )}
-                                    <span>{ticket.category.name}</span>
-                                </div>
-                            )}
-
-                            {ticket.category && <span className="text-gray-300">•</span>}
-
-                            {/* Creator */}
-                            {ticket.creator && (
-                                <div className="flex items-center gap-1">
-                                    <User className="h-3 w-3" />
-                                    <span className="truncate max-w-[100px]" title={ticket.creator.name}>
-                                        {ticket.creator.name}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Second Row: Created & Last Reply */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                            {/* Created Time */}
-                            <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                <span className={old ? 'text-red-600 font-semibold' : ''}>
-                                    {t('Created')}: {getTimeAgo(ticket.created_at)}
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 font-medium">
+                                    {ticket.category.color && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ticket.category.color }} />}
+                                    {ticket.category.name}
                                 </span>
-                            </div>
-
-                            {/* Last Reply */}
-                            {lastReply && (
-                                <>
-                                    <span className="text-gray-300">•</span>
-                                    <div className="flex items-center gap-1">
-                                        <MessageSquare className="h-3 w-3" />
-                                        <span className={lastReplyByAdmin ? 'text-blue-600 font-medium' : 'text-gray-600'}>
-                                            {lastReply.creator?.name}: {lastReplyTime}
-                                        </span>
-                                    </div>
-                                </>
                             )}
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 font-medium">
+                                <UserRound className="h-3.5 w-3.5" />
+                                {ticket.creator?.name || t('Unknown')}
+                            </span>
                         </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-medium ${isOld ? 'bg-red-50 text-red-700' : 'bg-slate-50 text-slate-600'}`}>
+                                <Clock3 className="h-3.5 w-3.5" />
+                                {t('Created')}: {getTimeAgo(ticket.created_at)}
+                            </span>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 font-medium">
+                                <MessageSquare className="h-3.5 w-3.5" />
+                                {replyCount} {t('replies')}
+                            </span>
+                        </div>
+                        {lastReply && (
+                            <p className="truncate rounded-xl bg-slate-50 px-3 py-2 text-slate-500">
+                                {t('Last reply')}: {lastReply.creator?.name || t('Unknown')} · {getTimeAgo(lastReply.created_at)}
+                            </p>
+                        )}
                     </div>
 
-                    {/* Actions Row */}
-                    <div className="flex items-center gap-2">
-                        {/* Reply Button */}
+                    <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
                         {auth.user?.permissions?.includes('view-helpdesk-tickets') && (
-                            <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => router.get(route('helpdesk-tickets.show', ticket.id))} 
-                                className="flex-1 h-8 text-xs"
-                            >
-                                <MessageSquare className="h-3.5 w-3.5 mr-1" />
+                            <Button variant="outline" size="sm" onClick={() => router.get(route('helpdesk-tickets.show', ticket.id))} className="rounded-xl">
+                                <MessageSquare className="mr-2 h-4 w-4" />
                                 {t('Reply')}
                             </Button>
                         )}
-
-                        {/* Quick Status Change */}
-                        {auth.user?.permissions?.includes('edit-helpdesk-tickets') && (
-                            <>
-                                {ticket.status === 'open' && (
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={() => handleQuickStatusChange(ticket, 'in_progress')}
-                                        className="flex-1 h-8 text-xs border-yellow-300 text-yellow-700 hover:bg-yellow-50"
-                                    >
-                                        <PlayCircle className="h-3.5 w-3.5 mr-1" />
-                                        {t('Start')}
-                                    </Button>
-                                )}
-                                {ticket.status === 'in_progress' && (
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={() => handleQuickStatusChange(ticket, 'resolved')}
-                                        className="flex-1 h-8 text-xs border-green-300 text-green-700 hover:bg-green-50"
-                                    >
-                                        <CheckCircle className="h-3.5 w-3.5 mr-1" />
-                                        {t('Resolve')}
-                                    </Button>
-                                )}
-                            </>
+                        {auth.user?.permissions?.includes('edit-helpdesk-tickets') && ticket.status === 'open' && (
+                            <Button variant="outline" size="sm" onClick={() => handleQuickStatusChange(ticket, 'in_progress')} className="rounded-xl border-amber-200 text-amber-700 hover:bg-amber-50">
+                                <PlayCircle className="mr-2 h-4 w-4" />
+                                {t('Start')}
+                            </Button>
                         )}
-
-                        {/* Edit & Delete */}
-                        <TooltipProvider>
-                            {auth.user?.permissions?.includes('edit-helpdesk-tickets') && (
-                                <Tooltip delayDuration={300}>
-                                    <TooltipTrigger asChild>
-                                        <Button 
-                                            variant="ghost" 
-                                            size="sm" 
-                                            onClick={() => openModal('edit', ticket)} 
-                                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700"
-                                        >
-                                            <EditIcon className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>{t('Edit')}</p></TooltipContent>
-                                </Tooltip>
-                            )}
-
-                            {auth.user?.permissions?.includes('delete-helpdesk-tickets') && (
-                                <Tooltip delayDuration={300}>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => openDeleteDialog(ticket.id)}
-                                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>{t('Delete')}</p></TooltipContent>
-                                </Tooltip>
-                            )}
-                        </TooltipProvider>
+                        {auth.user?.permissions?.includes('edit-helpdesk-tickets') && ticket.status === 'in_progress' && (
+                            <Button variant="outline" size="sm" onClick={() => handleQuickStatusChange(ticket, 'resolved')} className="rounded-xl border-emerald-200 text-emerald-700 hover:bg-emerald-50">
+                                <CheckCircle2 className="mr-2 h-4 w-4" />
+                                {t('Resolve')}
+                            </Button>
+                        )}
+                        <div className="ml-auto flex items-center gap-1">
+                            <TooltipProvider>
+                                {auth.user?.permissions?.includes('view-helpdesk-tickets') && (
+                                    <Tooltip delayDuration={0}>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="sm" onClick={() => router.get(route('helpdesk-tickets.show', ticket.id))} className="h-8 w-8 rounded-xl p-0 text-slate-500 hover:text-emerald-700">
+                                                <Eye className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>{t('View')}</p></TooltipContent>
+                                    </Tooltip>
+                                )}
+                                {auth.user?.permissions?.includes('edit-helpdesk-tickets') && (
+                                    <Tooltip delayDuration={0}>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="sm" onClick={() => openModal('edit', ticket)} className="h-8 w-8 rounded-xl p-0 text-slate-500 hover:text-emerald-700">
+                                                <EditIcon className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>{t('Edit')}</p></TooltipContent>
+                                    </Tooltip>
+                                )}
+                                {auth.user?.permissions?.includes('delete-helpdesk-tickets') && (
+                                    <Tooltip delayDuration={0}>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="sm" onClick={() => openDeleteDialog(ticket.id)} className="h-8 w-8 rounded-xl p-0 text-slate-400 hover:text-destructive">
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>{t('Delete')}</p></TooltipContent>
+                                    </Tooltip>
+                                )}
+                            </TooltipProvider>
+                        </div>
                     </div>
-                </CardContent>
-            </Card>
-        );
-    };
-
-    const renderPrioritySection = (priority: string, ticketsList: any[]) => {
-        if (ticketsList.length === 0) return null;
-        const config = priorityConfig[priority as keyof typeof priorityConfig];
-
-        return (
-            <div key={priority} className="mb-6">
-                <div className="flex items-center gap-2 mb-3">
-                    <h2 className={`text-sm font-bold uppercase ${config.textColor}`}>
-                        {t(config.label)}
-                    </h2>
-                    <span className="text-xs text-gray-500 font-medium">
-                        ({ticketsList.length})
-                    </span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {ticketsList.map(renderTicketCard)}
                 </div>
             </div>
         );
     };
 
+    const renderPriorityColumn = (priority: PriorityKey, priorityTickets: HelpdeskTicket[]) => {
+        const meta = priorityMeta[priority];
+        return (
+            <div key={priority} className={`rounded-3xl border p-4 ${meta.ring}`}>
+                <div className="mb-4 flex items-center justify-between">
+                    <div>
+                        <h2 className="text-sm font-black uppercase tracking-[0.18em] text-slate-900">{t(meta.label)}</h2>
+                        <p className="mt-1 text-xs text-slate-500">{priorityTickets.length} {t('tickets')}</p>
+                    </div>
+                    <span className={`h-3 w-3 rounded-full ${meta.rail}`} />
+                </div>
+                <div className="space-y-3">
+                    {priorityTickets.length > 0 ? priorityTickets.map(renderTicketCard) : (
+                        <div className="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-6 text-center text-sm text-slate-500">
+                            {t('No tickets in this lane')}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    const statCards = [
+        { label: t('Total'), value: stats.total, helper: t('active support queue'), icon: Headphones, tone: 'bg-slate-950 text-white' },
+        { label: t('Urgent'), value: stats.urgent, helper: t('needs fast action'), icon: AlertTriangle, tone: 'bg-red-50 text-red-700' },
+        { label: t('Open'), value: stats.open, helper: t('waiting response'), icon: Clock3, tone: 'bg-sky-50 text-sky-700' },
+        { label: t('In Progress'), value: stats.in_progress, helper: t('being handled'), icon: PlayCircle, tone: 'bg-amber-50 text-amber-700' },
+    ];
+
     return (
         <AuthenticatedLayout
-            breadcrumbs={[{label: t('Helpdesk')} , {label: t('Today\'s Tickets')}]}
-            pageTitle={t('Manage Today\'s Tickets')}
+            breadcrumbs={[{ label: t('Helpdesk') }, { label: t('Today\'s Tickets') }]}
+            pageTitle={t('Today\'s Tickets')}
         >
             <Head title={t('Today\'s Tickets')} />
 
-            {/* Compact Statistics + Search Bar */}
-            <Card className="mb-6">
-                <CardContent className="p-4">
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                        {/* Statistics */}
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 text-sm">
-                            <div className="flex items-center gap-2">
-                                <span className="text-gray-500 font-medium">{t('Total')}:</span>
-                                <span className="text-xl font-bold text-gray-900">{stats.total}</span>
-                            </div>
-                            
-                            <div className="hidden sm:block h-6 w-px bg-gray-300"></div>
-
-                            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-                                <div className="flex items-center gap-1.5">
-                                    <div className="px-2 py-0.5 bg-red-100 text-red-800 rounded-full text-xs font-semibold">{t('Urgent')}</div>
-                                    <span className="font-semibold text-gray-900">{stats.urgent}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <div className="px-2 py-0.5 bg-orange-100 text-orange-800 rounded-full text-xs font-semibold">{t('High')}</div>
-                                    <span className="font-semibold text-gray-900">{stats.high}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <div className="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">{t('Medium')}</div>
-                                    <span className="font-semibold text-gray-900">{stats.medium}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <div className="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-semibold">{t('Low')}</div>
-                                    <span className="font-semibold text-gray-900">{stats.low}</span>
-                                </div>
-                            </div>
-
-                            <div className="hidden sm:block h-6 w-px bg-gray-300"></div>
-
-                            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-gray-600">{t('Open')}:</span>
-                                    <span className="font-semibold text-blue-600">{stats.open}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <span className="text-gray-600">{t('In Progress')}:</span>
-                                    <span className="font-semibold text-yellow-600">{stats.in_progress}</span>
-                                </div>
-                            </div>
+            <div className="space-y-6">
+                <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-[0.28em] text-emerald-700">{t('Helpdesk — Today')}</p>
+                            <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">{t('Response board')}</h1>
+                            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                                {t('A priority-based board for tickets that need attention today.')}
+                            </p>
                         </div>
-
-                        {/* Search with Filter Dropdown */}
-                        <form onSubmit={handleSearch} className="flex items-center gap-2 w-full lg:w-auto">
-                            {/* Filter Dropdown */}
+                        <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row sm:items-center">
                             <Select value={activePriorityFilter} onValueChange={(value) => setActivePriorityFilter(value)}>
-                                <SelectTrigger className="w-[140px]">
-                                    <div className="flex items-center">
-                                        <Filter className="h-4 w-4 mr-2" />
-                                        <span>
-                                            {activePriorityFilter === 'all' && t('All')}
-                                            {activePriorityFilter === 'urgent' && t('Urgent')}
-                                            {activePriorityFilter === 'high' && t('High')}
-                                            {activePriorityFilter === 'medium' && t('Medium')}
-                                            {activePriorityFilter === 'low' && t('Low')}
-                                        </span>
-                                    </div>
+                                <SelectTrigger className="rounded-xl bg-white sm:w-[170px]">
+                                    <div className="flex items-center"><Filter className="mr-2 h-4 w-4" /> <SelectValue /></div>
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">{t('All')} ({stats.total})</SelectItem>
-                                    <SelectItem value="urgent">
-                                        <div className="flex items-center gap-2">
-                                            <span className="px-2 py-0.5 bg-red-100 text-red-800 rounded-full text-xs font-semibold">{t('Urgent')}</span>
-                                            <span>({stats.urgent})</span>
-                                        </div>
-                                    </SelectItem>
-                                    <SelectItem value="high">
-                                        <div className="flex items-center gap-2">
-                                            <span className="px-2 py-0.5 bg-orange-100 text-orange-800 rounded-full text-xs font-semibold">{t('High')}</span>
-                                            <span>({stats.high})</span>
-                                        </div>
-                                    </SelectItem>
-                                    <SelectItem value="medium">
-                                        <div className="flex items-center gap-2">
-                                            <span className="px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">{t('Medium')}</span>
-                                            <span>({stats.medium})</span>
-                                        </div>
-                                    </SelectItem>
-                                    <SelectItem value="low">
-                                        <div className="flex items-center gap-2">
-                                            <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded-full text-xs font-semibold">{t('Low')}</span>
-                                            <span>({stats.low})</span>
-                                        </div>
-                                    </SelectItem>
+                                    <SelectItem value="urgent">{t('Urgent')} ({stats.urgent})</SelectItem>
+                                    <SelectItem value="high">{t('High')} ({stats.high})</SelectItem>
+                                    <SelectItem value="medium">{t('Medium')} ({stats.medium})</SelectItem>
+                                    <SelectItem value="low">{t('Low')} ({stats.low})</SelectItem>
                                 </SelectContent>
                             </Select>
-
-                            {/* Search Input */}
-                            <Input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder={t('Search tickets...')}
-                                className="w-full lg:w-64"
-                            />
-                            {searchQuery && (
-                                <Button type="button" variant="ghost" size="sm" onClick={clearSearch}>
-                                    {t('Clear')}
-                                </Button>
-                            )}
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                <Input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder={t('Search tickets...')}
+                                    className="rounded-xl pl-10 sm:w-72"
+                                />
+                            </div>
+                            {searchQuery && <Button type="button" variant="outline" onClick={clearSearch} className="rounded-xl">{t('Clear')}</Button>}
+                            <Button type="submit" className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">{t('Search')}</Button>
                         </form>
                     </div>
-                </CardContent>
-            </Card>
 
-            {/* Tickets Grid */}
-            {filteredTickets.length > 0 ? (
-                <div>
-                    {renderPrioritySection('urgent', groupedTickets.urgent)}
-                    {renderPrioritySection('high', groupedTickets.high)}
-                    {renderPrioritySection('medium', groupedTickets.medium)}
-                    {renderPrioritySection('low', groupedTickets.low)}
-                </div>
-            ) : (
-                <Card>
-                    <CardContent className="text-center py-12">
-                        <Clock className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                        <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                            {searchQuery ? t('No tickets found') : t('No pending tickets')}
-                        </h3>
-                        <p className="text-sm text-gray-500">
-                            {searchQuery ? t('Try adjusting your search query') : t('All tickets are resolved or closed. Great job!')}
-                        </p>
-                        {searchQuery && (
-                            <Button variant="outline" size="sm" onClick={clearSearch} className="mt-4">
-                                {t('Clear Search')}
-                            </Button>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
+                    <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        {statCards.map((item) => {
+                            const Icon = item.icon;
+                            return (
+                                <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                    <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${item.tone}`}>
+                                        <Icon className="h-5 w-5" />
+                                    </div>
+                                    <p className="text-2xl font-black text-slate-950">{item.value}</p>
+                                    <p className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">{item.label}</p>
+                                    <p className="mt-1 text-xs text-slate-500">{item.helper}</p>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
+
+                {filteredTickets.length > 0 ? (
+                    <div className="grid gap-4 xl:grid-cols-4">
+                        {renderPriorityColumn('urgent', groupedTickets.urgent)}
+                        {renderPriorityColumn('high', groupedTickets.high)}
+                        {renderPriorityColumn('medium', groupedTickets.medium)}
+                        {renderPriorityColumn('low', groupedTickets.low)}
+                    </div>
+                ) : (
+                    <Card className="rounded-3xl border-slate-200 shadow-sm">
+                        <CardContent className="py-16 text-center">
+                            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                                <CheckCircle2 className="h-8 w-8" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-950">
+                                {searchQuery ? t('No tickets found') : t('No pending tickets')}
+                            </h3>
+                            <p className="mt-2 text-sm text-slate-500">
+                                {searchQuery ? t('Try adjusting your search query') : t('All tickets are resolved or closed. Great job!')}
+                            </p>
+                            {searchQuery && <Button variant="outline" onClick={clearSearch} className="mt-4 rounded-xl">{t('Clear Search')}</Button>}
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
 
             <Dialog open={modalState.isOpen} onOpenChange={closeModal}>
-                {modalState.mode === 'edit' && modalState.data && (
-                    <Edit ticket={modalState.data} onSuccess={closeModal} />
-                )}
+                {modalState.mode === 'edit' && modalState.data && <Edit ticket={modalState.data} onSuccess={closeModal} />}
             </Dialog>
 
             <ConfirmationDialog

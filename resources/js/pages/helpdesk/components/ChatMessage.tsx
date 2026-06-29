@@ -1,50 +1,58 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from "@/components/ui/button";
-import { Trash2, Paperclip, Download } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from '@/components/ui/button';
+import { Download, Paperclip, Trash2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ChatMessageProps } from './types';
 import { formatDateTime, getImagePath, downloadFile } from '@/utils/helpers';
 import { isImageFile } from '@/utils/fileHelpers';
-import { usePage } from '@inertiajs/react';
 
 export default function ChatMessage({ reply, isOwnMessage, onDelete, canDelete }: ChatMessageProps) {
-    const pageProps = usePage().props as any;
-    const { imageUrlPrefix } = pageProps;
     const { t } = useTranslation();
     const [showActions, setShowActions] = useState(false);
 
+    const attachments = (() => {
+        if (!reply.attachments) return [] as string[];
+        if (typeof reply.attachments === 'string') {
+            try {
+                return JSON.parse(reply.attachments);
+            } catch {
+                return [reply.attachments];
+            }
+        }
+        return Array.isArray(reply.attachments) ? reply.attachments : [];
+    })();
 
+    const bubbleClass = reply.is_internal
+        ? 'border border-amber-200 bg-amber-50 text-amber-950 shadow-sm'
+        : isOwnMessage
+            ? 'bg-slate-950 text-white shadow-sm'
+            : 'border border-slate-200 bg-slate-50 text-slate-900 shadow-sm';
+
+    const nameClass = reply.is_internal
+        ? 'text-amber-800'
+        : isOwnMessage
+            ? 'text-white'
+            : 'text-slate-700';
 
     return (
-        <div className={`flex mb-4 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[70%] ${isOwnMessage ? 'order-2' : 'order-1'}`}>
+        <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[86%] sm:max-w-[72%] ${isOwnMessage ? 'items-end' : 'items-start'} flex flex-col gap-1.5`}>
                 <div
-                    className={`rounded-lg p-3 ${
-                        reply.is_internal
-                            ? 'bg-orange-100 border-l-4 border-orange-500 text-orange-900'
-                            : isOwnMessage
-                                ? 'bg-blue-500 text-white'
-                                : 'bg-gray-100 text-gray-900'
-                    }`}
+                    className={`relative rounded-2xl p-4 ${isOwnMessage ? 'rounded-br-md' : 'rounded-bl-md'} ${bubbleClass}`}
                     onMouseEnter={() => setShowActions(true)}
                     onMouseLeave={() => setShowActions(false)}
                 >
-                    <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                            <span className={`text-sm font-medium ${
-                                reply.is_internal
-                                    ? 'text-orange-700'
-                                    : isOwnMessage ? 'text-blue-100' : 'text-gray-600'
-                            }`}>
-                                {reply.creator?.name}
-                            </span>
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-2">
+                            <span className={`truncate text-sm font-bold ${nameClass}`}>{reply.creator?.name || t('Unknown')}</span>
                             {reply.is_internal && (
-                                <span className="text-xs bg-orange-200 text-orange-800 px-2 py-0.5 rounded-full font-medium">
+                                <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900">
                                     {t('Internal Note')}
                                 </span>
                             )}
                         </div>
+
                         {showActions && canDelete && onDelete && (
                             <TooltipProvider>
                                 <Tooltip>
@@ -53,82 +61,54 @@ export default function ChatMessage({ reply, isOwnMessage, onDelete, canDelete }
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => onDelete(reply.id)}
-                                            className={`h-6 w-6 p-0 ${
-                                                reply.is_internal
-                                                    ? 'text-orange-600 hover:text-red-600 hover:bg-red-50'
-                                                    : isOwnMessage
-                                                        ? 'text-blue-100 hover:text-white hover:bg-blue-600'
-                                                        : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                            className={`h-7 w-7 rounded-full p-0 ${
+                                                isOwnMessage
+                                                    ? 'text-white/70 hover:bg-white/10 hover:text-white'
+                                                    : 'text-slate-400 hover:bg-red-50 hover:text-red-600'
                                             }`}
                                         >
-                                            <Trash2 className="h-3 w-3" />
+                                            <Trash2 className="h-3.5 w-3.5" />
                                         </Button>
                                     </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>{t('Delete')}</p>
-                                    </TooltipContent>
+                                    <TooltipContent><p>{t('Delete')}</p></TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
                         )}
                     </div>
 
-                    <div
-                        className="text-sm whitespace-pre-wrap"
-                        dangerouslySetInnerHTML={{ __html: reply.message }}
-                    />
+                    <div className="text-sm leading-6" dangerouslySetInnerHTML={{ __html: reply.message }} />
 
-                    {(() => {
-                        let attachments = [];
-                        if (typeof reply.attachments === 'string') {
-                            try {
-                                attachments = JSON.parse(reply.attachments);
-                            } catch {
-                                attachments = [reply.attachments];
-                            }
-                        } else if (Array.isArray(reply.attachments)) {
-                            attachments = reply.attachments;
-                        }
-                        return attachments.length > 0 ? (
-                            <div className="mt-2 space-y-1">
-                                {attachments.map((attachment: string, index: number) => {
-                                    const isImage = isImageFile(attachment);
-                                    const fileUrl = getImagePath(attachment);
-                                    return (
-                                        <div key={index} className={`flex items-center gap-2 p-2 rounded ${
-                                            isOwnMessage ? 'bg-blue-600/20' : 'bg-gray-200'
-                                        }`}>
-                                            {isImage ? (
-                                                <img
-                                                    src={fileUrl}
-                                                    alt="Preview"
-                                                    className="w-16 h-16 object-cover rounded"
-
-                                                />
-                                            ) : (
-                                                <div className="flex items-center gap-2 flex-1">
-                                                    <Paperclip className="h-4 w-4" />
-                                                    <span className="text-sm">{attachment}</span>
-                                                </div>
-                                            )}
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => downloadFile(fileUrl)}
-                                                className="h-8 w-8 p-0"
-                                            >
-                                                <Download className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ) : null;
-                    })()}
+                    {attachments.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                            {attachments.map((attachment: string, index: number) => {
+                                const isImage = isImageFile(attachment);
+                                const fileUrl = getImagePath(attachment);
+                                return (
+                                    <div
+                                        key={`${attachment}-${index}`}
+                                        className={`flex items-center gap-3 rounded-xl p-2 ${
+                                            isOwnMessage ? 'bg-white/10' : 'bg-white'
+                                        }`}
+                                    >
+                                        {isImage ? (
+                                            <img src={fileUrl} alt={t('Attachment preview')} className="h-14 w-14 rounded-lg object-cover" />
+                                        ) : (
+                                            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+                                                <Paperclip className="h-4 w-4" />
+                                            </div>
+                                        )}
+                                        <span className="min-w-0 flex-1 truncate text-xs font-medium">{attachment}</span>
+                                        <Button variant="ghost" size="sm" onClick={() => downloadFile(fileUrl)} className="h-8 w-8 rounded-lg p-0">
+                                            <Download className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
 
-                <div className={`text-xs text-gray-500 mt-1 ${
-                    isOwnMessage ? 'text-right' : 'text-left'
-                }`}>
+                <div className={`text-xs text-slate-500 ${isOwnMessage ? 'text-right' : 'text-left'}`}>
                     {formatDateTime(reply.created_at)}
                 </div>
             </div>
