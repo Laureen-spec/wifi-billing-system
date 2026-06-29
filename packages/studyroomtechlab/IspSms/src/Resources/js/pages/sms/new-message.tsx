@@ -6,31 +6,27 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import InputError from '@/components/ui/input-error';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
 import { Head, Link, useForm } from '@inertiajs/react';
 import {
+    AlertTriangle,
     ArrowLeft,
     CheckCircle2,
-    MessageSquare,
-    Router as RouterIcon,
+    CircleDot,
+    MessageSquareText,
+    RadioTower,
     Search,
     Send,
     Settings,
     Tags,
+    UserCheck,
     Users,
+    WifiOff,
     X,
 } from 'lucide-react';
-import { FormEvent, useMemo, useRef, useState } from 'react';
+import { FormEvent, ReactNode, useMemo, useState } from 'react';
 
-type Audience = 'specific' | 'segment' | 'mikrotik' | 'everyone';
+type Audience = 'specific' | 'everyone' | 'online' | 'offline';
 
 type Customer = {
     id: number;
@@ -94,25 +90,29 @@ type FormData = {
     confirm_everyone: boolean;
 };
 
-const audienceTabs: Array<{ key: Audience; label: string; icon: typeof Users; description: string }> = [
-    { key: 'specific', label: 'Specific users', icon: Users, description: 'Search and select individual customers.' },
-    { key: 'segment', label: 'Segments', icon: Tags, description: 'Target customers by billing or service status.' },
-    { key: 'mikrotik', label: 'MikroTik', icon: RouterIcon, description: 'Send to customers assigned to one router.' },
-    { key: 'everyone', label: 'Everyone', icon: MessageSquare, description: 'All customers with valid phone numbers.' },
+const variables = [
+    '@first_name',
+    '@last_name',
+    '@email',
+    '@phone',
+    '@package_name',
+    '@company_name',
+    '@expiry_date',
+    '@due_date',
 ];
 
-const statusClass = (value?: string | null) => {
-    const status = String(value || '').toLowerCase();
+const isOnlineCustomer = (customer: Customer) => {
+    const status = String(customer.connection_status || '').toLowerCase();
+    return ['online', 'active', 'connected'].includes(status);
+};
 
-    if (['active', 'paid', 'provisioned', 'sent'].includes(status)) {
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+const statusLabel = (customer: Customer) => {
+    if (isOnlineCustomer(customer)) {
+        return 'Online';
     }
 
-    if (['overdue', 'failed', 'suspended', 'unpaid'].includes(status)) {
-        return 'bg-rose-50 text-rose-700 border-rose-200';
-    }
-
-    return 'bg-slate-50 text-slate-700 border-slate-200';
+    const value = customer.connection_status || 'Offline';
+    return value.charAt(0).toUpperCase() + value.slice(1);
 };
 
 export default function NewSmsMessage({
@@ -125,94 +125,120 @@ export default function NewSmsMessage({
     routes,
 }: Props) {
     const [search, setSearch] = useState('');
-    const [selectedTemplateId, setSelectedTemplateId] = useState('none');
-    const searchRef = useRef<HTMLInputElement>(null);
-    const defaultSegment = segments[0]?.key || '';
-    const defaultRouter = routers[0]?.id ? String(routers[0].id) : '';
+    const [customerToAdd, setCustomerToAdd] = useState('');
+    const [selectedTemplate, setSelectedTemplate] = useState('');
 
     const { data, setData, post, processing, errors } = useForm<FormData>({
         audience: 'specific',
         customer_ids: [],
-        segment: defaultSegment,
-        router_id: defaultRouter,
+        segment: segments[0]?.key || '',
+        router_id: routers[0]?.id ? String(routers[0].id) : '',
         message: '',
         confirm_everyone: false,
     });
 
     const validCustomers = useMemo(() => customers.filter((customer) => customer.has_valid_phone), [customers]);
+    const onlineCustomers = useMemo(() => validCustomers.filter(isOnlineCustomer), [validCustomers]);
+    const offlineCustomers = useMemo(() => validCustomers.filter((customer) => !isOnlineCustomer(customer)), [validCustomers]);
     const selectedCustomers = useMemo(
         () => customers.filter((customer) => data.customer_ids.includes(customer.id)),
         [customers, data.customer_ids],
     );
-    const selectedValidCustomers = selectedCustomers.filter((customer) => customer.has_valid_phone);
-    const selectedSegment = segments.find((segment) => segment.key === data.segment);
-    const selectedRouter = routers.find((router) => String(router.id) === data.router_id);
 
-    const filteredCustomers = useMemo(() => {
+    const selectableCustomers = useMemo(() => {
         const term = search.trim().toLowerCase();
+        return validCustomers
+            .filter((customer) => {
+                if (!term) return true;
+                return [
+                    customer.name,
+                    customer.phone,
+                    customer.normalized_phone,
+                    customer.username,
+                    customer.email,
+                    customer.package?.name,
+                    customer.router?.name,
+                ]
+                    .filter(Boolean)
+                    .join(' ')
+                    .toLowerCase()
+                    .includes(term);
+            })
+            .slice(0, 120);
+    }, [validCustomers, search]);
 
-        if (!term) {
-            return customers.slice(0, 12);
-        }
+    const audienceOptions: Array<{
+        key: Audience;
+        title: string;
+        description: string;
+        count: number;
+        icon: ReactNode;
+    }> = [
+        {
+            key: 'specific',
+            title: 'Specific user',
+            description: 'Pick one or more customers from a dropdown list.',
+            count: selectedCustomers.length,
+            icon: <UserCheck className="h-5 w-5" />,
+        },
+        {
+            key: 'everyone',
+            title: 'All users',
+            description: 'Send to every customer with a valid phone number.',
+            count: validCustomers.length,
+            icon: <Users className="h-5 w-5" />,
+        },
+        {
+            key: 'online',
+            title: 'Online users',
+            description: 'Target currently active or connected subscribers.',
+            count: onlineCustomers.length,
+            icon: <RadioTower className="h-5 w-5" />,
+        },
+        {
+            key: 'offline',
+            title: 'Offline users',
+            description: 'Reach customers who are inactive, suspended, or disconnected.',
+            count: offlineCustomers.length,
+            icon: <WifiOff className="h-5 w-5" />,
+        },
+    ];
 
-        return customers
-            .filter((customer) => [
-                customer.name,
-                customer.phone,
-                customer.normalized_phone,
-                customer.username,
-                customer.email,
-                customer.package?.name,
-                customer.router?.name,
-            ].filter(Boolean).join(' ').toLowerCase().includes(term))
-            .slice(0, 20);
-    }, [customers, search]);
+    const audienceCount = audienceOptions.find((option) => option.key === data.audience)?.count || 0;
+    const segmentsCount = Math.ceil(Math.max(data.message.length, 1) / 160);
+    const canSubmit = data.message.trim().length > 0 && data.message.length <= 480 && audienceCount > 0 && !processing;
+    const smsConfigurationError = typeof errors.message === 'string'
+        && errors.message.toLowerCase().includes('configure now');
 
-    const audienceCount = (() => {
-        if (data.audience === 'specific') {
-            return selectedValidCustomers.length;
-        }
-
-        if (data.audience === 'segment') {
-            return selectedSegment?.count || 0;
-        }
-
-        if (data.audience === 'mikrotik') {
-            return selectedRouter?.customer_count || 0;
-        }
-
-        return validCustomers.length;
-    })();
-
-    const messageLength = data.message.length;
-    const messageTooLong = messageLength > 480;
-    const canSubmit = data.message.trim().length > 0 && !messageTooLong && audienceCount > 0 && !processing;
-
-    const setAudience = (audience: Audience) => {
+    const chooseAudience = (audience: Audience) => {
         setData('audience', audience);
-
-        if (audience === 'specific') {
-            window.setTimeout(() => searchRef.current?.focus(), 0);
+        if (audience !== 'everyone') {
+            setData('confirm_everyone', false);
         }
     };
 
-    const toggleCustomer = (customer: Customer) => {
-        if (!customer.has_valid_phone) {
+    const addSelectedCustomer = () => {
+        const customerId = Number(customerToAdd);
+        if (!customerId || data.customer_ids.includes(customerId)) {
             return;
         }
 
-        const selected = data.customer_ids.includes(customer.id);
-        const next = selected
-            ? data.customer_ids.filter((id) => id !== customer.id)
-            : [...data.customer_ids, customer.id];
-
-        setData('customer_ids', next);
+        setData('customer_ids', [...data.customer_ids, customerId]);
+        setCustomerToAdd('');
     };
 
-    const insertTemplate = (templateId: string) => {
-        setSelectedTemplateId(templateId);
-        const template = templates.find((item) => String(item.id) === templateId);
+    const removeCustomer = (customerId: number) => {
+        setData('customer_ids', data.customer_ids.filter((id) => id !== customerId));
+    };
 
+    const insertVariable = (variable: string) => {
+        const spacer = data.message.trim() && !data.message.endsWith(' ') ? ' ' : '';
+        setData('message', `${data.message}${spacer}${variable}`);
+    };
+
+    const pickTemplate = (templateId: string) => {
+        setSelectedTemplate(templateId);
+        const template = templates.find((item) => String(item.id) === templateId);
         if (template) {
             setData('message', template.body);
         }
@@ -220,22 +246,16 @@ export default function NewSmsMessage({
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
-
         if (!canSubmit) {
             return;
         }
 
-        post(routes.send, {
-            preserveScroll: true,
-        });
+        post(routes.send, { preserveScroll: true });
     };
 
     return (
         <AuthenticatedLayout
-            breadcrumbs={[
-                { label: 'ISP SMS', url: routes.index },
-                { label: pageTitle },
-            ]}
+            breadcrumbs={[{ label: 'ISP SMS', url: routes.index }, { label: pageTitle }]}
             pageTitle={pageTitle}
         >
             <Head title={pageTitle} />
@@ -243,330 +263,307 @@ export default function NewSmsMessage({
             <form onSubmit={submit} className="space-y-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                        <h1 className="text-2xl font-semibold tracking-normal text-foreground">{pageTitle}</h1>
-                        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{subtitle}</p>
+                        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Communication — compose SMS</p>
+                        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground">SMS composer</h1>
+                        <p className="mt-2 max-w-3xl text-sm text-muted-foreground">{subtitle}</p>
                     </div>
-
                     <div className="flex flex-wrap gap-2">
                         <Button variant="outline" asChild>
                             <Link href={routes.index}>
                                 <ArrowLeft className="h-4 w-4" />
-                                Outbox
+                                Email / SMS Log
                             </Link>
                         </Button>
                         <Button variant="outline" asChild>
                             <Link href={routes.settings}>
                                 <Settings className="h-4 w-4" />
-                                Gateway
+                                SMS Settings
                             </Link>
                         </Button>
                     </div>
                 </div>
 
+                {smsConfigurationError && (
+                    <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-start gap-3">
+                            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                            <div>
+                                <p className="font-semibold">SMS gateway needs configuration</p>
+                                <p className="mt-1 text-amber-800">{errors.message}</p>
+                            </div>
+                        </div>
+                        <Button asChild variant="outline" className="border-amber-300 bg-white text-amber-900 hover:bg-amber-100">
+                            <Link href={routes.settings}>Configure now</Link>
+                        </Button>
+                    </div>
+                )}
+
                 <div className="grid gap-4 md:grid-cols-3">
-                    <Card>
-                        <CardContent className="flex items-center gap-3 p-4">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                                <Users className="h-5 w-5" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">SMS-capable customers</p>
-                                <p className="text-2xl font-semibold">{validCustomers.length}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="flex items-center gap-3 p-4">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                                <MessageSquare className="h-5 w-5" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Current audience</p>
-                                <p className="text-2xl font-semibold">{audienceCount}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="flex items-center gap-3 p-4">
-                            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                                <CheckCircle2 className="h-5 w-5" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-muted-foreground">Existing outbox</p>
-                                <p className="text-2xl font-semibold">isp_sms_messages</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <MetricCard label="Reachable users" value={validCustomers.length} helper="valid phone numbers" icon={<Users className="h-5 w-5" />} />
+                    <MetricCard label="Selected audience" value={audienceCount} helper="recipients for this send" icon={<MessageSquareText className="h-5 w-5" />} />
+                    <MetricCard label="SMS segments" value={segmentsCount} helper={`${data.message.length} / 480 characters`} icon={<CheckCircle2 className="h-5 w-5" />} />
                 </div>
 
-                <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-                    <Card>
-                        <CardHeader className="border-b py-4">
-                            <CardTitle className="text-base">Audience</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-5 p-4">
-                            <div className="grid gap-2 md:grid-cols-4">
-                                {audienceTabs.map((tab) => {
-                                    const Icon = tab.icon;
-                                    const active = data.audience === tab.key;
-
-                                    return (
-                                        <button
-                                            key={tab.key}
-                                            type="button"
-                                            onClick={() => setAudience(tab.key)}
-                                            className={cn(
-                                                'rounded-md border p-3 text-left transition-colors',
-                                                active ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted',
-                                            )}
-                                        >
-                                            <Icon className="mb-2 h-4 w-4" />
-                                            <span className="block text-sm font-medium">{tab.label}</span>
-                                            <span className="mt-1 block text-xs text-muted-foreground">{tab.description}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            <InputError message={errors.audience} />
-
-                            {data.audience === 'specific' && (
-                                <div className="space-y-4">
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                                        <Input
-                                            ref={searchRef}
-                                            value={search}
-                                            onChange={(event) => setSearch(event.target.value)}
-                                            placeholder="Search customers by name, phone, username, package, or router"
-                                            className="pl-9"
-                                        />
-                                    </div>
-
-                                    {selectedCustomers.length > 0 && (
-                                        <div className="flex flex-wrap gap-2">
-                                            {selectedCustomers.map((customer) => (
-                                                <button
-                                                    key={customer.id}
-                                                    type="button"
-                                                    onClick={() => toggleCustomer(customer)}
-                                                    className="inline-flex items-center gap-2 rounded-md border bg-muted px-2.5 py-1.5 text-sm"
-                                                >
-                                                    {customer.name}
-                                                    <X className="h-3.5 w-3.5" />
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    <div className="max-h-[420px] overflow-auto rounded-md border">
-                                        {filteredCustomers.length === 0 ? (
-                                            <div className="p-6 text-center text-sm text-muted-foreground">No matching customers found.</div>
-                                        ) : (
-                                            filteredCustomers.map((customer) => {
-                                                const selected = data.customer_ids.includes(customer.id);
-
-                                                return (
-                                                    <button
-                                                        key={customer.id}
-                                                        type="button"
-                                                        disabled={!customer.has_valid_phone}
-                                                        onClick={() => toggleCustomer(customer)}
-                                                        className={cn(
-                                                            'flex w-full items-start justify-between gap-3 border-b p-3 text-left last:border-b-0',
-                                                            selected ? 'bg-primary/5' : 'hover:bg-muted/70',
-                                                            !customer.has_valid_phone && 'cursor-not-allowed opacity-60',
-                                                        )}
-                                                    >
-                                                        <div className="min-w-0">
-                                                            <div className="flex flex-wrap items-center gap-2">
-                                                                <span className="font-medium">{customer.name}</span>
-                                                                {customer.connection_status && (
-                                                                    <Badge variant="outline" className={statusClass(customer.connection_status)}>
-                                                                        {customer.connection_status}
-                                                                    </Badge>
-                                                                )}
-                                                                {customer.billing_status && (
-                                                                    <Badge variant="outline" className={statusClass(customer.billing_status)}>
-                                                                        {customer.billing_status}
-                                                                    </Badge>
-                                                                )}
-                                                            </div>
-                                                            <p className="mt-1 text-sm text-muted-foreground">
-                                                                {customer.phone || 'No phone'}{customer.package?.name ? ` - ${customer.package.name}` : ''}{customer.router?.name ? ` - ${customer.router.name}` : ''}
-                                                            </p>
-                                                            {!customer.has_valid_phone && (
-                                                                <p className="mt-1 text-xs text-destructive">This customer has no valid SMS phone number.</p>
-                                                            )}
-                                                        </div>
-                                                        <Checkbox checked={selected} disabled={!customer.has_valid_phone} aria-label={`Select ${customer.name}`} />
-                                                    </button>
-                                                );
-                                            })
-                                        )}
-                                    </div>
-                                    <InputError message={errors.customer_ids} />
-                                </div>
-                            )}
-
-                            {data.audience === 'segment' && (
-                                <div className="grid gap-3 md:grid-cols-2">
-                                    {segments.map((segment) => {
-                                        const active = data.segment === segment.key;
-
+                <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+                    <div className="space-y-5">
+                        <Card>
+                            <CardHeader className="border-b py-4">
+                                <CardTitle className="text-base">Audience rule</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-5 p-5">
+                                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                                    {audienceOptions.map((option) => {
+                                        const active = data.audience === option.key;
                                         return (
                                             <button
-                                                key={segment.key}
+                                                key={option.key}
                                                 type="button"
-                                                onClick={() => setData('segment', segment.key)}
-                                                className={cn(
-                                                    'rounded-md border p-4 text-left transition-colors',
-                                                    active ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted',
-                                                )}
+                                                onClick={() => chooseAudience(option.key)}
+                                                className={`rounded-2xl border p-4 text-left transition ${
+                                                    active
+                                                        ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20'
+                                                        : 'border-border bg-background hover:bg-muted/40'
+                                                }`}
                                             >
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <div>
-                                                        <p className="font-medium">{segment.label}</p>
-                                                        <p className="mt-1 text-sm text-muted-foreground">{segment.description}</p>
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                                        {option.icon}
                                                     </div>
-                                                    <Badge variant="secondary">{segment.count}</Badge>
+                                                    {active ? <Badge>Selected</Badge> : <Badge variant="outline">{option.count}</Badge>}
                                                 </div>
+                                                <div className="mt-4 font-semibold text-foreground">{option.title}</div>
+                                                <p className="mt-1 text-xs leading-5 text-muted-foreground">{option.description}</p>
                                             </button>
                                         );
                                     })}
-                                    <InputError message={errors.segment} />
                                 </div>
-                            )}
 
-                            {data.audience === 'mikrotik' && (
-                                <div className="space-y-3">
-                                    {routers.length === 0 ? (
-                                        <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
-                                            No MikroTik routers were found for this ISP.
+                                {data.audience === 'specific' && (
+                                    <div className="rounded-2xl border bg-muted/20 p-4">
+                                        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_auto]">
+                                            <div className="relative">
+                                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                                <Input
+                                                    value={search}
+                                                    onChange={(event) => setSearch(event.target.value)}
+                                                    placeholder="Filter customer dropdown..."
+                                                    className="pl-9"
+                                                />
+                                            </div>
+                                            <select
+                                                value={customerToAdd}
+                                                onChange={(event) => setCustomerToAdd(event.target.value)}
+                                                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+                                            >
+                                                <option value="">Select customer from list</option>
+                                                {selectableCustomers.map((customer) => (
+                                                    <option key={customer.id} value={String(customer.id)}>
+                                                        {customer.name} · {customer.phone || customer.normalized_phone} · {customer.package?.name || 'No package'}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <Button type="button" onClick={addSelectedCustomer} disabled={!customerToAdd}>
+                                                Add
+                                            </Button>
                                         </div>
-                                    ) : (
-                                        <div className="grid gap-3 md:grid-cols-2">
-                                            {routers.map((router) => {
-                                                const active = data.router_id === String(router.id);
 
-                                                return (
+                                        {selectedCustomers.length > 0 && (
+                                            <div className="mt-4 flex flex-wrap gap-2">
+                                                {selectedCustomers.map((customer) => (
                                                     <button
-                                                        key={router.id}
+                                                        key={customer.id}
                                                         type="button"
-                                                        onClick={() => setData('router_id', String(router.id))}
-                                                        className={cn(
-                                                            'rounded-md border p-4 text-left transition-colors',
-                                                            active ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted',
-                                                        )}
+                                                        onClick={() => removeCustomer(customer.id)}
+                                                        className="inline-flex items-center gap-2 rounded-full border bg-background px-3 py-1.5 text-sm hover:bg-muted/50"
                                                     >
-                                                        <div className="flex items-start justify-between gap-3">
-                                                            <div>
-                                                                <p className="font-medium">{router.name}</p>
-                                                                <p className="mt-1 text-sm text-muted-foreground">{router.host || 'No host recorded'}</p>
-                                                            </div>
-                                                            <Badge variant="outline" className={statusClass(router.status)}>
-                                                                {router.status || 'unknown'}
-                                                            </Badge>
-                                                        </div>
-                                                        <p className="mt-3 text-sm text-muted-foreground">
-                                                            {router.customer_count} customer phone(s) available.
-                                                        </p>
-                                                        {router.customer_count === 0 && (
-                                                            <p className="mt-1 text-xs text-destructive">
-                                                                No recipient phone source is available for this router yet.
-                                                            </p>
-                                                        )}
+                                                        <CircleDot className={`h-3.5 w-3.5 ${isOnlineCustomer(customer) ? 'text-emerald-600' : 'text-muted-foreground'}`} />
+                                                        {customer.name}
+                                                        <span className="text-muted-foreground">{customer.phone}</span>
+                                                        <X className="h-3.5 w-3.5" />
                                                     </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                    <InputError message={errors.router_id} />
-                                </div>
-                            )}
+                                                ))}
+                                            </div>
+                                        )}
 
-                            {data.audience === 'everyone' && (
-                                <div className="space-y-4 rounded-md border p-4">
-                                    <div>
-                                        <p className="font-medium">All customers with valid phone numbers</p>
-                                        <p className="mt-1 text-sm text-muted-foreground">
-                                            This will create one SMS outbox record per valid customer phone number.
-                                        </p>
+                                        <InputError message={errors.customer_ids} />
                                     </div>
-                                    <Label className="flex items-start gap-3 rounded-md border bg-muted/40 p-3">
-                                        <Checkbox
-                                            checked={data.confirm_everyone}
-                                            onCheckedChange={(checked) => setData('confirm_everyone', checked === true)}
+                                )}
+
+                                {data.audience === 'everyone' && (
+                                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                                        <div className="font-semibold">Confirm broadcast to all users</div>
+                                        <p className="mt-1 text-amber-800">
+                                            This will send SMS to every customer with a valid phone number.
+                                        </p>
+                                        <div className="mt-3 flex items-center gap-3">
+                                            <Checkbox
+                                                checked={data.confirm_everyone}
+                                                onCheckedChange={(value) => setData('confirm_everyone', Boolean(value))}
+                                            />
+                                            <span>I confirm this bulk SMS broadcast.</span>
+                                        </div>
+                                        <InputError message={errors.confirm_everyone} />
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="border-b py-4">
+                                <CardTitle className="text-base">Message content</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4 p-5">
+                                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="message">SMS body</Label>
+                                        <Textarea
+                                            id="message"
+                                            value={data.message}
+                                            onChange={(event) => setData('message', event.target.value)}
+                                            placeholder="Type the SMS message here. Use variables like @first_name or @package_name."
+                                            className="min-h-[220px] resize-y text-base leading-7"
                                         />
-                                        <span className="text-sm leading-5">
-                                            I understand this sends to {validCustomers.length} customer phone(s).
-                                        </span>
-                                    </Label>
-                                    <InputError message={errors.confirm_everyone} />
+                                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                            <span>{data.message.length} / 480 characters</span>
+                                            <span>{segmentsCount} SMS segment{segmentsCount === 1 ? '' : 's'}</span>
+                                        </div>
+                                        {smsConfigurationError ? (
+                                            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-destructive">
+                                                <span>{errors.message}</span>
+                                                <Link href={routes.settings} className="font-semibold underline underline-offset-4">Configure now</Link>
+                                            </div>
+                                        ) : (
+                                            <InputError message={errors.message} />
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="template">Template</Label>
+                                            <select
+                                                id="template"
+                                                value={selectedTemplate}
+                                                onChange={(event) => pickTemplate(event.target.value)}
+                                                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                            >
+                                                <option value="">Write custom message</option>
+                                                {templates.map((template) => (
+                                                    <option key={template.id} value={String(template.id)}>
+                                                        {template.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="rounded-2xl border p-4">
+                                            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Variables</div>
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {variables.map((variable) => (
+                                                    <button
+                                                        key={variable}
+                                                        type="button"
+                                                        onClick={() => insertVariable(variable)}
+                                                        className="rounded-full border bg-background px-2.5 py-1 text-xs font-medium hover:bg-muted/50"
+                                                    >
+                                                        {variable}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                                                Variables are replaced per customer when the SMS is sent.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                            </CardContent>
+                        </Card>
+                    </div>
 
-                    <Card className="xl:sticky xl:top-5 xl:self-start">
-                        <CardHeader className="border-b py-4">
-                            <CardTitle className="text-base">Message</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4 p-4">
-                            <div className="space-y-2">
-                                <Label>Template</Label>
-                                <Select value={selectedTemplateId} onValueChange={insertTemplate}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Choose template" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">No template</SelectItem>
-                                        {templates.map((template) => (
-                                            <SelectItem key={template.id} value={String(template.id)}>
-                                                {template.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                    <div className="space-y-5">
+                        <Card>
+                            <CardHeader className="border-b py-4">
+                                <CardTitle className="text-base">Audience status</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-3 p-5 text-sm">
+                                <StatusRow label="Specific selected" value={selectedCustomers.length} />
+                                <StatusRow label="All users" value={validCustomers.length} />
+                                <StatusRow label="Online users" value={onlineCustomers.length} />
+                                <StatusRow label="Offline users" value={offlineCustomers.length} />
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader className="border-b py-4">
+                                <CardTitle className="text-base">Selected recipient details</CardTitle>
+                            </CardHeader>
+                            <CardContent className="max-h-[360px] space-y-2 overflow-y-auto p-5">
+                                {data.audience === 'specific' && selectedCustomers.length === 0 && (
+                                    <div className="rounded-2xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+                                        Select customers from the dropdown list.
+                                    </div>
+                                )}
+
+                                {data.audience !== 'specific' && (
+                                    <div className="rounded-2xl border bg-muted/20 p-4 text-sm text-muted-foreground">
+                                        The system will resolve recipients when you send based on the selected audience rule.
+                                    </div>
+                                )}
+
+                                {data.audience === 'specific' && selectedCustomers.map((customer) => (
+                                    <div key={customer.id} className="rounded-2xl border p-3">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <div className="font-medium text-foreground">{customer.name}</div>
+                                                <div className="text-xs text-muted-foreground">{customer.phone || customer.normalized_phone}</div>
+                                            </div>
+                                            <Badge variant="outline">{statusLabel(customer)}</Badge>
+                                        </div>
+                                        <div className="mt-2 text-xs text-muted-foreground">
+                                            {customer.package?.name || 'No package'} · {customer.router?.name || 'No router'}
+                                        </div>
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+
+                        <div className="rounded-2xl border bg-background p-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                                <Button type="button" variant="outline" asChild>
+                                    <Link href={routes.index}>Cancel</Link>
+                                </Button>
+                                <Button type="submit" disabled={!canSubmit} size="lg">
+                                    <Send className="h-4 w-4" />
+                                    Send message
+                                </Button>
                             </div>
-
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between gap-3">
-                                    <Label htmlFor="sms-message">SMS body</Label>
-                                    <span className={cn('text-xs text-muted-foreground', messageTooLong && 'text-destructive')}>
-                                        {messageLength}/480
-                                    </span>
-                                </div>
-                                <Textarea
-                                    id="sms-message"
-                                    value={data.message}
-                                    onChange={(event) => setData('message', event.target.value)}
-                                    placeholder="Hi {{first_name}}, your {{package_name}} package expires on {{expiry_date}}."
-                                    rows={8}
-                                />
-                                <InputError message={errors.message} />
-                                <p className="text-xs leading-5 text-muted-foreground">
-                                    Variables: {'{{name}}'}, {'{{first_name}}'}, {'{{phone}}'}, {'{{username}}'}, {'{{package_name}}'}, {'{{expiry_date}}'}, {'{{company_name}}'}.
-                                </p>
-                            </div>
-
-                            <div className="rounded-md border bg-muted/40 p-3">
-                                <div className="flex items-center justify-between gap-3">
-                                    <span className="text-sm text-muted-foreground">Recipients</span>
-                                    <Badge variant={audienceCount > 0 ? 'default' : 'destructive'}>{audienceCount}</Badge>
-                                </div>
-                                <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                                    SMS records are saved to the existing outbox and sent by the configured ISP SMS gateway service.
-                                </p>
-                            </div>
-
-                            <Button type="submit" disabled={!canSubmit} className="w-full">
-                                <Send className="h-4 w-4" />
-                                Send SMS
-                            </Button>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </div>
                 </div>
             </form>
         </AuthenticatedLayout>
+    );
+}
+
+function MetricCard({ label, value, helper, icon }: { label: string; value: number; helper: string; icon: ReactNode }) {
+    return (
+        <Card>
+            <CardContent className="flex items-center gap-3 p-4">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">{icon}</div>
+                <div>
+                    <div className="text-sm text-muted-foreground">{label}</div>
+                    <div className="text-2xl font-semibold text-foreground">{value.toLocaleString()}</div>
+                    <div className="text-xs text-muted-foreground">{helper}</div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
+function StatusRow({ label, value }: { label: string; value: number }) {
+    return (
+        <div className="flex items-center justify-between rounded-xl border px-3 py-2">
+            <span className="text-muted-foreground">{label}</span>
+            <span className="font-semibold text-foreground">{value.toLocaleString()}</span>
+        </div>
     );
 }

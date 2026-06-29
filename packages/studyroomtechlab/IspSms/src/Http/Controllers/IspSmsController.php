@@ -15,6 +15,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -92,8 +93,8 @@ class IspSmsController extends Controller
         }
 
         return Inertia::render('sms/index', [
-            'pageTitle' => 'SMS Messages',
-            'subtitle' => 'Send and monitor ISP customer SMS logs from the main app workspace.',
+            'pageTitle' => 'Email / SMS Log',
+            'subtitle' => 'Monitor outbound SMS records, delivery status, gateway responses, and future email communication logs from one workspace.',
             'messages' => $messages,
             'stats' => $stats,
             'hasSmsTables' => Schema::hasTable('isp_sms_messages'),
@@ -147,7 +148,7 @@ class IspSmsController extends Controller
         abort_unless(Schema::hasTable('isp_sms_messages'), 500, 'SMS tables are not migrated yet.');
 
         $data = $request->validate([
-            'audience' => ['required', Rule::in(['specific', 'segment', 'mikrotik', 'everyone'])],
+            'audience' => ['required', Rule::in(['specific', 'segment', 'mikrotik', 'everyone', 'online', 'offline'])],
             'customer_ids' => ['array'],
             'customer_ids.*' => ['integer', 'exists:isp_customers,id'],
             'segment' => ['nullable', Rule::in(array_keys($this->segmentDefinitions()))],
@@ -164,6 +165,11 @@ class IspSmsController extends Controller
 
         $isPlatform = $this->isPlatform($request);
         $isp = $isPlatform ? null : $this->resolveIsp($request);
+
+        if (! $isPlatform && $isp) {
+            $this->assertAdminSmsConfigured((int) $isp->id);
+        }
+
         $recipients = $this->resolveComposerRecipients($request, $data, $isp?->id ? (int) $isp->id : null);
 
         if (empty($recipients)) {
@@ -259,6 +265,7 @@ class IspSmsController extends Controller
                 'newMessage' => route('isp.sms.new-message'),
                 'save' => route('isp.sms.settings.save'),
                 'templates' => route('isp.sms.templates.index'),
+                'topUp' => $isPlatform ? null : route('isp.sms.topup'),
             ],
         ]);
     }
@@ -331,6 +338,10 @@ class IspSmsController extends Controller
             throw ValidationException::withMessages([
                 'phone' => 'The selected recipient does not have a phone number.',
             ]);
+        }
+
+        if (! $isPlatform) {
+            $this->assertAdminSmsConfigured((int) $isp->id);
         }
 
         $setting = $this->activeSetting((int) $isp->id);
@@ -432,6 +443,15 @@ class IspSmsController extends Controller
             'sender_id' => $setting->sender_id,
             'username' => $setting->username,
             'callback_url' => $setting->callback_url,
+            'allow_system_sms' => (bool) ($setting->allow_system_sms ?? true),
+            'allow_own_sms' => (bool) ($setting->allow_own_sms ?? true),
+            'free_sms_remaining' => (int) ($setting->free_sms_remaining ?? 5),
+            'sms_balance' => (float) ($setting->sms_balance ?? 0),
+            'estimated_cost_per_sms' => (float) ($setting->estimated_cost_per_sms ?? 1),
+            'low_balance_alert_enabled' => (bool) ($setting->low_balance_alert_enabled ?? true),
+            'low_balance_alert_threshold' => (float) ($setting->low_balance_alert_threshold ?? 10),
+            'low_balance_alert_phone' => $setting->low_balance_alert_phone,
+            'low_balance_alerted_at' => $this->dateTimeValue($setting->low_balance_alerted_at ?? null),
             'is_active' => (bool) $setting->is_active,
             'updated_at' => $this->dateTimeValue($setting->updated_at),
         ];
@@ -605,6 +625,18 @@ class IspSmsController extends Controller
             $query->where('mikrotik_router_id', $routerId);
         }
 
+        if ($audience === 'online') {
+            $query->whereIn('connection_status', ['online', 'active', 'connected']);
+        }
+
+        if ($audience === 'offline') {
+            $query->where(function ($offlineQuery) {
+                $offlineQuery
+                    ->whereNull('connection_status')
+                    ->orWhereNotIn('connection_status', ['online', 'active', 'connected']);
+            });
+        }
+
         $customers = $query
             ->whereNotNull('phone')
             ->where('phone', '<>', '')
@@ -734,9 +766,13 @@ class IspSmsController extends Controller
             'company_name' => (string) ($customer->isp?->name ?? config('app.name')),
         ];
 
-        return (string) preg_replace_callback('/{{\s*([a-zA-Z0-9_]+)\s*}}/', function (array $matches) use ($variables) {
+        $withCurlies = (string) preg_replace_callback('/{{\s*([a-zA-Z0-9_]+)\s*}}/', function (array $matches) use ($variables) {
             return $variables[$matches[1]] ?? $matches[0];
         }, $body);
+
+        return (string) preg_replace_callback('/@([a-zA-Z0-9_]+)/', function (array $matches) use ($variables) {
+            return $variables[$matches[1]] ?? $matches[0];
+        }, $withCurlies);
     }
 
     private function dateValue($value): ?string
@@ -830,6 +866,57 @@ class IspSmsController extends Controller
         abort_unless($isp, 403, 'No ISP context was found for this SMS.');
 
         return [$isp, $customer, $recipientUser, $phone];
+    }
+
+
+    private function assertAdminSmsConfigured(int $ispId): void
+    {
+        if (! Schema::hasTable('isp_sms_settings')) {
+            throw ValidationException::withMessages([
+                'message' => 'SMS is not configured. Configure now from SMS Settings.',
+            ]);
+        }
+
+        $setting = IspSmsSetting::where('scope', 'isp')
+            ->where('isp_id', $ispId)
+            ->first();
+
+        if (! $setting || ! $setting->is_active) {
+            throw ValidationException::withMessages([
+                'message' => 'SMS is not configured. Configure now from SMS Settings.',
+            ]);
+        }
+
+        if ($setting->mode === 'platform') {
+            $platformSetting = IspSmsSetting::where('scope', 'platform')
+                ->whereNull('isp_id')
+                ->where('is_active', true)
+                ->first();
+
+            if (! ($setting->allow_system_sms ?? true) || ! $platformSetting) {
+                throw ValidationException::withMessages([
+                    'message' => 'System SMS is not configured. Configure now from SMS Settings.',
+                ]);
+            }
+
+            return;
+        }
+
+        if ($setting->mode === 'own') {
+            $provider = (string) ($setting->provider ?: '');
+
+            if (! ($setting->allow_own_sms ?? true) || $provider === '' || $provider === 'platform') {
+                throw ValidationException::withMessages([
+                    'message' => 'Own SMS API is not configured. Configure now from SMS Settings.',
+                ]);
+            }
+
+            if ($provider === 'custom_http' && ! $setting->callback_url) {
+                throw ValidationException::withMessages([
+                    'message' => 'Custom SMS gateway URL is missing. Configure now from SMS Settings.',
+                ]);
+            }
+        }
     }
 
     private function activeSetting(int $ispId): ?IspSmsSetting

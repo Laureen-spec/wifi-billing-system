@@ -13,7 +13,7 @@ export const ispSmsCompanyMenu = (t: (key: string) => string) => ({
     order: 64,
     children: [
         {
-            title: t('SMS Messages'),
+            title: t('Email / SMS Log'),
             href: route('isp.sms.index'),
             icon: MessageSquare,
             name: 'isp-sms-messages',
@@ -22,7 +22,7 @@ export const ispSmsCompanyMenu = (t: (key: string) => string) => ({
             order: 1,
         },
         {
-            title: t('New Message'),
+            title: t('Compose SMS'),
             href: route('isp.sms.new-message'),
             icon: Send,
             name: 'isp-sms-new-message',

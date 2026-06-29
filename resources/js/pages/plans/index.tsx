@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useFlashMessages } from '@/hooks/useFlashMessages';
-import { CheckCircle2, XCircle, Plus, Edit, Trash2, Search, Package, Boxes, Users, Settings2, Wifi, ShieldCheck, Clock, RadioTower, Percent } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckCircle2, CreditCard, XCircle, Plus, Edit, Trash2, Search, Package, Boxes, Users, HardDrive, Settings2, Wifi, ShieldCheck, Clock, RadioTower, Percent } from 'lucide-react';
 
 interface Plan {
     id: number;
@@ -66,7 +66,7 @@ interface Props {
 
 export default function PlansIndex({ plans, canCreate, activeModules, createPackageEnabled, customDesignPackageEnabled, userTrialInfo, planExpireDate, activePlanId, isSuperAdmin: isSuperAdminProp, mode, planUsage, currencySettings }: Props) {
     const { t } = useTranslation();
-    const { auth } = usePage().props as any;
+    const { auth, flash } = usePage().props as any;
     const isSuperAdmin = Boolean(isSuperAdminProp ?? auth?.user?.roles?.includes('superadmin'));
     const subscriptionMode = mode === 'subscribe' || !isSuperAdmin;
     const [search, setSearch] = useState('');
@@ -116,6 +116,7 @@ export default function PlansIndex({ plans, canCreate, activeModules, createPack
         });
     };
 
+    const storageGB = (plan: Plan) => Math.round(Number(plan.storage_limit || 0) / (1024 * 1024));
     const planModules = (plan: Plan) => enabledAddons.filter((module) => plan.modules?.includes(module.module));
     const trialAvailable = (plan: Plan) => Boolean(plan.trial) && ![1, 2].includes(Number(userTrialInfo?.is_trial_done ?? 0));
     const startTrial = (plan: Plan) => {
@@ -166,6 +167,14 @@ export default function PlansIndex({ plans, canCreate, activeModules, createPack
         hotspotRevenueThisMonth: Number(planUsage?.hotspotRevenueThisMonth || 0),
     };
 
+    const planAccessNotice = String(flash?.error || '').toLowerCase().includes('plan has expired')
+        ? {
+            title: t('Subscription renewal required'),
+            description: t('Your workspace plan has expired. Renew your subscription to restore full access to billing, customers, routers, and payment tools.'),
+            action: t('Renew subscription'),
+        }
+        : null;
+
     if (subscriptionMode) {
         return (
             <AuthenticatedLayout
@@ -175,6 +184,33 @@ export default function PlansIndex({ plans, canCreate, activeModules, createPack
                 <Head title={t('Subscription Plans')} />
 
                 <div className="space-y-6">
+                    {planAccessNotice && (
+                        <div className="overflow-hidden rounded-[28px] border border-amber-200 bg-gradient-to-r from-amber-50 via-white to-emerald-50 shadow-sm">
+                            <div className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
+                                <div className="flex gap-4">
+                                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+                                        <AlertTriangle className="h-6 w-6" />
+                                    </div>
+                                    <div>
+                                        <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                                            <CreditCard className="h-3.5 w-3.5" />
+                                            {t('Account access')}
+                                        </div>
+                                        <h2 className="mt-2 text-xl font-bold text-slate-950">{planAccessNotice.title}</h2>
+                                        <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">{planAccessNotice.description}</p>
+                                    </div>
+                                </div>
+
+                                <Button asChild className="shrink-0 rounded-2xl px-5">
+                                    <a href="#available-packages">
+                                        {planAccessNotice.action}
+                                        <ArrowRight className="h-4 w-4" />
+                                    </a>
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-sm">
                         <div className="grid gap-6 p-6 lg:grid-cols-[1.35fr_0.65fr] lg:items-center">
                             <div>
@@ -234,11 +270,11 @@ export default function PlansIndex({ plans, canCreate, activeModules, createPack
                         </div>
                     </div>
 
-                    <div className="rounded-[26px] border border-slate-200 bg-white p-4 shadow-sm">
+                    <div id="available-packages" className="scroll-mt-6 rounded-[26px] border border-slate-200 bg-white p-4 shadow-sm">
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                             <div>
                                 <h2 className="text-lg font-bold text-slate-950">{t('Available packages')}</h2>
-                                <p className="text-sm text-slate-500">{t('ISP billing is based on subscriber limits, connected routers, and hotspot collections.')}</p>
+                                <p className="text-sm text-slate-500">{t('Choose a package based on subscribers, routers, and hotspot collections.')}</p>
                             </div>
                             <div className="relative w-full lg:w-80">
                                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -487,12 +523,12 @@ export default function PlansIndex({ plans, canCreate, activeModules, createPack
 
                                         <div className="grid grid-cols-2 gap-2 text-sm">
                                             <div className="rounded-xl bg-slate-50 p-3">
-                                                <div className="flex items-center gap-1 text-xs text-slate-500"><Users className="h-3.5 w-3.5" />{t('Subscribers')}</div>
+                                                <div className="flex items-center gap-1 text-xs text-slate-500"><Users className="h-3.5 w-3.5" />{t('Users')}</div>
                                                 <div className="font-semibold text-slate-950">{Number(plan.number_of_users) === -1 ? t('Unlimited') : plan.number_of_users}</div>
                                             </div>
                                             <div className="rounded-xl bg-slate-50 p-3">
-                                                <div className="flex items-center gap-1 text-xs text-slate-500"><RadioTower className="h-3.5 w-3.5" />{t('Routers')}</div>
-                                                <div className="font-semibold text-slate-950">{routerLimitLabel(plan)}</div>
+                                                <div className="flex items-center gap-1 text-xs text-slate-500"><HardDrive className="h-3.5 w-3.5" />{t('Storage')}</div>
+                                                <div className="font-semibold text-slate-950">{storageGB(plan)} GB</div>
                                             </div>
                                         </div>
 

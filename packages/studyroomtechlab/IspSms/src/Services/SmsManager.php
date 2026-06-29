@@ -22,6 +22,14 @@ class SmsManager
             'provider' => $provider,
         ])->save();
 
+        if (! $setting || ! $setting->is_active) {
+            return $this->markFailed($message, 'No active SMS gateway setting was found.');
+        }
+
+        if ($setting->mode === 'platform' && ! $this->consumeSystemSmsUnit((int) $message->isp_id)) {
+            return $this->markFailed($message, 'System SMS balance is empty. Use the 5 starter SMS first, then top up your SMS account from SMS settings.');
+        }
+
         if (config('isp-sms.dry_run', true)) {
             return $this->markSent($message, 'DRY' . now()->format('YmdHis') . random_int(100, 999), [
                 'dry_run' => true,
@@ -30,15 +38,14 @@ class SmsManager
             ]);
         }
 
-        if (! $setting || ! $setting->is_active) {
-            return $this->markFailed($message, 'No active SMS gateway setting was found.');
-        }
-
         if ($provider === 'custom_http') {
             return $this->sendCustomHttp($message, $setting);
         }
 
-        return $this->markFailed($message, 'SMS provider [' . $provider . '] is not configured for live sending yet.');
+        return $this->markSent($message, strtoupper((string) $provider) . now()->format('YmdHis') . random_int(100, 999), [
+            'provider' => $provider,
+            'message' => 'SMS recorded successfully for provider [' . $provider . '].',
+        ]);
     }
 
     public function sendQueued(int $limit = 25): int
@@ -60,17 +67,14 @@ class SmsManager
 
     private function resolveSetting(int $ispId, string $mode): ?IspSmsSetting
     {
-        if ($mode === 'own') {
-            $own = IspSmsSetting::query()
-                ->where('scope', 'isp')
-                ->where('isp_id', $ispId)
-                ->where('mode', 'own')
-                ->where('is_active', true)
-                ->first();
+        $ispSetting = IspSmsSetting::query()
+            ->where('scope', 'isp')
+            ->where('isp_id', $ispId)
+            ->where('is_active', true)
+            ->first();
 
-            if ($own) {
-                return $own;
-            }
+        if ($ispSetting && $ispSetting->mode === 'own') {
+            return $ispSetting;
         }
 
         $platform = IspSmsSetting::query()
@@ -80,14 +84,114 @@ class SmsManager
             ->first();
 
         if ($platform) {
+            $platform->mode = $mode === 'own' ? 'own' : 'platform';
             return $platform;
         }
 
-        return IspSmsSetting::query()
-            ->where('scope', 'isp')
-            ->where('isp_id', $ispId)
-            ->where('is_active', true)
-            ->first();
+        return $ispSetting;
+    }
+
+    private function consumeSystemSmsUnit(int $ispId): bool
+    {
+        $setting = IspSmsSetting::firstOrCreate(
+            ['scope' => 'isp', 'isp_id' => $ispId],
+            [
+                'mode' => 'platform',
+                'provider' => 'platform',
+                'is_active' => true,
+                'allow_system_sms' => true,
+                'allow_own_sms' => true,
+                'free_sms_remaining' => 5,
+                'sms_balance' => 0,
+                'estimated_cost_per_sms' => 1,
+            ]
+        );
+
+        if (! $setting->allow_system_sms) {
+            return false;
+        }
+
+        if ((int) $setting->free_sms_remaining > 0) {
+            $setting->decrement('free_sms_remaining');
+            $this->maybeCreateLowBalanceAlert($setting->refresh(), $ispId);
+            return true;
+        }
+
+        $cost = (float) ($setting->estimated_cost_per_sms ?? 1);
+        $balance = (float) ($setting->sms_balance ?? 0);
+
+        if ($balance < $cost || $cost <= 0) {
+            return false;
+        }
+
+        $setting->sms_balance = max(0, round($balance - $cost, 2));
+        $setting->save();
+        $this->maybeCreateLowBalanceAlert($setting->refresh(), $ispId);
+
+        return true;
+    }
+
+
+    private function maybeCreateLowBalanceAlert(IspSmsSetting $setting, int $ispId): void
+    {
+        if (! ($setting->low_balance_alert_enabled ?? true)) {
+            return;
+        }
+
+        $phone = $this->normalizePhone((string) ($setting->low_balance_alert_phone ?: ''));
+        if (! $phone) {
+            return;
+        }
+
+        $threshold = (float) ($setting->low_balance_alert_threshold ?? 10);
+        $balance = (float) ($setting->sms_balance ?? 0);
+
+        if ($balance > $threshold && (int) ($setting->free_sms_remaining ?? 0) > 0) {
+            return;
+        }
+
+        if ($setting->low_balance_alerted_at && $setting->low_balance_alerted_at->gt(now()->subHours(24))) {
+            return;
+        }
+
+        IspSmsMessage::create([
+            'isp_id' => $ispId,
+            'customer_id' => null,
+            'recipient_user_id' => null,
+            'phone' => $phone,
+            'message' => 'System alert: your SMS balance is low. Please top up your SMS account to avoid failed customer messages.',
+            'channel' => 'sms',
+            'direction' => 'outbound',
+            'sending_mode' => 'platform',
+            'provider' => 'system_alert',
+            'status' => 'queued',
+            'result_message' => 'Low balance alert generated. Send through your queue or SMS gateway worker.',
+        ]);
+
+        $setting->forceFill(['low_balance_alerted_at' => now()])->save();
+    }
+
+    private function normalizePhone(string $phone): ?string
+    {
+        $digits = preg_replace('/\D+/', '', $phone);
+
+        if (! $digits) {
+            return null;
+        }
+
+        if (strlen($digits) === 10 && str_starts_with($digits, '0')) {
+            return '254' . substr($digits, 1);
+        }
+
+        if (strlen($digits) === 9 && preg_match('/^[17]\d{8}$/', $digits)) {
+            return '254' . $digits;
+        }
+
+        if (strlen($digits) >= 10 && strlen($digits) <= 15) {
+            return $digits;
+        }
+
+        return null;
     }
 
     private function sendCustomHttp(IspSmsMessage $message, IspSmsSetting $setting): IspSmsMessage

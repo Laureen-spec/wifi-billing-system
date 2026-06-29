@@ -26,13 +26,13 @@ export default function ChatMessage({ reply, isOwnMessage, onDelete, canDelete }
     const bubbleClass = reply.is_internal
         ? 'border border-amber-200 bg-amber-50 text-amber-950 shadow-sm'
         : isOwnMessage
-            ? 'bg-slate-950 text-white shadow-sm'
+            ? 'border border-primary/20 bg-primary/10 text-foreground shadow-sm'
             : 'border border-slate-200 bg-slate-50 text-slate-900 shadow-sm';
 
     const nameClass = reply.is_internal
         ? 'text-amber-800'
         : isOwnMessage
-            ? 'text-white'
+            ? 'text-primary'
             : 'text-slate-700';
 
     return (
@@ -63,7 +63,7 @@ export default function ChatMessage({ reply, isOwnMessage, onDelete, canDelete }
                                             onClick={() => onDelete(reply.id)}
                                             className={`h-7 w-7 rounded-full p-0 ${
                                                 isOwnMessage
-                                                    ? 'text-white/70 hover:bg-white/10 hover:text-white'
+                                                    ? 'text-primary/70 hover:bg-primary/10 hover:text-primary'
                                                     : 'text-slate-400 hover:bg-red-50 hover:text-red-600'
                                             }`}
                                         >
@@ -87,7 +87,7 @@ export default function ChatMessage({ reply, isOwnMessage, onDelete, canDelete }
                                     <div
                                         key={`${attachment}-${index}`}
                                         className={`flex items-center gap-3 rounded-xl p-2 ${
-                                            isOwnMessage ? 'bg-white/10' : 'bg-white'
+                                            isOwnMessage ? 'bg-primary/5' : 'bg-white'
                                         }`}
                                     >
                                         {isImage ? (
