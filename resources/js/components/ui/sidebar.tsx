@@ -534,7 +534,7 @@ const SidebarMenuItem = React.forwardRef<
 SidebarMenuItem.displayName = "SidebarMenuItem"
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button relative flex w-full items-center gap-2.5 overflow-hidden rounded-xl p-2 text-left text-sm text-slate-700 outline-none ring-sidebar-ring transition-all duration-200 hover:bg-white hover:text-slate-950 hover:shadow-[0_8px_20px_rgba(15,23,42,0.07)] focus-visible:ring-2 focus-visible:ring-emerald-200 active:bg-white disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-white data-[active=true]:font-bold data-[active=true]:text-slate-950 data-[active=true]:shadow-[0_10px_28px_rgba(15,23,42,0.10)] data-[active=true]:ring-1 data-[active=true]:ring-emerald-200 data-[state=open]:hover:bg-white group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:!justify-center group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:rounded-xl [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button relative flex w-full items-center gap-2.5 overflow-hidden rounded-xl p-2 text-left text-sm text-slate-700 outline-none ring-sidebar-ring transition-all duration-200 hover:bg-white hover:text-slate-950 hover:shadow-[0_8px_20px_rgba(15,23,42,0.07)] focus-visible:ring-2 focus-visible:ring-emerald-200 active:bg-white disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-white data-[active=true]:font-semibold data-[active=true]:text-slate-950 data-[active=true]:shadow-[0_8px_18px_rgba(15,23,42,0.06)] data-[active=true]:ring-1 data-[active=true]:ring-slate-200 data-[state=open]:hover:bg-white group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:!justify-center group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:rounded-xl [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -745,7 +745,7 @@ const SidebarMenuSubButton = React.forwardRef<
       data-active={isActive}
       className={cn(
         "flex h-8 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-xl px-2.5 text-slate-600 outline-none ring-sidebar-ring transition-all duration-200 hover:bg-white hover:text-slate-950 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-emerald-200 active:bg-white disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-slate-500",
-        "data-[active=true]:bg-emerald-100 data-[active=true]:text-emerald-950 data-[active=true]:font-bold data-[active=true]:shadow-sm data-[active=true]:ring-1 data-[active=true]:ring-emerald-300 data-[active=true]:[&>svg]:text-emerald-800",
+        "data-[active=true]:bg-white data-[active=true]:text-slate-950 data-[active=true]:font-semibold data-[active=true]:shadow-sm data-[active=true]:ring-1 data-[active=true]:ring-slate-200 data-[active=true]:[&>svg]:text-slate-700",
         size === "sm" && "text-xs",
         size === "md" && "text-sm",
         "group-data-[collapsible=icon]:hidden",

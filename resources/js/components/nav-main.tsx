@@ -95,7 +95,7 @@ export function NavMain({ items = [], searchQuery = "" }: { items: NavItem[], se
             <span
                 className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border transition-all ${
                     isActive
-                        ? 'border-emerald-600 bg-emerald-600 text-white shadow-[0_8px_18px_rgba(5,150,105,0.22)]'
+                        ? 'border-slate-300 bg-white text-slate-700 shadow-sm ring-1 ring-slate-200 group-hover/menu-item:border-emerald-300 group-hover/menu-item:bg-emerald-50 group-hover/menu-item:text-emerald-800'
                         : 'border-slate-300 bg-white text-slate-600 shadow-sm group-hover/menu-item:border-emerald-300 group-hover/menu-item:bg-emerald-50 group-hover/menu-item:text-emerald-800'
                 } ${className}`}
             >
