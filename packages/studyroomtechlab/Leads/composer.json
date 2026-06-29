@@ -1,0 +1,22 @@
+{
+    "name": "studyroomtechlab/leads",
+    "description": "Lead Desk add-on for StudyRoom Connect ISP sales and customer onboarding.",
+    "type": "library",
+    "license": "proprietary",
+    "autoload": {
+        "psr-4": {
+            "StudyRoomTechLab\\Leads\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "StudyRoomTechLab\\Leads\\Providers\\LeadsServiceProvider"
+            ]
+        }
+    },
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^12.0"
+    }
+}

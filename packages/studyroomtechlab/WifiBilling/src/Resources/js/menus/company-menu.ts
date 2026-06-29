@@ -92,7 +92,7 @@ export const wifiBillingCompanyMenu = (t: (key: string) => string) => ({
                 },
                 {
                     title: t('Leads'),
-                    href: route('isp.leads.index'),
+                    href: safeRoute('studyroom-leads.index', route('isp.leads.index')),
                     icon: UserCheck,
                     permission: 'view-isp-customers',
                     permissions: ['view-isp-customers', 'manage-isp-customers'],

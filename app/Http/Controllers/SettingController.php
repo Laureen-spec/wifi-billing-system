@@ -41,7 +41,8 @@ class SettingController extends Controller
                 'globalSettings' => $globalSettings,
                 'emailProviders' => $emailProviders,
                 'notifications' => $notifications,
-                'cacheSize' => $this->getCacheSize()
+                'cacheSize' => $this->getCacheSize(),
+                'mpesaPaymentSettings' => $this->getPlatformMpesaSettings(),
             ]);
         }
         else
@@ -822,4 +823,26 @@ class SettingController extends Controller
         }
         return redirect()->back()->with('success', __('Mail Notification Setting save sucessfully.'));
     }
+    private function getPlatformMpesaSettings(): ?array
+    {
+        $class = 'StudyRoomTechLab\MpesaPayment\Models\MpesaSetting';
+
+        if (! class_exists($class)) {
+            return null;
+        }
+
+        try {
+            $setting = $class::whereNull('isp_id')
+                ->where('owner_type', 'platform')
+                ->orderByDesc('is_default')
+                ->first();
+
+            return $setting?->toPlatformPayload();
+        } catch (\Throwable $e) {
+            report($e);
+            return null;
+        }
+    }
+
+
 }

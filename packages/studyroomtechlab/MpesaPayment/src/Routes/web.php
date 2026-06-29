@@ -65,14 +65,14 @@ Route::middleware(['web'])
             Route::post('/settings/platform', [MpesaSettingsController::class, 'savePlatform'])
                 ->name('settings.platform.save');
 
+            Route::get('/admin-settings', [MpesaSettingsController::class, 'admin'])
+                ->name('settings.admin');
+
+            Route::post('/admin-settings', [MpesaSettingsController::class, 'saveAdmin'])
+                ->name('settings.admin.save');
+
             Route::post('/stk-push', [MpesaPaymentController::class, 'initiate'])
                 ->name('stk-push');
-
-            Route::post('/plan-subscription/stk-push', [MpesaPaymentController::class, 'initiatePlanSubscription'])
-                ->name('plan-subscription.stk-push');
-
-            Route::get('/plan-subscription/transactions/{transaction}/status', [MpesaPaymentController::class, 'planSubscriptionStatus'])
-                ->name('plan-subscription.status');
 
             Route::get('/transactions', [MpesaTransactionController::class, 'index'])
                 ->name('transactions.index');

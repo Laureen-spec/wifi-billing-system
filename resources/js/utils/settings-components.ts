@@ -20,6 +20,36 @@ const coreComponents = {
 let packageComponentsCache: Record<string, any> | null = null;
 let cachedPackages: string = '';
 
+
+const packageNameCandidates = (packageName: string): string[] => {
+  const raw = String(packageName || '').trim();
+  const normalized = raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  const compact = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const pascalFromSeparators = raw
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('');
+
+  const knownAliases: Record<string, string> = {
+    'mpesa-payment': 'MpesaPayment',
+    'mpesapayment': 'MpesaPayment',
+    'm-pesa-payment': 'MpesaPayment',
+    'isp-payment-center': 'IspPaymentCenter',
+    'isppaymentcenter': 'IspPaymentCenter',
+    'isp-sms': 'IspSms',
+    'ispsms': 'IspSms',
+  };
+
+  return Array.from(new Set([
+    raw,
+    normalized,
+    knownAliases[normalized],
+    knownAliases[compact],
+    pascalFromSeparators,
+  ].filter(Boolean) as string[]));
+};
+
 // Auto-load package components
 const getPackageComponents = (activatedPackages: string[]) => {
   const packagesKey = [...activatedPackages].sort().join(',');
@@ -37,8 +67,9 @@ const getPackageComponents = (activatedPackages: string[]) => {
     const packageRoots = ['studyroomtechlab', 'workdo'];
 
     activatedPackages.forEach(packageName => {
+      const candidates = packageNameCandidates(String(packageName));
       Object.entries(modules).forEach(([path, moduleLoader]) => {
-        if (packageRoots.some((packageRoot) => path.includes(`/packages/${packageRoot}/${packageName}/`))) {
+        if (packageRoots.some((packageRoot) => candidates.some((candidate) => path.includes(`/packages/${packageRoot}/${candidate}/`)))) {
           const match = path.match(/\/([^/]+)\.tsx$/);
           if (match) {
             const componentName = match[1];
