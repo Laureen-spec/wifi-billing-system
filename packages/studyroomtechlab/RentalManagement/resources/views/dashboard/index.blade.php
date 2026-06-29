@@ -1,0 +1,15 @@
+@extends('layouts.app')
+@section('title', 'Rental Management')
+@section('page_heading', 'Rental Management')
+@section('content')
+@include('rental-management::partials-style')
+<div class="rm-page">
+    @if(session('success'))<div class="rm-alert">{{ session('success') }}</div>@endif
+    <div class="rm-hero"><div><h1>Rental Management</h1><p>Manage properties, rooms, tenants, invoices, and rent collection as a separate add-on.</p></div><div class="rm-actions"><a class="rm-btn secondary" href="{{ route('rental-management.properties.index') }}">Properties</a><a class="rm-btn secondary" href="{{ route('rental-management.tenants.index') }}">Tenants</a><a class="rm-btn" href="{{ route('rental-management.invoices.index') }}">Invoices</a></div></div>
+    <div class="rm-grid">
+        <div class="rm-stat"><span>Properties</span><strong>{{ $stats['properties'] }}</strong></div><div class="rm-stat"><span>Total Units</span><strong>{{ $stats['units'] }}</strong></div><div class="rm-stat"><span>Vacant</span><strong>{{ $stats['vacant_units'] }}</strong></div><div class="rm-stat"><span>Active Tenants</span><strong>{{ $stats['tenants'] }}</strong></div><div class="rm-stat"><span>Expected Rent</span><strong>KES {{ number_format($stats['expected_rent'], 2) }}</strong></div><div class="rm-stat"><span>Collected</span><strong>KES {{ number_format($stats['collected'], 2) }}</strong></div><div class="rm-stat"><span>Unpaid Invoices</span><strong>{{ $stats['unpaid_invoices'] }}</strong></div><div class="rm-stat"><span>Occupied</span><strong>{{ $stats['occupied_units'] }}</strong></div>
+    </div>
+    <div class="rm-card"><div class="rm-card-header"><h2>Recent Tenants</h2><a class="rm-btn secondary" href="{{ route('rental-management.tenants.index') }}">View All</a></div><table class="rm-table"><thead><tr><th>Tenant</th><th>Property</th><th>Unit</th><th>Status</th></tr></thead><tbody>@forelse($recentTenants as $tenant)<tr><td><strong>{{ $tenant->name }}</strong><br><span class="rm-muted">{{ $tenant->phone }}</span></td><td>{{ $tenant->property?->name ?? '-' }}</td><td>{{ $tenant->unit?->unit_number ?? '-' }}</td><td><span class="rm-badge {{ $tenant->status }}">{{ ucfirst($tenant->status) }}</span></td></tr>@empty<tr><td colspan="4" class="rm-empty">No tenants yet.</td></tr>@endforelse</tbody></table></div>
+    <div class="rm-card"><div class="rm-card-header"><h2>Recent Invoices</h2><a class="rm-btn secondary" href="{{ route('rental-management.invoices.index') }}">View All</a></div><table class="rm-table"><thead><tr><th>Invoice</th><th>Tenant</th><th>Amount</th><th>Status</th></tr></thead><tbody>@forelse($recentInvoices as $invoice)<tr><td><strong>{{ $invoice->invoice_number }}</strong><br><span class="rm-muted">{{ ucfirst($invoice->invoice_type) }}</span></td><td>{{ $invoice->tenant?->name ?? '-' }}</td><td>KES {{ number_format($invoice->amount, 2) }}</td><td><span class="rm-badge {{ $invoice->status }}">{{ ucfirst($invoice->status) }}</span></td></tr>@empty<tr><td colspan="4" class="rm-empty">No invoices yet.</td></tr>@endforelse</tbody></table></div>
+</div>
+@endsection

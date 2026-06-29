@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="pragma" content="no-cache">
+    <meta http-equiv="expires" content="-1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyRoom Connect</title>
+
+    <style>
+        :root {
+            --bg-a: #eef6ff;
+            --bg-b: #fff7fb;
+            --primary: #5b5cf6;
+            --primary-dark: #3f46e8;
+            --cyan: #06b6d4;
+            --green: #19b86a;
+            --orange: #f97316;
+            --red: #ef4444;
+            --ink: #101828;
+            --muted: #667085;
+            --line: #e6eaf2;
+            --soft: #f8fafc;
+            --card: rgba(255,255,255,.94);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, Helvetica, sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at 15% 0%, rgba(91,92,246,.20), transparent 32%),
+                radial-gradient(circle at 88% 8%, rgba(6,182,212,.18), transparent 30%),
+                radial-gradient(circle at 50% 100%, rgba(249,115,22,.11), transparent 34%),
+                linear-gradient(180deg, var(--bg-a) 0%, var(--bg-b) 100%);
+        }
+
+        a { color: inherit; }
+
+        .page {
+            width: 100%;
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 18px 12px 34px;
+        }
+
+        .phone-shell {
+            width: 100%;
+            max-width: 520px;
+            margin: 0 auto;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            width: 52px;
+            height: 52px;
+            border-radius: 18px;
+            display: grid;
+            place-items: center;
+            color: #fff;
+            font-weight: 900;
+            font-size: 20px;
+            background: linear-gradient(145deg, var(--primary), var(--cyan));
+            box-shadow: 0 16px 30px rgba(63,70,232,.20);
+        }
+
+        .brand-title {
+            font-size: 21px;
+            font-weight: 900;
+            line-height: 1.05;
+        }
+
+        .brand-subtitle {
+            margin-top: 3px;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .support-pill {
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 10px 12px;
+            box-shadow: 0 12px 26px rgba(16,24,40,.06);
+            color: var(--primary-dark);
+            font-weight: 900;
+            font-size: 12px;
+        }
+
+        .hero {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #4f46e5 0%, #2563eb 46%, #06b6d4 100%);
+            color: #fff;
+            border-radius: 34px;
+            padding: 28px 22px 22px;
+            box-shadow: 0 22px 55px rgba(37,99,235,.26);
+            margin-bottom: 14px;
+        }
+
+        .hero:before {
+            content: "";
+            position: absolute;
+            inset: -70px -90px auto auto;
+            width: 210px;
+            height: 210px;
+            border-radius: 999px;
+            background: rgba(255,255,255,.16);
+        }
+
+        .hero:after {
+            content: "";
+            position: absolute;
+            right: 24px;
+            bottom: -42px;
+            width: 135px;
+            height: 135px;
+            border-radius: 999px;
+            border: 28px solid rgba(255,255,255,.13);
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 8px 11px;
+            border-radius: 999px;
+            background: rgba(255,255,255,.17);
+            border: 1px solid rgba(255,255,255,.24);
+            font-size: 12px;
+            font-weight: 900;
+            margin-bottom: 18px;
+        }
+
+        .hero h1 {
+            margin: 0;
+            font-size: 35px;
+            line-height: 1.05;
+            letter-spacing: -1px;
+        }
+
+        .hero p {
+            margin: 12px 0 0;
+            max-width: 330px;
+            color: rgba(255,255,255,.88);
+            line-height: 1.45;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .quick-stats {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 22px;
+        }
+
+        .stat {
+            padding: 11px 8px;
+            border-radius: 18px;
+            background: rgba(255,255,255,.16);
+            border: 1px solid rgba(255,255,255,.18);
+            text-align: center;
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 16px;
+            font-weight: 900;
+        }
+
+        .stat span {
+            display: block;
+            margin-top: 3px;
+            color: rgba(255,255,255,.78);
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid rgba(230,234,242,.90);
+            border-radius: 30px;
+            box-shadow: 0 20px 55px rgba(16,24,40,.08);
+            padding: 18px;
+            margin-bottom: 14px;
+            backdrop-filter: blur(16px);
+        }
+
+        .card-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+            gap: 12px;
+        }
+
+        .card-title h2 {
+            margin: 0;
+            font-size: 20px;
+            letter-spacing: -.3px;
+        }
+
+        .card-title p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .secure-badge {
+            white-space: nowrap;
+            border-radius: 999px;
+            padding: 8px 10px;
+            background: #ecfdf5;
+            color: #047857;
+            font-size: 11px;
+            font-weight: 900;
+        }
+
+        .alert {
+            margin-bottom: 13px;
+            border: 1px solid #fecaca;
+            background: #fff1f2;
+            color: #b91c1c;
+            border-radius: 18px;
+            padding: 12px 14px;
+            font-weight: 800;
+            font-size: 13px;
+            line-height: 1.35;
+        }
+
+        .tabs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 7px;
+            padding: 5px;
+            background: #f1f5f9;
+            border: 1px solid #e9eef5;
+            border-radius: 18px;
+            margin-bottom: 14px;
+        }
+
+        .tab-btn {
+            border: 0;
+            background: transparent;
+            padding: 11px 5px;
+            border-radius: 14px;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .tab-btn.active {
+            background: #fff;
+            color: var(--primary-dark);
+            box-shadow: 0 8px 18px rgba(16,24,40,.08);
+        }
+
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        label {
+            display: block;
+            margin: 0 0 7px;
+            font-size: 12px;
+            color: #344054;
+            font-weight: 900;
+        }
+
+        .field {
+            height: 56px;
+            display: flex;
+            align-items: center;
+            border-radius: 18px;
+            border: 1px solid #dce3ee;
+            background: #fff;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .field .icon {
+            width: 52px;
+            min-width: 52px;
+            height: 56px;
+            display: grid;
+            place-items: center;
+            color: #667085;
+            background: #f8fafc;
+            border-right: 1px solid #e7edf5;
+            font-size: 18px;
+        }
+
+        .field input {
+            width: 100%;
+            height: 56px;
+            border: 0;
+            outline: 0;
+            padding: 0 14px;
+            background: transparent;
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--ink);
+        }
+
+        .field input::placeholder {
+            color: #98a2b3;
+            font-weight: 700;
+        }
+
+        .main-btn {
+            width: 100%;
+            height: 56px;
+            border: 0;
+            border-radius: 18px;
+            color: #fff;
+            cursor: pointer;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            box-shadow: 0 14px 30px rgba(63,70,232,.22);
+            font-size: 16px;
+            font-weight: 900;
+        }
+
+        .main-btn.green {
+            background: linear-gradient(135deg, #16a34a, #22c55e);
+            box-shadow: 0 14px 30px rgba(22,163,74,.22);
+        }
+
+        .main-btn.orange {
+            background: linear-gradient(135deg, #f97316, #f59e0b);
+            box-shadow: 0 14px 30px rgba(249,115,22,.20);
+        }
+
+        .mini-line {
+            margin-top: 12px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .mini-line a {
+            color: var(--primary-dark);
+            font-weight: 900;
+            text-decoration: none;
+        }
+
+        .plan-tabs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 9px;
+            margin-bottom: 14px;
+        }
+
+        .plan-tab {
+            border: 1px solid #e5eaf3;
+            border-radius: 22px;
+            background: #fff;
+            text-align: left;
+            min-height: 82px;
+            padding: 12px 10px;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(16,24,40,.04);
+        }
+
+        .plan-tab.active {
+            border-color: rgba(91,92,246,.45);
+            background: linear-gradient(180deg, #ffffff, #f6f6ff);
+            box-shadow: 0 14px 30px rgba(91,92,246,.13);
+        }
+
+        .plan-tab .emoji {
+            width: 34px;
+            height: 34px;
+            display: grid;
+            place-items: center;
+            border-radius: 13px;
+            background: #eef2ff;
+            color: var(--primary);
+            margin-bottom: 8px;
+            font-size: 18px;
+        }
+
+        .plan-tab strong {
+            display: block;
+            font-size: 12px;
+            line-height: 1.1;
+        }
+
+        .plan-tab small {
+            display: block;
+            color: var(--muted);
+            margin-top: 4px;
+            font-size: 10px;
+            font-weight: 800;
+        }
+
+        .plan-group { display: none; }
+        .plan-group.active { display: block; }
+
+        .plans {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .plan {
+            display: grid;
+            grid-template-columns: 46px 1fr auto;
+            gap: 11px;
+            align-items: center;
+            padding: 13px;
+            border-radius: 22px;
+            border: 1px solid #e8edf4;
+            background: #fff;
+            box-shadow: 0 10px 24px rgba(16,24,40,.05);
+        }
+
+        .plan-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 17px;
+            display: grid;
+            place-items: center;
+            background: #eef2ff;
+            color: var(--primary);
+            font-size: 20px;
+        }
+
+        .plan h3 {
+            margin: 0;
+            font-size: 15px;
+        }
+
+        .plan p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .price {
+            text-align: right;
+        }
+
+        .price strong {
+            display: block;
+            color: var(--primary-dark);
+            font-size: 18px;
+            font-weight: 900;
+        }
+
+        .price button {
+            margin-top: 7px;
+            border: 0;
+            border-radius: 999px;
+            padding: 8px 10px;
+            background: #eef2ff;
+            color: var(--primary-dark);
+            font-size: 11px;
+            font-weight: 900;
+            cursor: pointer;
+        }
+
+        .guide {
+            display: grid;
+            gap: 9px;
+        }
+
+        .step {
+            display: grid;
+            grid-template-columns: 28px 1fr;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border: 1px solid #eef2f7;
+            border-radius: 16px;
+            background: #fbfdff;
+        }
+
+        .step-num {
+            width: 28px;
+            height: 28px;
+            border-radius: 11px;
+            display: grid;
+            place-items: center;
+            color: #fff;
+            background: linear-gradient(135deg, var(--primary), var(--cyan));
+            font-weight: 900;
+            font-size: 12px;
+        }
+
+        .step div:last-child {
+            font-size: 13px;
+            font-weight: 800;
+            color: #344054;
+        }
+
+        .device {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 13px;
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .device span {
+            background: #f8fafc;
+            border: 1px solid #e8edf4;
+            border-radius: 999px;
+            padding: 7px 9px;
+        }
+
+        .footer {
+            text-align: center;
+            color: var(--muted);
+            font-size: 12px;
+            font-weight: 700;
+            padding: 8px 0 2px;
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 99;
+            display: none;
+            place-items: center;
+            padding: 18px;
+            background: rgba(15,23,42,.52);
+            backdrop-filter: blur(10px);
+        }
+
+        .modal-backdrop.active { display: grid; }
+
+        .modal {
+            width: 100%;
+            max-width: 430px;
+            background: #fff;
+            border-radius: 30px;
+            padding: 20px;
+            box-shadow: 0 30px 90px rgba(15,23,42,.30);
+            position: relative;
+        }
+
+        .close {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 38px;
+            height: 38px;
+            border: 0;
+            border-radius: 50%;
+            background: #f1f5f9;
+            font-size: 22px;
+            color: #475467;
+            cursor: pointer;
+        }
+
+        .modal-head {
+            text-align: center;
+            padding: 8px 20px 14px;
+        }
+
+        .modal-wifi {
+            width: 62px;
+            height: 62px;
+            margin: 0 auto 10px;
+            border-radius: 22px;
+            display: grid;
+            place-items: center;
+            background: #eef2ff;
+            color: var(--primary);
+            font-size: 27px;
+        }
+
+        .modal-head h3 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .modal-price {
+            margin: 12px 0 2px;
+            color: var(--primary-dark);
+            font-size: 38px;
+            line-height: 1;
+            font-weight: 900;
+        }
+
+        .modal-valid {
+            color: var(--muted);
+            font-weight: 800;
+            font-size: 12px;
+        }
+
+        @media (min-width: 880px) {
+            .phone-shell { max-width: 1040px; }
+            .desktop-grid {
+                display: grid;
+                grid-template-columns: .86fr 1.14fr;
+                gap: 14px;
+                align-items: start;
+            }
+            .hero { min-height: 360px; }
+            .hero h1 { font-size: 46px; }
+            .plans { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 390px) {
+            .hero h1 { font-size: 30px; }
+            .quick-stats { grid-template-columns: 1fr; }
+            .plan-tabs { grid-template-columns: 1fr; }
+            .plan {
+                grid-template-columns: 42px 1fr;
+            }
+            .price {
+                grid-column: 1 / -1;
+                text-align: left;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+$(if chap-id)
+<form name="sendin" action="$(link-login-only)" method="post" style="display:none">
+    <input type="hidden" name="username">
+    <input type="hidden" name="password">
+    <input type="hidden" name="dst" value="$(link-orig)">
+    <input type="hidden" name="popup" value="true">
+</form>
+
+<script src="/md5.js"></script>
+<script>
+    function doLogin() {
+        document.sendin.username.value = document.login.username.value;
+        document.sendin.password.value = hexMD5('$(chap-id)' + document.login.password.value + '$(chap-challenge)');
+        document.sendin.submit();
+        return false;
+    }
+</script>
+$(endif)
+
+<div class="page">
+    <div class="phone-shell">
+        <div class="topbar">
+            <div class="brand">
+                <div class="brand-logo">SR</div>
+                <div>
+                    <div class="brand-title">StudyRoom Connect</div>
+                    <div class="brand-subtitle">WiFi packages made simple</div>
+                </div>
+            </div>
+
+            <a class="support-pill" href="tel:0702262007">☎ Support</a>
+        </div>
+
+        <div class="desktop-grid">
+            <div>
+                <section class="hero">
+                    <div class="hero-content">
+                        <div class="hero-chip">⚡ Fast student WiFi</div>
+                        <h1>Connect, pay, and browse.</h1>
+                        <p>Select a plan, pay with mobile money, then login automatically or with your username.</p>
+
+                        <div class="quick-stats">
+                            <div class="stat"><strong>24/7</strong><span>Access</span></div>
+                            <div class="stat"><strong>Instant</strong><span>Activation</span></div>
+                            <div class="stat"><strong>Secure</strong><span>Login</span></div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="card">
+                    <div class="card-title">
+                        <div>
+                            <h2>How it works</h2>
+                            <p>Follow these simple steps</p>
+                        </div>
+                    </div>
+
+                    <div class="guide">
+                        <div class="step"><div class="step-num">1</div><div>Choose Daily Trial, Unlimited, or Weekly plan.</div></div>
+                        <div class="step"><div class="step-num">2</div><div>Enter your mobile money phone number.</div></div>
+                        <div class="step"><div class="step-num">3</div><div>Confirm payment and wait for activation.</div></div>
+                        <div class="step"><div class="step-num">4</div><div>Use username/password if already subscribed.</div></div>
+                    </div>
+                </section>
+            </div>
+
+            <div>
+                <section class="card">
+                    <div class="card-title">
+                        <div>
+                            <h2>Access internet</h2>
+                            <p>Login or activate a package</p>
+                        </div>
+                        <div class="secure-badge">Secure</div>
+                    </div>
+
+                    $(if error)
+                    <div class="alert">$(error)</div>
+                    $(endif)
+
+                    <div class="tabs">
+                        <button class="tab-btn active" type="button" onclick="switchLoginTab('login')">Login</button>
+                        <button class="tab-btn" type="button" onclick="switchLoginTab('voucher')">Voucher</button>
+                        <button class="tab-btn" type="button" onclick="switchLoginTab('receipt')">Receipt</button>
+                    </div>
+
+                    <div id="loginPanel" class="panel active">
+                        <form name="login" action="$(link-login-only)" method="post" $(if chap-id) onsubmit="return doLogin()" $(endif)>
+                            <input type="hidden" name="dst" value="$(link-orig)">
+                            <input type="hidden" name="popup" value="true">
+
+                            <label>Username / Phone</label>
+                            <div class="field">
+                                <div class="icon">👤</div>
+                                <input name="username" type="text" value="$(username)" placeholder="Enter username" autocomplete="username" required>
+                            </div>
+
+                            <label>Password</label>
+                            <div class="field">
+                                <div class="icon">🔒</div>
+                                <input name="password" type="password" placeholder="Enter password" autocomplete="current-password">
+                            </div>
+
+                            <button class="main-btn" type="submit">Connect Internet</button>
+                        </form>
+                    </div>
+
+                    <div id="voucherPanel" class="panel">
+                        <form name="voucherLogin" action="$(link-login-only)" method="post">
+                            <input type="hidden" name="dst" value="$(link-orig)">
+                            <input type="hidden" name="popup" value="true">
+
+                            <label>Voucher Code</label>
+                            <div class="field">
+                                <div class="icon">🎫</div>
+                                <input name="username" type="text" placeholder="Enter voucher code" required>
+                            </div>
+
+                            <input name="password" type="hidden" value="">
+                            <button class="main-btn green" type="submit">Activate Voucher</button>
+                        </form>
+                    </div>
+
+                    <div id="receiptPanel" class="panel">
+                        <form action="{{BILLING_PORTAL_URL}}/hotspot/receipt" method="get">
+                            <input type="hidden" name="mac" value="$(mac)">
+                            <input type="hidden" name="ip" value="$(ip)">
+
+                            <label>Payment Receipt</label>
+                            <div class="field">
+                                <div class="icon">🧾</div>
+                                <input name="receipt" type="text" placeholder="Example: QAB12CD345" required>
+                            </div>
+
+                            <button class="main-btn orange" type="submit">Check Receipt</button>
+                        </form>
+                    </div>
+
+                    $(if trial == 'yes')
+                    <div class="mini-line">
+                        <a href="$(link-login-only)?dst=$(link-orig-esc)&username=T-$(mac-esc)">Try free internet</a>
+                    </div>
+                    $(endif)
+
+                    <div class="device">
+                        <span>IP: $(ip)</span>
+                        <span>MAC: $(mac)</span>
+                    </div>
+                </section>
+
+                <section class="card">
+                    <div class="card-title">
+                        <div>
+                            <h2>Choose a package</h2>
+                            <p>Daily trial tab added</p>
+                        </div>
+                    </div>
+
+                    <div class="plan-tabs">
+                        <button class="plan-tab active" type="button" onclick="switchPlanTab('daily')">
+                            <div class="emoji">⏱</div>
+                            <strong>Daily Trial</strong>
+                            <small>Short access</small>
+                        </button>
+
+                        <button class="plan-tab" type="button" onclick="switchPlanTab('unlimited')">
+                            <div class="emoji">∞</div>
+                            <strong>Unlimited</strong>
+                            <small>Hourly / Daily</small>
+                        </button>
+
+                        <button class="plan-tab" type="button" onclick="switchPlanTab('weekly')">
+                            <div class="emoji">📅</div>
+                            <strong>Weekly</strong>
+                            <small>Long access</small>
+                        </button>
+                    </div>
+
+                    <div id="dailyPlans" class="plan-group active">
+                        <div class="plans">
+                            <div class="plan">
+                                <div class="plan-icon">⏱</div>
+                                <div><h3>30 Minutes</h3><p>Quick browsing session</p></div>
+                                <div class="price"><strong>Ksh 5</strong><button onclick="openSubscribe('30 Minutes', '5', '30 minutes')">Buy</button></div>
+                            </div>
+
+                            <div class="plan">
+                                <div class="plan-icon">⏱</div>
+                                <div><h3>1 Hour</h3><p>Study and browse</p></div>
+                                <div class="price"><strong>Ksh 10</strong><button onclick="openSubscribe('1 Hour', '10', '1 hour')">Buy</button></div>
+                            </div>
+
+                            <div class="plan">
+                                <div class="plan-icon">⏱</div>
+                                <div><h3>2 Hours</h3><p>More time online</p></div>
+                                <div class="price"><strong>Ksh 15</strong><button onclick="openSubscribe('2 Hours', '15', '2 hours')">Buy</button></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="unlimitedPlans" class="plan-group">
+                        <div class="plans">
+                            <div class="plan">
+                                <div class="plan-icon">∞</div>
+                                <div><h3>4 Hours Unlimited</h3><p>Fast unlimited access</p></div>
+                                <div class="price"><strong>Ksh 20</strong><button onclick="openSubscribe('4 Hours Unlimited', '20', '4 hours')">Buy</button></div>
+                            </div>
+
+                            <div class="plan">
+                                <div class="plan-icon">∞</div>
+                                <div><h3>8 Hours Unlimited</h3><p>Half-day access</p></div>
+                                <div class="price"><strong>Ksh 29</strong><button onclick="openSubscribe('8 Hours Unlimited', '29', '8 hours')">Buy</button></div>
+                            </div>
+
+                            <div class="plan">
+                                <div class="plan-icon">∞</div>
+                                <div><h3>1 Day Unlimited</h3><p>Full day access</p></div>
+                                <div class="price"><strong>Ksh 40</strong><button onclick="openSubscribe('1 Day Unlimited', '40', '1 day')">Buy</button></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="weeklyPlans" class="plan-group">
+                        <div class="plans">
+                            <div class="plan">
+                                <div class="plan-icon">📅</div>
+                                <div><h3>7 Days</h3><p>Weekly unlimited plan</p></div>
+                                <div class="price"><strong>Ksh 205</strong><button onclick="openSubscribe('7 Days', '205', '7 days')">Buy</button></div>
+                            </div>
+
+                            <div class="plan">
+                                <div class="plan-icon">📅</div>
+                                <div><h3>14 Days</h3><p>Two-week access</p></div>
+                                <div class="price"><strong>Ksh 380</strong><button onclick="openSubscribe('14 Days', '380', '14 days')">Buy</button></div>
+                            </div>
+
+                            <div class="plan">
+                                <div class="plan-icon">📅</div>
+                                <div><h3>30 Days</h3><p>Monthly access</p></div>
+                                <div class="price"><strong>Ksh 750</strong><button onclick="openSubscribe('30 Days', '750', '30 days')">Buy</button></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <div class="footer">Powered by StudyRoom Connect WiFi Billing</div>
+    </div>
+</div>
+
+<div id="subscribeModal" class="modal-backdrop">
+    <div class="modal">
+        <button class="close" type="button" onclick="closeSubscribe()">×</button>
+
+        <div class="modal-head">
+            <div class="modal-wifi">⌁</div>
+            <h3 id="modalPlanName">Subscribe</h3>
+            <div class="modal-price">Ksh <span id="modalPrice">0</span></div>
+            <div class="modal-valid">Valid for <span id="modalValidity">-</span></div>
+        </div>
+
+        <form action="{{BILLING_PORTAL_URL}}/hotspot/subscribe" method="get">
+            <input type="hidden" id="planInput" name="plan" value="">
+            <input type="hidden" id="amountInput" name="amount" value="">
+            <input type="hidden" name="mac" value="$(mac)">
+            <input type="hidden" name="ip" value="$(ip)">
+            <input type="hidden" name="link_login" value="$(link-login-only)">
+            <input type="hidden" name="link_orig" value="$(link-orig)">
+
+            <label>Mobile Money Phone Number</label>
+            <div class="field">
+                <div class="icon">📱</div>
+                <input name="phone" type="tel" placeholder="0712345678" required>
+            </div>
+
+            <button class="main-btn" type="submit">Subscribe Now</button>
+        </form>
+
+        <div class="mini-line">Payment request will be sent to your phone.</div>
+    </div>
+</div>
+
+<script>
+    function switchLoginTab(tab) {
+        document.getElementById('loginPanel').classList.remove('active');
+        document.getElementById('voucherPanel').classList.remove('active');
+        document.getElementById('receiptPanel').classList.remove('active');
+
+        var buttons = document.querySelectorAll('.tabs .tab-btn');
+        for (var i = 0; i < buttons.length; i++) {
+            buttons[i].classList.remove('active');
+        }
+
+        if (tab === 'login') {
+            buttons[0].classList.add('active');
+            document.getElementById('loginPanel').classList.add('active');
+        }
+
+        if (tab === 'voucher') {
+            buttons[1].classList.add('active');
+            document.getElementById('voucherPanel').classList.add('active');
+        }
+
+        if (tab === 'receipt') {
+            buttons[2].classList.add('active');
+            document.getElementById('receiptPanel').classList.add('active');
+        }
+    }
+
+    function switchPlanTab(tab) {
+        document.getElementById('dailyPlans').classList.remove('active');
+        document.getElementById('unlimitedPlans').classList.remove('active');
+        document.getElementById('weeklyPlans').classList.remove('active');
+
+        var buttons = document.querySelectorAll('.plan-tab');
+        for (var i = 0; i < buttons.length; i++) {
+            buttons[i].classList.remove('active');
+        }
+
+        if (tab === 'daily') {
+            buttons[0].classList.add('active');
+            document.getElementById('dailyPlans').classList.add('active');
+        }
+
+        if (tab === 'unlimited') {
+            buttons[1].classList.add('active');
+            document.getElementById('unlimitedPlans').classList.add('active');
+        }
+
+        if (tab === 'weekly') {
+            buttons[2].classList.add('active');
+            document.getElementById('weeklyPlans').classList.add('active');
+        }
+    }
+
+    function openSubscribe(plan, price, validity) {
+        document.getElementById('modalPlanName').innerText = plan;
+        document.getElementById('modalPrice').innerText = price;
+        document.getElementById('modalValidity').innerText = validity;
+        document.getElementById('planInput').value = plan;
+        document.getElementById('amountInput').value = price;
+        document.getElementById('subscribeModal').classList.add('active');
+    }
+
+    function closeSubscribe() {
+        document.getElementById('subscribeModal').classList.remove('active');
+    }
+
+    try {
+        if (document.login && document.login.username) {
+            document.login.username.focus();
+        }
+    } catch (e) {}
+</script>
+
+</body>
+</html>

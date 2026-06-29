@@ -1,0 +1,22 @@
+{
+    "name": "studyroomtechlab/rental-management",
+    "description": "Rental and property management add-on for StudyRoom WiFi Billing.",
+    "type": "library",
+    "license": "proprietary",
+    "autoload": {
+        "psr-4": {
+            "StudyRoomTechLab\\RentalManagement\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "StudyRoomTechLab\\RentalManagement\\Providers\\RentalManagementServiceProvider"
+            ]
+        }
+    },
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^12.0"
+    }
+}

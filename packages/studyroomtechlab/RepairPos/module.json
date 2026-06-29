@@ -1,0 +1,13 @@
+{
+    "name": "RepairPos",
+    "alias": "Repair POS",
+    "description": "Phone/laptop repair CRM, repair jobs, inventory, sales, and POS dashboard add-on extracted as a separate package.",
+    "priority": 80,
+    "version": 1.0,
+    "monthly_price": 0,
+    "yearly_price": 0,
+    "parent_module": [],
+    "package_name": "repair-pos",
+    "display": true,
+    "for_admin": true
+}

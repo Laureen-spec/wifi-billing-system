@@ -1,0 +1,5 @@
+@extends('layouts.app')
+@section('page-title','MikroTik Details')
+@section('content')
+<div style="max-width:1100px;margin:auto"><div style="display:flex;justify-content:space-between"><div><h1>{{ $router->name }}</h1><p>{{ $router->host }}:{{ $router->api_port }} • Last seen {{ $router->last_seen_at?->diffForHumans() ?? 'never' }}</p></div><div><a class="btn btn-secondary" href="{{ route('isp.routers.index') }}">Back</a> <a class="btn btn-secondary" href="{{ route('isp.routers.edit',$router) }}">Edit</a> <a class="btn btn-primary" href="{{ route('isp.routers.setup-script',$router) }}">Generate Provisioning</a></div></div>@if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif<div class="card p-4"><h4>Agent status</h4><p><b>Status:</b> {{ $router->status }} / {{ $router->provision_status }}</p><p><b>RouterOS:</b> {{ $router->routeros_version ?? '-' }}</p><p><b>CPU:</b> {{ $router->cpu_load ?? '-' }}%</p><p><b>Uptime:</b> {{ $router->uptime ?? '-' }}</p><a class="btn btn-secondary" href="{{ route('isp.routers.live',$router) }}">Live Users & Ports</a></div></div>
+@endsection

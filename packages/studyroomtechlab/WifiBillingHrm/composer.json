@@ -1,0 +1,25 @@
+{
+    "name": "studyroomtechlab/wifi-billing-hrm",
+    "description": "StudyRoomTechLab WiFi Billing HRM package skeleton",
+    "type": "library",
+    "license": "MIT",
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "StudyRoomTechLab\\WifiBillingHrm\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "StudyRoomTechLab",
+            "email": "support@studyroomtechlab.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [
+                "StudyRoomTechLab\\WifiBillingHrm\\Providers\\WifiBillingHrmServiceProvider"
+            ]
+        }
+    }
+}

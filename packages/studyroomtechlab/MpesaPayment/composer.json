@@ -1,0 +1,22 @@
+{
+    "name": "studyroomtechlab/mpesa-payment",
+    "description": "M-Pesa STK Push payment add-on for StudyRoom WiFi Billing.",
+    "type": "library",
+    "license": "proprietary",
+    "autoload": {
+        "psr-4": {
+            "StudyRoomTechLab\\MpesaPayment\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "StudyRoomTechLab\\MpesaPayment\\Providers\\MpesaPaymentServiceProvider"
+            ]
+        }
+    },
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^12.0"
+    }
+}

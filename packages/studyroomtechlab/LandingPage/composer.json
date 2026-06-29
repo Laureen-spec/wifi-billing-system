@@ -1,0 +1,25 @@
+{
+    "name": "studyroomtechlab/landing-page",
+    "description": "Description for landing-page package",
+    "type": "library",
+    "license": "MIT",
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "StudyRoomTechLab\\LandingPage\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "StudyRoomTechLab",
+            "email": "support@studyroomtechlab.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [
+                "StudyRoomTechLab\\LandingPage\\Providers\\LandingPageServiceProvider"
+            ]
+        }
+    }
+}

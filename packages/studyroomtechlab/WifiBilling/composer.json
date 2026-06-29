@@ -1,0 +1,25 @@
+{
+    "name": "studyroomtechlab/wifi-billing",
+    "description": "StudyRoomTechLab WiFi Billing package",
+    "type": "library",
+    "license": "MIT",
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "StudyRoomTechLab\\WifiBilling\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "StudyRoomTechLab",
+            "email": "support@studyroomtechlab.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [
+                "StudyRoomTechLab\\WifiBilling\\Providers\\WifiBillingServiceProvider"
+            ]
+        }
+    }
+}

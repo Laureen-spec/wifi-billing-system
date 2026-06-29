@@ -1,0 +1,86 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\InternetPackageController;
+use StudyRoomTechLab\WifiBilling\Http\Controllers\CustomerController;
+use StudyRoomTechLab\WifiBilling\Http\Controllers\DashboardController;
+use StudyRoomTechLab\WifiBilling\Http\Controllers\HotspotTemplateSettingsController;
+use StudyRoomTechLab\WifiBilling\Http\Controllers\IspModuleController;
+use StudyRoomTechLab\WifiBilling\Http\Controllers\LeadController;
+use StudyRoomTechLab\WifiBilling\Http\Controllers\MikrotikRouterController;
+use StudyRoomTechLab\WifiBilling\Http\Controllers\ProvisioningController;
+use StudyRoomTechLab\MpesaPayment\Http\Controllers\MpesaHotspotPortalController;
+
+Route::middleware(['web', 'auth', 'verified', 'PlanModuleCheck:WifiBilling'])
+    ->prefix('wifi-billing')
+    ->name('wifi-billing.')
+    ->group(function () {
+        Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+        Route::get('/packages', [InternetPackageController::class, 'index'])->name('packages.index');
+        Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
+        Route::get('/customers/create', [CustomerController::class, 'create'])->name('customers.create');
+        Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store');
+        Route::get('/routers', [MikrotikRouterController::class, 'index'])->name('routers.index');
+        Route::get('/routers/create', [MikrotikRouterController::class, 'create'])->name('routers.create');
+        Route::post('/routers', [MikrotikRouterController::class, 'store'])->name('routers.store');
+        Route::get('/routers/{router}/setup-script', [MikrotikRouterController::class, 'setupScript'])->name('routers.setup-script');
+        Route::get('/live-sessions', [MikrotikRouterController::class, 'liveSessions'])->name('live-sessions.index');
+        Route::get('/settings', [HotspotTemplateSettingsController::class, 'index'])->name('settings.index');
+        Route::get('/settings/hotspot-template', [HotspotTemplateSettingsController::class, 'edit'])->name('settings.hotspot-template.edit');
+        Route::match(['post', 'put'], '/settings/hotspot-template', [HotspotTemplateSettingsController::class, 'update'])->name('settings.hotspot-template.update');
+    });
+
+Route::middleware(['web', 'auth'])
+    ->prefix('isp')
+    ->name('isp.')
+    ->group(function () {
+        Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
+        Route::get('/customers/create', [CustomerController::class, 'create'])->name('customers.create');
+        Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store');
+        Route::get('/customers/{customer}', [CustomerController::class, 'show'])->name('customers.show');
+        Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->name('customers.edit');
+        Route::match(['put', 'patch'], '/customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
+
+        Route::get('/leads', [LeadController::class, 'index'])->name('leads.index');
+
+        Route::get('/routers', [MikrotikRouterController::class, 'index'])->name('routers.index');
+        Route::get('/routers/create', [MikrotikRouterController::class, 'create'])->name('routers.create');
+        Route::get('/routers/{router}/setup-script', [MikrotikRouterController::class, 'setupScript'])->name('routers.setup-script');
+        Route::post('/routers', [MikrotikRouterController::class, 'store'])->name('routers.store');
+        Route::get('/routers/{router}', [MikrotikRouterController::class, 'show'])->name('routers.show');
+        Route::get('/routers/{router}/edit', [MikrotikRouterController::class, 'edit'])->name('routers.edit');
+        Route::match(['put', 'patch'], '/routers/{router}', [MikrotikRouterController::class, 'update'])->name('routers.update');
+        Route::get('/routers/{router}/live', [MikrotikRouterController::class, 'live'])->name('routers.live');
+        Route::post('/routers/{router}/reprovision', [MikrotikRouterController::class, 'reprovision'])->name('routers.reprovision');
+        Route::post('/routers/{router}/sync-hotspot', [MikrotikRouterController::class, 'syncHotspot'])->name('routers.sync-hotspot');
+
+        Route::get('/provisioning', [ProvisioningController::class, 'index'])->name('provisioning.index');
+        Route::post('/provisioning/generate', [ProvisioningController::class, 'generate'])->name('provisioning.generate');
+        Route::get('/provisioning/{token}', [ProvisioningController::class, 'details'])->name('provisioning.show');
+        Route::post('/provisioning/{token}/deactivate', [ProvisioningController::class, 'deactivate'])->name('provisioning.deactivate');
+
+        /*
+         * Safe merged pages from the other developer.
+         * These are placeholders/overviews first, so they do not break existing billing,
+         * MikroTik agent mode, MpesaPayment, or customer provisioning.
+         */
+        Route::get('/vouchers', [IspModuleController::class, 'vouchers'])->name('vouchers.index');
+        Route::get('/invoices', [IspModuleController::class, 'invoices'])->name('invoices.index');
+        Route::get('/payments', [IspModuleController::class, 'payments'])->name('payments.index');
+        Route::get('/receipts', [IspModuleController::class, 'receipts'])->name('receipts.index');
+        Route::get('/overdue', [IspModuleController::class, 'overdue'])->name('overdue.index');
+        Route::get('/tickets', [IspModuleController::class, 'tickets'])->name('tickets.index');
+        Route::get('/field-visits', [IspModuleController::class, 'fieldVisits'])->name('field-visits.index');
+    });
+
+Route::middleware(['web'])->group(function () {
+    Route::get('/hotspot/free-access/status', [MpesaHotspotPortalController::class, 'freeAccessStatus'])->name('hotspot.free-access.status');
+    Route::post('/hotspot/free-access/start', [MpesaHotspotPortalController::class, 'startFreeAccess'])->name('hotspot.free-access.start');
+    Route::get('/provision/{token}', [ProvisioningController::class, 'show'])->name('provision.show');
+    Route::get('/provision/{token}/hotspot/{file}', [ProvisioningController::class, 'hotspotFile'])
+        ->where('file', 'login\.html|status\.html|logout\.html|error\.html|alogin\.html|redirect\.html|md5\.js')
+        ->name('provision.hotspot-file');
+    Route::get('/router-agent/{token}/heartbeat', [ProvisioningController::class, 'heartbeat'])->name('provision.heartbeat');
+    Route::get('/router-agent/{token}/commands', [ProvisioningController::class, 'commands'])->name('router-agent.commands');
+    Route::get('/router-agent/{token}/result', [ProvisioningController::class, 'result'])->name('router-agent.result');
+});

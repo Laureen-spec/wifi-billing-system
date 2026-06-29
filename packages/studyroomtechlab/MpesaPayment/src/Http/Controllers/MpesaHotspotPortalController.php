@@ -1,0 +1,439 @@
+<?php
+
+namespace StudyRoomTechLab\MpesaPayment\Http\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Models\Customer;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use StudyRoomTechLab\MpesaPayment\Models\MpesaTransaction;
+use StudyRoomTechLab\MpesaPayment\Services\MpesaPaymentService;
+use StudyRoomTechLab\WifiBilling\Services\HotspotFreeAccessService;
+
+class MpesaHotspotPortalController extends Controller
+{
+    public function index(Request $request)
+    {
+        $packages = collect();
+
+        if (Schema::hasTable('internet_packages')) {
+            $packages = DB::table('internet_packages')
+                ->where('status', 'active')
+                ->where('hidden_from_client', 0)
+                ->orderBy('price')
+                ->get();
+        }
+
+        $template = $this->hotspotTemplateData();
+
+        return view('mpesa-payment::hotspot.index', [
+            'packages' => $packages,
+            'template' => $template,
+        ]);
+    }
+
+    public function validatePhone(Request $request)
+    {
+        $data = $request->validate([
+            'phone' => ['required', 'string', 'min:9', 'max:20'],
+        ]);
+
+        $phone = $this->normalizePhone($data['phone']);
+
+        if (!preg_match('/^254(7|1)[0-9]{8}$/', $phone)) {
+            return response()->json([
+                'success' => true,
+                'valid' => false,
+                'phone' => $phone,
+                'message' => 'Invalid M-Pesa number. Use format 07XXXXXXXX or 01XXXXXXXX.',
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'valid' => true,
+            'phone' => $phone,
+            'display_phone' => '+' . $phone,
+            'message' => 'Phone number is valid.',
+        ]);
+    }
+
+    public function stkPush(Request $request, MpesaPaymentService $service)
+    {
+        $data = $request->validate([
+            'internet_package_id' => ['required', 'integer', 'exists:internet_packages,id'],
+            'phone' => ['required', 'string', 'min:9', 'max:20'],
+            'name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $package = DB::table('internet_packages')
+            ->where('id', $data['internet_package_id'])
+            ->where('status', 'active')
+            ->first();
+
+        abort_if(!$package, 404, 'Package not found.');
+
+        $phone = $this->normalizePhone($data['phone']);
+        $name = trim($data['name'] ?? '') ?: 'Hotspot Customer ' . $phone;
+
+        $customer = $this->findOrCreateHotspotCustomer($phone, $name, $package);
+
+        $transaction = $service->initiateStkForCustomer(
+            $customer,
+            (int) $package->id,
+            (float) $package->price,
+            $phone,
+            null
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'STK Push sent. Check your phone.',
+            'transaction_id' => $transaction->id,
+            'status' => $transaction->status,
+        ]);
+    }
+
+    public function simulatePayment(Request $request, MpesaPaymentService $service)
+    {
+        abort_unless(config('app.debug'), 403, 'Simulation is only allowed when APP_DEBUG=true.');
+
+        $data = $request->validate([
+            'internet_package_id' => ['required', 'integer', 'exists:internet_packages,id'],
+            'phone' => ['required', 'string', 'min:9', 'max:20'],
+            'name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $package = DB::table('internet_packages')
+            ->where('id', $data['internet_package_id'])
+            ->where('status', 'active')
+            ->first();
+
+        abort_if(!$package, 404, 'Package not found.');
+
+        $phone = $this->normalizePhone($data['phone']);
+        $name = trim($data['name'] ?? '') ?: 'Hotspot Customer ' . $phone;
+
+        $customer = $this->findOrCreateHotspotCustomer($phone, $name, $package);
+
+        $transaction = MpesaTransaction::create([
+            'isp_id' => $package->isp_id ?? null,
+            'customer_id' => $customer->id,
+            'internet_package_id' => $package->id,
+            'collection_mode' => 'platform',
+            'environment' => 'simulation',
+            'payment_type' => 'simulation',
+            'phone' => $phone,
+            'amount' => $package->price,
+            'currency' => 'KES',
+            'account_reference' => 'StudyRoom WiFi',
+            'transaction_desc' => 'Simulated hotspot payment',
+            'status' => 'pending',
+            'created_by' => null,
+        ]);
+
+        $transaction = $service->simulatePaid($transaction);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Simulated payment successful. Internet activation started.',
+            'transaction_id' => $transaction->id,
+            'status' => $transaction->status,
+            'receipt' => $transaction->mpesa_receipt_number,
+        ]);
+    }
+
+    public function status(int $transaction)
+    {
+        $transaction = MpesaTransaction::findOrFail($transaction);
+
+        return response()->json([
+            'success' => true,
+            'status' => $transaction->status,
+            'message' => match ($transaction->status) {
+                'paid' => 'Payment received. Internet activation started.',
+                'failed' => $transaction->result_desc ?: 'Payment failed.',
+                'cancelled' => 'Payment was cancelled.',
+                'expired' => 'Payment expired.',
+                default => 'Waiting for M-Pesa confirmation...',
+            },
+        ]);
+    }
+
+    public function freeAccessStatus(Request $request, HotspotFreeAccessService $service)
+    {
+        return response()->json($service->status($request, $this->hotspotTemplateData()));
+    }
+
+    public function startFreeAccess(Request $request, HotspotFreeAccessService $service)
+    {
+        return response()->json($service->start($request, $this->hotspotTemplateData()));
+    }
+
+    /**
+     * Load the public hotspot portal theme saved from WiFi Billing > Hotspot Template settings.
+     *
+     * This is intentionally read-only and does not touch payment, wallet, or provisioning logic.
+     */
+    private function hotspotTemplateData(): array
+    {
+        $defaults = [
+            'template_key' => 'simple',
+            'template_name' => 'Simple',
+            'logo_url' => null,
+            'background_url' => null,
+            'primary_color' => '#0f172a',
+            'button_color' => '#0f172a',
+            'secondary_button_color' => '#334155',
+            'success_color' => '#16a34a',
+            'text_color' => '#0f172a',
+            'page_background' => '#f8fafc',
+            'welcome_title' => 'StudyRoom WiFi',
+            'welcome_subtitle' => 'Choose a WiFi package and pay using M-Pesa. Your internet will activate automatically after payment confirmation.',
+            'footer_text' => 'Powered by StudyRoom WiFi Billing',
+            'customer_care_phone' => null,
+            'redirect_url' => 'http://10.10.50.1/login',
+            'captive_portal_language' => 'en',
+            'purchase_instructions' => [
+                ['step' => 1, 'text' => 'Tap the package you want to purchase'],
+                ['step' => 2, 'text' => 'Enter your Mobile Money phone number'],
+                ['step' => 3, 'text' => 'Click subscribe'],
+                ['step' => 4, 'text' => 'Enter your Mobile Money PIN in the prompt'],
+                ['step' => 5, 'text' => 'Wait a few seconds to be connected'],
+                ['step' => 6, 'text' => 'If not connected, contact customer care'],
+            ],
+            'isp_id' => null,
+            'mikrotik_router_id' => null,
+            'enable_datalan_free_access' => false,
+            'free_access_duration_minutes' => 60,
+            'free_access_cooldown_hours' => 24,
+            'free_access_package_id' => null,
+            'free_access_speed_limit' => null,
+            'free_access_identity_mode' => 'mac',
+            'free_access_requires_phone' => false,
+            'free_access_requires_name' => false,
+            'free_access_button_text' => 'Get 1 hour free access',
+            'free_access_cooldown_message' => 'You already used free access. Come back after @time_remaining.',
+            'free_access_success_message' => 'Free access is active for @duration minutes.',
+        ];
+
+        try {
+            if (!Schema::hasTable('wifi_billing_hotspot_template_settings')) {
+                return $defaults;
+            }
+
+            $settingsQuery = DB::table('wifi_billing_hotspot_template_settings');
+
+            if (Schema::hasColumn('wifi_billing_hotspot_template_settings', 'is_active')) {
+                $settingsQuery->where('is_active', 1);
+            }
+
+            if (Schema::hasColumn('wifi_billing_hotspot_template_settings', 'router_id')) {
+                $settingsQuery->orderByRaw('router_id IS NOT NULL DESC');
+            }
+
+            $setting = $settingsQuery->orderByDesc('id')->first();
+
+            if (!$setting) {
+                return $defaults;
+            }
+
+            $instructions = $this->decodePurchaseInstructions($setting->purchase_instructions ?? null, $defaults['purchase_instructions']);
+
+            return array_merge($defaults, [
+                'template_key' => $setting->template_key ?: $defaults['template_key'],
+                'template_name' => $setting->template_name ?: $defaults['template_name'],
+                'logo_url' => $this->publicAssetUrl($setting->logo_path ?? null),
+                'background_url' => $this->publicAssetUrl($setting->background_path ?? null),
+                'primary_color' => $this->safeColor($setting->primary_color ?? null, $defaults['primary_color']),
+                'button_color' => $this->safeColor($setting->accent_color ?? null, $defaults['button_color']),
+                'secondary_button_color' => $this->safeColor($setting->secondary_color ?? null, $defaults['secondary_button_color']),
+                'success_color' => $this->safeColor($setting->accent_color ?? null, $defaults['success_color']),
+                'text_color' => $this->safeColor($setting->secondary_color ?? null, $defaults['text_color']),
+                'welcome_title' => $setting->template_name ?: $defaults['welcome_title'],
+                'welcome_subtitle' => $setting->welcome_text ?: $defaults['welcome_subtitle'],
+                'footer_text' => $setting->footer_text ?: $defaults['footer_text'],
+                'customer_care_phone' => $setting->care_phone ?: $defaults['customer_care_phone'],
+                'redirect_url' => $setting->redirect_url ?: $defaults['redirect_url'],
+                'captive_portal_language' => $setting->language ?: $defaults['captive_portal_language'],
+                'purchase_instructions' => $instructions,
+                'isp_id' => $setting->isp_id ?? $defaults['isp_id'],
+                'mikrotik_router_id' => $setting->mikrotik_router_id ?? $defaults['mikrotik_router_id'],
+                'enable_datalan_free_access' => (bool) ($setting->enable_datalan_free_access ?? $defaults['enable_datalan_free_access']),
+                'free_access_duration_minutes' => (int) (($setting->free_access_duration_minutes ?? null) ?: $defaults['free_access_duration_minutes']),
+                'free_access_cooldown_hours' => (int) (($setting->free_access_cooldown_hours ?? null) ?: $defaults['free_access_cooldown_hours']),
+                'free_access_package_id' => $setting->free_access_package_id ?? $defaults['free_access_package_id'],
+                'free_access_speed_limit' => $setting->free_access_speed_limit ?? $defaults['free_access_speed_limit'],
+                'free_access_identity_mode' => in_array(($setting->free_access_identity_mode ?? null), ['mac', 'phone', 'both'], true)
+                    ? $setting->free_access_identity_mode
+                    : $defaults['free_access_identity_mode'],
+                'free_access_requires_phone' => (bool) ($setting->free_access_requires_phone ?? $defaults['free_access_requires_phone']),
+                'free_access_requires_name' => (bool) ($setting->free_access_requires_name ?? $defaults['free_access_requires_name']),
+                'free_access_button_text' => $setting->free_access_button_text ?: $defaults['free_access_button_text'],
+                'free_access_cooldown_message' => $setting->free_access_cooldown_message ?: $defaults['free_access_cooldown_message'],
+                'free_access_success_message' => $setting->free_access_success_message ?: $defaults['free_access_success_message'],
+            ]);
+        } catch (\Throwable $e) {
+            report($e);
+            return $defaults;
+        }
+    }
+
+    private function publicAssetUrl(?string $path): ?string
+    {
+        $path = trim((string) $path);
+
+        if ($path === '') {
+            return null;
+        }
+
+        if (preg_match('/^https?:\/\//i', $path)) {
+            return $path;
+        }
+
+        if (str_starts_with($path, '/')) {
+            return url($path);
+        }
+
+        if (str_starts_with($path, 'storage/')) {
+            return asset($path);
+        }
+
+        return asset('storage/' . ltrim($path, '/'));
+    }
+
+    private function safeColor(?string $color, string $fallback): string
+    {
+        $color = trim((string) $color);
+
+        if (preg_match('/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/', $color)) {
+            return $color;
+        }
+
+        return $fallback;
+    }
+
+    private function decodePurchaseInstructions(mixed $value, array $fallback): array
+    {
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+        } elseif (is_array($value)) {
+            $decoded = $value;
+        } else {
+            $decoded = null;
+        }
+
+        if (!is_array($decoded) || $decoded === []) {
+            return $fallback;
+        }
+
+        $instructions = [];
+
+        foreach ($decoded as $index => $item) {
+            if (is_string($item)) {
+                $text = trim($item);
+                $step = $index + 1;
+            } else {
+                $text = trim((string) ($item['text'] ?? $item['instruction_text'] ?? ''));
+                $step = (int) ($item['step'] ?? $item['step_number'] ?? ($index + 1));
+            }
+
+            if ($text !== '') {
+                $instructions[] = [
+                    'step' => $step ?: ($index + 1),
+                    'text' => $text,
+                ];
+            }
+        }
+
+        return $instructions ?: $fallback;
+    }
+
+    private function findOrCreateHotspotCustomer(string $phone, string $name, object $package): Customer
+    {
+        $customerModel = new Customer();
+        $table = $customerModel->getTable();
+
+        $phoneColumn = $this->firstExistingColumn($table, [
+            'contact_person_mobile',
+            'phone',
+            'phone_number',
+            'mobile',
+            'mobile_number',
+            'customer_phone',
+        ]);
+
+        abort_if(!$phoneColumn, 500, 'No phone column found on customer table: ' . $table);
+
+        $customer = Customer::where($phoneColumn, $phone)->first();
+
+        if ($customer) {
+            return $customer;
+        }
+
+        $data = [];
+        $data[$phoneColumn] = $phone;
+
+        $this->setIfColumnExists($table, $data, 'name', $name);
+        $this->setIfColumnExists($table, $data, 'full_name', $name);
+        $this->setIfColumnExists($table, $data, 'customer_name', $name);
+        $this->setIfColumnExists($table, $data, 'contact_person_name', $name);
+        $this->setIfColumnExists($table, $data, 'company_name', $name);
+
+        $email = 'hotspot-' . preg_replace('/\D+/', '', $phone) . '@studyroom.local';
+
+        $this->setIfColumnExists($table, $data, 'email', $email);
+        $this->setIfColumnExists($table, $data, 'contact_person_email', $email);
+
+        $this->setIfColumnExists($table, $data, 'customer_code', 'HS-' . now()->format('YmdHis') . '-' . random_int(100, 999));
+        $this->setIfColumnExists($table, $data, 'payment_terms', 'prepaid');
+        $this->setIfColumnExists($table, $data, 'status', 'active');
+
+        if (isset($package->isp_id)) {
+            $this->setIfColumnExists($table, $data, 'isp_id', $package->isp_id);
+            $this->setIfColumnExists($table, $data, 'created_by', $package->isp_id);
+            $this->setIfColumnExists($table, $data, 'creator_id', $package->isp_id);
+            $this->setIfColumnExists($table, $data, 'user_id', $package->isp_id);
+        }
+
+        $customer = new Customer();
+        $customer->forceFill($data);
+        $customer->save();
+
+        return $customer;
+    }
+
+    private function firstExistingColumn(string $table, array $columns): ?string
+    {
+        foreach ($columns as $column) {
+            if (Schema::hasColumn($table, $column)) {
+                return $column;
+            }
+        }
+
+        return null;
+    }
+
+    private function setIfColumnExists(string $table, array &$data, string $column, mixed $value): void
+    {
+        if (Schema::hasColumn($table, $column)) {
+            $data[$column] = $value;
+        }
+    }
+
+    private function normalizePhone(string $phone): string
+    {
+        $phone = preg_replace('/\D+/', '', $phone);
+
+        if (str_starts_with($phone, '0')) {
+            return '254' . substr($phone, 1);
+        }
+
+        if (str_starts_with($phone, '7') || str_starts_with($phone, '1')) {
+            return '254' . $phone;
+        }
+
+        return $phone;
+    }
+}

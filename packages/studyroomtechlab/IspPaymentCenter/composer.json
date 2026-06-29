@@ -1,0 +1,22 @@
+{
+    "name": "studyroomtechlab/isp-payment-center",
+    "description": "Payment Center add-on for StudyRoom WiFi Billing.",
+    "type": "library",
+    "license": "proprietary",
+    "autoload": {
+        "psr-4": {
+            "StudyRoomTechLab\\IspPaymentCenter\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "StudyRoomTechLab\\IspPaymentCenter\\Providers\\IspPaymentCenterServiceProvider"
+            ]
+        }
+    },
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^12.0"
+    }
+}

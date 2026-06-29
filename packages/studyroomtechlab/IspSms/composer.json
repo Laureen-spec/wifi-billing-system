@@ -1,0 +1,22 @@
+{
+    "name": "studyroomtechlab/isp-sms",
+    "description": "ISP SMS add-on for StudyRoom WiFi Billing.",
+    "type": "library",
+    "license": "proprietary",
+    "autoload": {
+        "psr-4": {
+            "StudyRoomTechLab\\IspSms\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "StudyRoomTechLab\\IspSms\\Providers\\IspSmsServiceProvider"
+            ]
+        }
+    },
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^12.0"
+    }
+}

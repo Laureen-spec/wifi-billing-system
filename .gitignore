@@ -1,0 +1,15 @@
+/vendor
+/node_modules
+/public/build
+/storage/debugbar
+.env
+.env.*
+.phpunit.result.cache
+npm-debug.log
+yarn-error.log
+
+*.zip
+phpinfo.php
+/public/storage
+/storage/logs/*.log
+/bootstrap/cache/*.php

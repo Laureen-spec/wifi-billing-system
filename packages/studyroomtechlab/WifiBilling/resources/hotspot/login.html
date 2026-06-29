@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="expires" content="-1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyRoom Connect</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#f8fbff,#eef2ff);color:#0f172a}.page{max-width:1040px;margin:auto;padding:24px 16px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}.brand{display:flex;gap:12px;align-items:center}.logo{width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,#4f46e5,#0ea5e9);display:grid;place-items:center;color:#fff;font-weight:900;font-size:24px}.brand h1{margin:0;font-size:28px}.brand p{margin:3px 0;color:#64748b}.hero{display:grid;grid-template-columns:1fr 1fr;gap:18px}.card{background:#fff;border:1px solid #e5e7eb;border-radius:28px;padding:24px;box-shadow:0 18px 50px rgba(15,23,42,.08)}.welcome{background:linear-gradient(145deg,#111827,#2563eb);color:#fff}.welcome h2{font-size:36px;margin:0 0 10px}.welcome p{font-size:18px;line-height:1.5;color:#dbeafe}.tabs{display:grid;grid-template-columns:repeat(3,1fr);background:#f1f5f9;padding:5px;border-radius:18px;margin:16px 0}.tab{border:0;background:transparent;border-radius:14px;padding:12px;font-weight:900;color:#475569}.tab.active{background:#fff;color:#4f46e5;box-shadow:0 8px 22px rgba(15,23,42,.08)}.content{display:none}.content.active{display:block}.field{margin-bottom:14px}.field label{display:block;font-weight:900;margin-bottom:8px}.input{display:flex;align-items:center;border:1px solid #d8dee9;border-radius:18px;overflow:hidden}.input span{width:54px;text-align:center;border-right:1px solid #edf2f7;font-size:20px}.input input{width:100%;border:0;outline:0;padding:16px;font-size:16px}.btn{width:100%;border:0;border-radius:18px;padding:16px;background:linear-gradient(135deg,#4f46e5,#2563eb);color:#fff;font-size:16px;font-weight:900;cursor:pointer}.btn.light{background:#fff;color:#4f46e5;border:1px solid #c7d2fe}.plans{margin-top:18px}.planTabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}.planGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.plan{border:1px solid #e5e7eb;border-radius:22px;padding:18px;background:#fff}.plan strong{display:block;font-size:18px}.price{font-size:28px;font-weight:900;color:#4f46e5;margin:10px 0}.alert{background:#fee2e2;color:#991b1b;border:1px solid #fecaca;border-radius:16px;padding:14px;margin-bottom:14px}.footer{text-align:center;color:#64748b;font-size:13px;margin-top:20px}@media(max-width:800px){.hero,.planGrid{grid-template-columns:1fr}.welcome{display:none}.top{display:block}.planTabs{grid-template-columns:1fr}.brand h1{font-size:23px}}
+</style>
+</head>
+<body>
+$(if chap-id)
+<form name="sendin" action="$(link-login-only)" method="post" style="display:none"><input type="hidden" name="username"><input type="hidden" name="password"><input type="hidden" name="dst" value="$(link-orig)"><input type="hidden" name="popup" value="true"></form>
+<script src="/md5.js"></script>
+<script>function submitChap(u,p){document.sendin.username.value=u;document.sendin.password.value=hexMD5('$(chap-id)'+p+'$(chap-challenge)');document.sendin.submit();return false;}</script>
+$(endif)
+<div class="page">
+ <div class="top"><div class="brand"><div class="logo">SR</div><div><h1>StudyRoom Connect</h1><p>Fast WiFi access for study, work and entertainment</p></div></div><div><b>Support:</b> 0702262007</div></div>
+ $(if error)<div class="alert">$(error)</div>$(endif)
+ <div class="hero"><div class="card welcome"><h2>Welcome 👋</h2><p>Choose a plan, pay, then login automatically or with your username and password.</p><p>Secure • Reliable • Affordable</p></div>
+ <div class="card"><h2 style="text-align:center;margin-top:0">Login / Activate</h2><div class="tabs"><button class="tab active" onclick="switchLogin('account',this)" type="button">Login</button><button class="tab" onclick="switchLogin('voucher',this)" type="button">Voucher</button><button class="tab" onclick="switchLogin('receipt',this)" type="button">Receipt</button></div>
+ <div id="login-account" class="content active"><form name="login" action="$(link-login-only)" method="post" onsubmit="return doLogin()"><input type="hidden" name="dst" value="$(link-orig)"><input type="hidden" name="popup" value="true"><div class="field"><label>Username / Phone</label><div class="input"><span>👤</span><input name="username" value="$(username)" required></div></div><div class="field"><label>Password</label><div class="input"><span>🔒</span><input name="password" type="password"></div></div><button class="btn">Connect Internet</button></form></div>
+ <div id="login-voucher" class="content"><form name="voucherLogin" action="$(link-login-only)" method="post" onsubmit="return doVoucherLogin()"><input type="hidden" name="dst" value="$(link-orig)"><input type="hidden" name="popup" value="true"><div class="field"><label>Voucher Code</label><div class="input"><span>🎟</span><input name="username" required></div></div><button class="btn">Activate Voucher</button></form></div>
+ <div id="login-receipt" class="content"><div class="field"><label>M-Pesa Receipt</label><div class="input"><span>🧾</span><input id="receipt" placeholder="Example: TGH123ABC"></div></div><button class="btn" type="button" onclick="alert('Receipt check will connect to the M-Pesa add-on endpoint.')">Check Receipt</button></div>
+ </div></div>
+ <div class="plans card"><div class="planTabs"><button class="tab active" onclick="switchPlan('daily',this)" type="button">Daily Trial</button><button class="tab" onclick="switchPlan('unlimited',this)" type="button">Unlimited</button><button class="tab" onclick="switchPlan('weekly',this)" type="button">Weekly/Monthly</button></div>
+ <div id="plans-daily" class="content active"><div class="planGrid"><div class="plan"><strong>30 Minutes</strong><div class="price">Ksh 5</div><button class="btn light" onclick="pay('30 Minutes',5)">Select</button></div><div class="plan"><strong>1 Hour</strong><div class="price">Ksh 10</div><button class="btn" onclick="pay('1 Hour',10)">Select</button></div><div class="plan"><strong>2 Hours</strong><div class="price">Ksh 15</div><button class="btn light" onclick="pay('2 Hours',15)">Select</button></div></div></div>
+ <div id="plans-unlimited" class="content"><div class="planGrid"><div class="plan"><strong>4 Hours</strong><div class="price">Ksh 20</div><button class="btn light" onclick="pay('4 Hours',20)">Select</button></div><div class="plan"><strong>8 Hours</strong><div class="price">Ksh 29</div><button class="btn" onclick="pay('8 Hours',29)">Select</button></div><div class="plan"><strong>1 Day</strong><div class="price">Ksh 40</div><button class="btn light" onclick="pay('1 Day',40)">Select</button></div></div></div>
+ <div id="plans-weekly" class="content"><div class="planGrid"><div class="plan"><strong>7 Days</strong><div class="price">Ksh 205</div><button class="btn" onclick="pay('7 Days',205)">Select</button></div><div class="plan"><strong>14 Days</strong><div class="price">Ksh 380</div><button class="btn light" onclick="pay('14 Days',380)">Select</button></div><div class="plan"><strong>30 Days</strong><div class="price">Ksh 750</div><button class="btn light" onclick="pay('30 Days',750)">Select</button></div></div></div></div>
+ $(if trial == 'yes')<p><a class="btn light" href="$(link-login-only)?dst=$(link-orig-esc)&username=T-$(mac-esc)">Try Free Trial</a></p>$(endif)
+ <div class="footer">Device IP: $(ip) • MAC: $(mac)<br>© StudyRoom Connect</div>
+</div>
+<script>
+function setActive(group, id, btn){document.querySelectorAll(group).forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');btn.parentNode.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));btn.classList.add('active');}
+function switchLogin(t,b){setActive('.login-panel .content','login-'+t,b)}
+function switchPlan(t,b){setActive('.plans .content','plans-'+t,b)}
+function doLogin(){var u=document.login.username.value,p=document.login.password.value;$(if chap-id)return submitChap(u,p);$(else)return true;$(endif)}
+function doVoucherLogin(){var u=document.voucherLogin.username.value;$(if chap-id)return submitChap(u,'');$(else)return true;$(endif)}
+function pay(plan,amount){alert('M-Pesa add-on will open here. Plan: '+plan+' Ksh '+amount)}
+</script>
+</body>
+</html>

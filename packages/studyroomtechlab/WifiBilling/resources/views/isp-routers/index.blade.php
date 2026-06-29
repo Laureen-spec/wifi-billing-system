@@ -1,0 +1,5 @@
+@extends('layouts.app')
+@section('page-title','MikroTik Routers')
+@section('content')
+<div style="max-width:1200px;margin:0 auto"><div style="display:flex;justify-content:space-between;align-items:center"><h1>MikroTik Routers</h1><a class="btn btn-primary" href="{{ route('isp.routers.create') }}">Add Router</a></div>@if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif<div class="card"><table class="table"><thead><tr><th>Name</th><th>Status</th><th>Last Seen</th><th>Host/API</th><th>Actions</th></tr></thead><tbody>@forelse($routers as $router)<tr><td>{{ $router->name }}</td><td>{{ ucfirst($router->status) }} / {{ ucfirst($router->provision_status) }}</td><td>{{ $router->last_seen_at?->diffForHumans() ?? '-' }}</td><td>{{ $router->host }}:{{ $router->api_port }}</td><td><a class="btn btn-sm btn-secondary" href="{{ route('isp.routers.show',$router) }}">View</a> <a class="btn btn-sm btn-secondary" href="{{ route('isp.routers.setup-script',$router) }}">Setup</a></td></tr>@empty<tr><td colspan="5">No routers.</td></tr>@endforelse</tbody></table></div></div>
+@endsection
