@@ -3,251 +3,301 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Services\IspTenantResolver;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $user = Auth::user();
-
-        if (! $user || ! $user->can('manage-orders')) {
+        if (! Auth::user()->can('manage-orders')) {
             return back()->with('error', __('Permission denied'));
         }
 
-        $filters = [
-            'search' => trim((string) $request->query('search', '')),
-            'status' => (string) $request->query('status', 'all'),
-            'per_page' => (int) $request->query('per_page', 10),
-            'sort' => (string) $request->query('sort', 'id'),
-            'direction' => strtolower((string) $request->query('direction', 'desc')) === 'asc' ? 'asc' : 'desc',
-        ];
+        $viewMode = $request->query('view') === 'invoices' ? 'invoices' : 'orders';
+        $records = collect($this->orderRecords());
+        $orderIds = $records->pluck('order_id')->filter()->values()->all();
 
-        $filters['per_page'] = in_array($filters['per_page'], [10, 25, 50, 100], true) ? $filters['per_page'] : 10;
+        $records = $records->merge($this->smsTopupRecords($orderIds));
 
-        $baseQuery = Order::query()
-            ->with(['plan', 'user', 'total_coupon_used.coupon_detail'])
-            ->when($user->type !== 'superadmin', function ($query) use ($user) {
-                $query->where('created_by', $user->id);
+        if ($search = trim((string) $request->query('search'))) {
+            $needle = Str::lower($search);
+            $records = $records->filter(function (array $record) use ($needle) {
+                return Str::contains(Str::lower(implode(' ', array_filter([
+                    $record['order_id'] ?? null,
+                    $record['invoice_number'] ?? null,
+                    $record['name'] ?? null,
+                    $record['email'] ?? null,
+                    $record['plan_name'] ?? null,
+                    $record['txn_id'] ?? null,
+                    $record['receipt'] ?? null,
+                    $record['source_label'] ?? null,
+                    $record['invoice_type'] ?? null,
+                ]))), $needle);
             });
+        }
 
-        $summaryQuery = clone $baseQuery;
-        $tabQuery = clone $baseQuery;
+        if ($source = $request->query('source')) {
+            $records = $records->where('source_type', $source);
+        }
 
-        $orders = (clone $baseQuery)
-            ->when($filters['search'] !== '', function ($query) use ($filters) {
-                $search = $filters['search'];
+        if ($status = $request->query('status')) {
+            $records = $records->filter(fn (array $record) => $this->statusGroup((string) ($record['payment_status'] ?? '')) === $status);
+        }
 
-                $query->where(function ($q) use ($search) {
-                    $q->where('order_id', 'like', "%{$search}%")
-                        ->orWhere('name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhere('plan_name', 'like', "%{$search}%")
-                        ->orWhere('payment_type', 'like', "%{$search}%")
-                        ->orWhere('payment_status', 'like', "%{$search}%")
-                        ->orWhere('receipt', 'like', "%{$search}%")
-                        ->orWhere('txn_id', 'like', "%{$search}%");
-                });
-            })
-            ->when($filters['status'] !== 'all', function ($query) use ($filters) {
-                $this->applyStatusFilter($query, $filters['status']);
-            });
+        $records = $records
+            ->sortByDesc(fn (array $record) => strtotime((string) ($record['created_at'] ?? now())) ?: 0)
+            ->values();
 
-        $allowedSorts = ['id', 'order_id', 'name', 'plan_name', 'price', 'payment_status', 'payment_type', 'created_at'];
-        $sort = in_array($filters['sort'], $allowedSorts, true) ? $filters['sort'] : 'id';
-
-        $orders = $orders
-            ->orderBy($sort, $filters['direction'])
-            ->paginate($filters['per_page'])
-            ->withQueryString();
-
-        $orders->through(fn (Order $order) => $this->mapOrder($order));
+        $stats = $this->stats($records);
+        $orders = $this->paginate($records, (int) $request->query('per_page', 10));
 
         return Inertia::render('orders/index', [
             'orders' => $orders,
-            'summary' => $this->summary($summaryQuery),
-            'statusTabs' => $this->statusTabs($tabQuery),
-            'filters' => $filters,
+            'viewMode' => $viewMode,
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'source', 'status']),
         ]);
     }
 
-    private function applyStatusFilter($query, string $status): void
+    private function orderRecords(): array
     {
-        match ($status) {
-            'pending' => $query->whereIn('payment_status', ['pending', 'waiting', 'processing', 'unpaid']),
-            'paid' => $query->whereIn('payment_status', ['paid', 'succeeded', 'success', 'confirmed', 'completed']),
-            'failed' => $query->whereIn('payment_status', ['failed', 'cancelled', 'canceled', 'rejected']),
-            'expired' => $query->whereIn('payment_status', ['expired']),
-            'manual' => $query->whereIn('payment_type', ['Manual', 'manual', 'Cash', 'cash', 'Bank', 'bank', 'Bank Transfer', 'bank_transfer']),
-            'refunded' => $query->whereIn('payment_status', ['refunded', 'reversed', 'chargeback']),
-            default => null,
-        };
+        $query = Order::with(['plan', 'user', 'total_coupon_used.coupon_detail'])
+            ->where(function ($q) {
+                if (Auth::user()->type !== 'superadmin') {
+                    $q->where('created_by', Auth::id());
+                }
+            });
+
+        return $query
+            ->latest('id')
+            ->get()
+            ->map(fn (Order $order) => $this->orderPayload($order))
+            ->values()
+            ->all();
     }
 
-    private function summary($query): array
+    private function smsTopupRecords(array $existingOrderIds)
     {
-        $all = (clone $query)->count();
-        $pending = (clone $query)->whereIn('payment_status', ['pending', 'waiting', 'processing', 'unpaid'])->count();
-        $paid = (clone $query)->whereIn('payment_status', ['paid', 'succeeded', 'success', 'confirmed', 'completed'])->count();
-        $failed = (clone $query)->whereIn('payment_status', ['failed', 'cancelled', 'canceled', 'rejected'])->count();
-        $collected = (float) (clone $query)
-            ->whereIn('payment_status', ['paid', 'succeeded', 'success', 'confirmed', 'completed'])
-            ->sum('price');
+        if (! Schema::hasTable('isp_sms_topups')) {
+            return collect();
+        }
 
-        return [
-            [
-                'key' => 'all',
-                'title' => 'All Orders',
-                'value' => (string) $all,
-                'description' => 'total checkout records',
-                'tone' => 'slate',
-            ],
-            [
-                'key' => 'pending',
-                'title' => 'Pending Payment',
-                'value' => (string) $pending,
-                'description' => 'waiting for confirmation',
-                'tone' => 'amber',
-            ],
-            [
-                'key' => 'paid',
-                'title' => 'Paid Orders',
-                'value' => (string) $paid,
-                'description' => 'confirmed collections',
-                'tone' => 'green',
-            ],
-            [
-                'key' => 'failed',
-                'title' => 'Failed Orders',
-                'value' => (string) $failed,
-                'description' => 'failed or cancelled attempts',
-                'tone' => 'red',
-            ],
-            [
-                'key' => 'collected',
-                'title' => 'Total Collected',
-                'value' => (string) $collected,
-                'description' => 'paid orders only',
-                'tone' => 'blue',
-                'isMoney' => true,
-            ],
-        ];
+        $query = DB::table('isp_sms_topups')->latest('id');
+
+        if (Auth::user()->type !== 'superadmin') {
+            $ispId = null;
+
+            try {
+                $isp = app(IspTenantResolver::class)->resolve(request());
+                $ispId = $isp?->id;
+            } catch (\Throwable) {
+                $ispId = null;
+            }
+
+            $query->where(function ($q) use ($ispId) {
+                $q->where('user_id', Auth::id());
+
+                if ($ispId) {
+                    $q->orWhere('isp_id', $ispId);
+                }
+            });
+        }
+
+        $topups = $query->get();
+        $userIds = $topups->pluck('user_id')->filter()->unique()->values();
+        $users = $userIds->isNotEmpty() && Schema::hasTable('users')
+            ? DB::table('users')->whereIn('id', $userIds)->get()->keyBy('id')
+            : collect();
+
+        return $topups
+            ->reject(fn ($topup) => $topup->order_id && in_array($topup->order_id, $existingOrderIds, true))
+            ->map(function ($topup) use ($users) {
+                $createdAt = $topup->created_at ?: now();
+                $invoicePrefix = date('Ym', strtotime((string) $createdAt));
+                $user = $users->get($topup->user_id);
+                $status = $this->topupStatus((string) $topup->status);
+
+                return [
+                    'id' => 'sms-topup-' . $topup->id,
+                    'order_id' => $topup->order_id ?: $topup->topup_number,
+                    'invoice_number' => 'INV-SMS-' . $invoicePrefix . '-' . str_pad((string) $topup->id, 5, '0', STR_PAD_LEFT),
+                    'invoice_type' => 'SMS Top-up',
+                    'source_type' => 'sms_topup',
+                    'source_label' => 'SMS Top-up',
+                    'name' => $user->name ?? 'SMS Top-up',
+                    'email' => $user->email ?? null,
+                    'plan_name' => 'System SMS Wallet Top-up',
+                    'plan_id' => null,
+                    'price' => (float) $topup->amount,
+                    'currency' => $topup->currency ?: 'KES',
+                    'payment_status' => $status,
+                    'payment_type' => $topup->payment_method ?: 'SMS Checkout',
+                    'txn_id' => null,
+                    'receipt' => $topup->topup_number,
+                    'created_at' => $topup->created_at,
+                    'original_price' => null,
+                    'total_coupon_used' => null,
+                    'user' => $user ? [
+                        'name' => $user->name,
+                        'email' => $user->email,
+                    ] : null,
+                ];
+            })
+            ->values();
     }
 
-    private function statusTabs($query): array
+    private function orderPayload(Order $order): array
     {
-        return [
-            ['key' => 'all', 'label' => 'All', 'count' => (clone $query)->count()],
-            ['key' => 'pending', 'label' => 'Pending', 'count' => (clone $query)->whereIn('payment_status', ['pending', 'waiting', 'processing', 'unpaid'])->count()],
-            ['key' => 'paid', 'label' => 'Paid', 'count' => (clone $query)->whereIn('payment_status', ['paid', 'succeeded', 'success', 'confirmed', 'completed'])->count()],
-            ['key' => 'failed', 'label' => 'Failed', 'count' => (clone $query)->whereIn('payment_status', ['failed', 'cancelled', 'canceled', 'rejected'])->count()],
-            ['key' => 'expired', 'label' => 'Expired', 'count' => (clone $query)->whereIn('payment_status', ['expired'])->count()],
-            ['key' => 'manual', 'label' => 'Manual', 'count' => (clone $query)->whereIn('payment_type', ['Manual', 'manual', 'Cash', 'cash', 'Bank', 'bank', 'Bank Transfer', 'bank_transfer'])->count()],
-            ['key' => 'refunded', 'label' => 'Refunded', 'count' => (clone $query)->whereIn('payment_status', ['refunded', 'reversed', 'chargeback'])->count()],
-        ];
-    }
-
-    private function mapOrder(Order $order): array
-    {
-        $paymentStatus = $this->normalizePaymentStatus((string) $order->payment_status);
-        $paymentType = $order->payment_type ?: 'Unknown';
-        $receipt = $order->receipt ?: $order->txn_id;
+        $createdAt = $order->created_at;
+        $invoicePrefix = $createdAt ? $createdAt->format('Ym') : now()->format('Ym');
+        $paymentType = (string) ($order->payment_type ?: '-');
+        $price = (float) ($order->price ?? 0);
+        $receiptData = $this->receiptData($order->receipt);
+        $sourceType = $this->sourceType($paymentType, $price, (string) ($order->plan_name ?? ''), $receiptData);
 
         return [
             'id' => $order->id,
             'order_id' => $order->order_id,
-            'customer_name' => $order->name ?: $order->user?->name ?: 'Unknown customer',
-            'customer_email' => $order->email ?: $order->user?->email,
-            'source' => $this->sourceFromPaymentType($paymentType),
-            'plan_name' => $order->plan_name ?: $order->plan?->name ?: 'No package',
-            'method' => $paymentType,
-            'amount' => (float) $order->price,
-            'original_price' => $order->original_price ?? null,
-            'discount_amount' => (float) ($order->discount_amount ?? 0),
-            'currency' => $order->currency ?: 'KES',
-            'payment_status' => $paymentStatus,
-            'payment_status_raw' => $order->payment_status ?: 'unknown',
-            'posting_status' => $paymentStatus === 'paid' ? 'Posted' : 'Not Posted',
-            'provisioning_status' => $paymentStatus === 'paid' ? 'Provisioned' : 'Not Provisioned',
-            'receipt' => $receipt ?: null,
+            'invoice_number' => 'INV-' . $invoicePrefix . '-' . str_pad((string) $order->id, 5, '0', STR_PAD_LEFT),
+            'invoice_type' => $this->invoiceType($paymentType, $price, $sourceType),
+            'source_type' => $sourceType,
+            'source_label' => $this->sourceLabel($sourceType),
+            'name' => $order->name,
+            'email' => $order->email,
+            'plan_name' => $order->plan_name,
+            'plan_id' => $order->plan_id,
+            'price' => $order->price,
+            'currency' => $order->currency,
+            'payment_status' => $order->payment_status,
+            'payment_type' => $paymentType,
             'txn_id' => $order->txn_id,
-            'created_at' => optional($order->created_at)->toDateTimeString(),
-            'created_at_display' => optional($order->created_at)->format('M d, Y H:i'),
-            'coupon_code' => $order->total_coupon_used?->coupon_detail?->code,
-            'coupon_name' => $order->total_coupon_used?->coupon_detail?->name,
-            'timeline' => $this->timeline($order, $paymentStatus),
+            'receipt' => $order->receipt,
+            'created_at' => $order->created_at,
+            'original_price' => $order->original_price ?? null,
+            'total_coupon_used' => $order->total_coupon_used,
+            'user' => $order->user ? [
+                'name' => $order->user->name,
+                'email' => $order->user->email,
+            ] : null,
         ];
     }
 
-    private function normalizePaymentStatus(string $status): string
+    private function receiptData($receipt): array
     {
-        $status = strtolower(trim($status));
-
-        return match (true) {
-            in_array($status, ['paid', 'succeeded', 'success', 'confirmed', 'completed'], true) => 'paid',
-            in_array($status, ['pending', 'waiting', 'processing', 'unpaid', ''], true) => 'pending',
-            in_array($status, ['failed', 'cancelled', 'canceled', 'rejected'], true) => 'failed',
-            in_array($status, ['expired'], true) => 'expired',
-            in_array($status, ['refunded', 'reversed', 'chargeback'], true) => 'refunded',
-            default => $status ?: 'unknown',
-        };
-    }
-
-    private function sourceFromPaymentType(string $paymentType): string
-    {
-        $value = strtolower($paymentType);
-
-        return match (true) {
-            str_contains($value, 'mpesa') || str_contains($value, 'm-pesa') => 'Gateway',
-            str_contains($value, 'cash') || str_contains($value, 'manual') || str_contains($value, 'bank') => 'Manual',
-            default => 'Checkout',
-        };
-    }
-
-    private function timeline(Order $order, string $paymentStatus): array
-    {
-        $createdAt = optional($order->created_at)->format('M d, Y H:i');
-
-        $events = [
-            [
-                'title' => 'Order created',
-                'description' => 'Checkout record was created.',
-                'date' => $createdAt,
-                'status' => 'completed',
-            ],
-        ];
-
-        if ($paymentStatus === 'paid') {
-            $events[] = [
-                'title' => 'Payment confirmed',
-                'description' => 'Payment was confirmed and the order was posted.',
-                'date' => $createdAt,
-                'status' => 'completed',
-            ];
-            $events[] = [
-                'title' => 'Provisioning completed',
-                'description' => 'The order is marked as provisioned.',
-                'date' => $createdAt,
-                'status' => 'completed',
-            ];
-        } elseif ($paymentStatus === 'failed') {
-            $events[] = [
-                'title' => 'Payment failed',
-                'description' => 'The gateway or manual confirmation marked this order as failed.',
-                'date' => $createdAt,
-                'status' => 'failed',
-            ];
-        } else {
-            $events[] = [
-                'title' => 'Waiting for payment',
-                'description' => 'No confirmed payment receipt has been posted yet.',
-                'date' => null,
-                'status' => 'pending',
-            ];
+        if (! is_string($receipt) || trim($receipt) === '') {
+            return [];
         }
 
-        return $events;
+        $decoded = json_decode($receipt, true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    private function sourceType(string $paymentType, float $price, string $planName, array $receiptData): string
+    {
+        if (($receiptData['invoice_type'] ?? null) === 'sms_topup' || Str::contains(Str::lower($planName), 'sms')) {
+            return 'sms_topup';
+        }
+
+        if (Str::lower($paymentType) === 'trial') {
+            return 'trial';
+        }
+
+        if ($price <= 0) {
+            return 'free_plan';
+        }
+
+        return 'subscription';
+    }
+
+    private function sourceLabel(string $sourceType): string
+    {
+        return match ($sourceType) {
+            'sms_topup' => 'SMS Top-up',
+            'trial' => 'Free Trial',
+            'free_plan' => 'Free Plan',
+            default => 'Subscription',
+        };
+    }
+
+    private function invoiceType(string $paymentType, float $price, string $sourceType): string
+    {
+        if ($sourceType === 'sms_topup') {
+            return 'SMS Top-up';
+        }
+
+        if (strtolower($paymentType) === 'trial') {
+            return 'Free Trial';
+        }
+
+        if ($price <= 0) {
+            return 'Free Plan';
+        }
+
+        return 'Subscription';
+    }
+
+    private function topupStatus(string $status): string
+    {
+        return match ($status) {
+            'paid', 'approved' => 'paid',
+            'failed', 'cancelled', 'canceled' => 'failed',
+            default => 'pending',
+        };
+    }
+
+    private function statusGroup(string $status): string
+    {
+        $value = strtolower($status);
+
+        if (in_array($value, ['succeeded', 'paid', 'success', 'approved'], true)) {
+            return 'paid';
+        }
+
+        if (in_array($value, ['pending', 'processing', 'pending_mpesa', 'pending_approval'], true)) {
+            return 'pending';
+        }
+
+        if (in_array($value, ['failed', 'cancelled', 'canceled'], true)) {
+            return 'failed';
+        }
+
+        return 'other';
+    }
+
+    private function stats($records): array
+    {
+        return [
+            'total' => $records->count(),
+            'paid' => $records->filter(fn ($record) => $this->statusGroup((string) ($record['payment_status'] ?? '')) === 'paid')->count(),
+            'pending' => $records->filter(fn ($record) => $this->statusGroup((string) ($record['payment_status'] ?? '')) === 'pending')->count(),
+            'failed' => $records->filter(fn ($record) => $this->statusGroup((string) ($record['payment_status'] ?? '')) === 'failed')->count(),
+            'trial' => $records->where('source_type', 'trial')->count(),
+            'subscription' => $records->where('source_type', 'subscription')->count(),
+            'sms_topup' => $records->where('source_type', 'sms_topup')->count(),
+            'free_plan' => $records->where('source_type', 'free_plan')->count(),
+            'collected' => $records
+                ->filter(fn ($record) => $this->statusGroup((string) ($record['payment_status'] ?? '')) === 'paid')
+                ->sum(fn ($record) => (float) ($record['price'] ?? 0)),
+        ];
+    }
+
+    private function paginate($records, int $perPage): LengthAwarePaginator
+    {
+        $perPage = max(1, min($perPage ?: 10, 100));
+        $page = LengthAwarePaginator::resolveCurrentPage();
+        $items = $records->slice(($page - 1) * $perPage, $perPage)->values();
+
+        return new LengthAwarePaginator($items, $records->count(), $perPage, $page, [
+            'path' => request()->url(),
+            'query' => request()->query(),
+        ]);
     }
 }
