@@ -1,10 +1,23 @@
 import AuthenticatedLayout from "@/layouts/authenticated-layout";
 import { Head, Link } from "@inertiajs/react";
 import { useTranslation } from 'react-i18next';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { LineChart } from '@/components/charts';
-import { Building2, ShoppingCart, CreditCard, Crown, ExternalLink } from "lucide-react";
+import { BarChart, PieChart } from '@/components/charts';
+import {
+    BarChart3,
+    Building2,
+    CheckCircle2,
+    Clock3,
+    CreditCard,
+    Crown,
+    ExternalLink,
+    Headphones,
+    LifeBuoy,
+    ShoppingCart,
+    TicketCheck,
+    TrendingUp,
+} from "lucide-react";
 import { formatCurrency } from '@/utils/helpers';
 
 interface SuperAdminDashboardProps {
@@ -50,28 +63,148 @@ interface SuperAdminDashboardProps {
     }>;
 }
 
+type Tone = 'emerald' | 'slate' | 'amber' | 'blue';
+
+const toneStyles: Record<Tone, {
+    card: string;
+    iconWrap: string;
+    icon: string;
+    value: string;
+    chip: string;
+    glow: string;
+}> = {
+    emerald: {
+        card: 'border-emerald-200/70 bg-emerald-50/50',
+        iconWrap: 'bg-emerald-100/80 text-emerald-700 ring-emerald-200/70',
+        icon: 'text-emerald-700',
+        value: 'text-emerald-950',
+        chip: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        glow: 'from-emerald-400/20',
+    },
+    slate: {
+        card: 'border-slate-200 bg-slate-50/70',
+        iconWrap: 'bg-slate-100 text-slate-700 ring-slate-200/80',
+        icon: 'text-slate-700',
+        value: 'text-slate-950',
+        chip: 'bg-slate-100 text-slate-700 border-slate-200',
+        glow: 'from-slate-400/20',
+    },
+    amber: {
+        card: 'border-amber-200/80 bg-amber-50/55',
+        iconWrap: 'bg-amber-100/90 text-amber-700 ring-amber-200/80',
+        icon: 'text-amber-700',
+        value: 'text-amber-950',
+        chip: 'bg-amber-100 text-amber-800 border-amber-200',
+        glow: 'from-amber-400/20',
+    },
+    blue: {
+        card: 'border-sky-200/80 bg-sky-50/55',
+        iconWrap: 'bg-sky-100/90 text-sky-700 ring-sky-200/80',
+        icon: 'text-sky-700',
+        value: 'text-sky-950',
+        chip: 'bg-sky-100 text-sky-800 border-sky-200',
+        glow: 'from-sky-400/20',
+    },
+};
+
 export default function SuperAdminDashboard({ stats, chartData, ticketChartData, recentTickets, weeklyPendingTickets }: SuperAdminDashboardProps) {
     const { t } = useTranslation();
 
+    const safeStats = {
+        order_payments: Number(stats?.order_payments ?? 0),
+        total_orders: Number(stats?.total_orders ?? 0),
+        total_plans: Number(stats?.total_plans ?? 0),
+        total_companies: Number(stats?.total_companies ?? 0),
+    };
+
+    const recentTicketCount = recentTickets?.length ?? 0;
+    const pendingTicketCount = weeklyPendingTickets?.length ?? 0;
+    const resolvedTickets = ticketChartData?.reduce((sum, item) => sum + Number(item.resolved ?? 0), 0) ?? 0;
+    const createdTickets = ticketChartData?.reduce((sum, item) => sum + Number(item.created ?? 0), 0) ?? 0;
+    const latestOrderMonth = [...(chartData ?? [])].reverse().find((item) => Number(item.orders ?? 0) > 0)?.month
+        ?? chartData?.find((item) => Number(item.orders ?? 0) > 0)?.month
+        ?? t('No activity yet');
+
+    const orderSliceColors = ['#0f766e', '#0ea5e9', '#f59e0b', '#64748b', '#14b8a6', '#475569'];
+    const orderPieData = (chartData ?? [])
+        .map((item, index) => ({
+            month: item.month,
+            orders: Number(item.orders ?? 0),
+            color: orderSliceColors[index % orderSliceColors.length],
+        }))
+        .filter((item) => item.orders > 0);
+
     const getStatusBadgeColor = (status: string) => {
         switch(status) {
-            case 'open': return 'bg-blue-100 text-blue-800';
-            case 'in_progress': return 'bg-yellow-100 text-yellow-800';
-            case 'resolved': return 'bg-green-100 text-green-800';
-            case 'closed': return 'bg-gray-100 text-gray-800';
-            default: return 'bg-purple-100 text-purple-800';
+            case 'open': return 'bg-sky-50 text-sky-700 border-sky-200';
+            case 'in_progress': return 'bg-amber-50 text-amber-700 border-amber-200';
+            case 'resolved': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            case 'closed': return 'bg-slate-100 text-slate-700 border-slate-200';
+            default: return 'bg-violet-50 text-violet-700 border-violet-200';
         }
     };
 
     const getPriorityBadgeColor = (priority: string) => {
         switch(priority) {
-            case 'low': return 'bg-green-100 text-green-800';
-            case 'medium': return 'bg-yellow-100 text-yellow-800';
-            case 'high': return 'bg-orange-100 text-orange-800';
-            case 'urgent': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case 'low': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            case 'medium': return 'bg-amber-50 text-amber-700 border-amber-200';
+            case 'high': return 'bg-orange-50 text-orange-700 border-orange-200';
+            case 'urgent': return 'bg-red-50 text-red-700 border-red-200';
+            default: return 'bg-slate-100 text-slate-700 border-slate-200';
         }
     };
+
+    const formatWaitingTime = (daysPending: number) => {
+        if (daysPending < 1) {
+            return t('Today');
+        }
+        if (daysPending < 2) {
+            return t('1 day ago');
+        }
+        if (daysPending < 30) {
+            return `${Math.floor(daysPending)} ${t('days ago')}`;
+        }
+        if (daysPending < 60) {
+            return t('1 month ago');
+        }
+        if (daysPending < 365) {
+            return `${Math.floor(daysPending / 30)} ${t('months ago')}`;
+        }
+
+        const years = Math.floor(daysPending / 365);
+        return `${years} ${years > 1 ? t('years ago') : t('year ago')}`;
+    };
+
+    const metricCards = [
+        {
+            label: t('Total Orders'),
+            value: safeStats.total_orders,
+            helper: t('All subscription orders'),
+            icon: ShoppingCart,
+            tone: 'emerald' as Tone,
+        },
+        {
+            label: t('Order Payments'),
+            value: formatCurrency(safeStats.order_payments),
+            helper: t('Recorded payment value'),
+            icon: CreditCard,
+            tone: 'blue' as Tone,
+        },
+        {
+            label: t('Total Plans'),
+            value: safeStats.total_plans,
+            helper: t('Available billing plans'),
+            icon: Crown,
+            tone: 'slate' as Tone,
+        },
+        {
+            label: t('Total Companies'),
+            value: safeStats.total_companies,
+            helper: t('Registered workspaces'),
+            icon: Building2,
+            tone: 'amber' as Tone,
+        },
+    ];
 
     return (
         <AuthenticatedLayout
@@ -80,290 +213,351 @@ export default function SuperAdminDashboard({ stats, chartData, ticketChartData,
         >
             <Head title={t('Dashboard')} />
 
-            {/* Stats Cards */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card className="relative overflow-hidden bg-gradient-to-r from-green-50 to-green-100 border-green-200">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-green-700">{t('Total Orders')}</CardTitle>
-                        <ShoppingCart className="h-8 w-8 text-green-700 opacity-80" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-green-700">{stats.total_orders}</div>
-                        <p className="text-xs text-green-700 opacity-80 mt-1">{t('All orders')}</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="relative overflow-hidden bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-blue-700">{t('Order Payments')}</CardTitle>
-                        <CreditCard className="h-8 w-8 text-blue-700 opacity-80" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-blue-700">{formatCurrency(stats.order_payments)}</div>
-                        <p className="text-xs text-blue-700 opacity-80 mt-1">{t('Total payments')}</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="relative overflow-hidden bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-purple-700">{t('Total Plans')}</CardTitle>
-                        <Crown className="h-8 w-8 text-purple-700 opacity-80" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-purple-700">{stats.total_plans}</div>
-                        <p className="text-xs text-purple-700 opacity-80 mt-1">{t('Available plans')}</p>
-                    </CardContent>
-                </Card>
-
-                <Card className="relative overflow-hidden bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-orange-700">{t('Total Companies')}</CardTitle>
-                        <Building2 className="h-8 w-8 text-orange-700 opacity-80" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-orange-700">{stats.total_companies}</div>
-                        <p className="text-xs text-orange-700 opacity-80 mt-1">{t('Registered companies')}</p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Recent Orders Chart */}
-            <Card className="mt-6">
-                <CardHeader>
-                    <CardTitle className="text-lg">{t('Recent Orders (Monthly)')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <LineChart
-                        data={chartData}
-                        dataKey="orders"
-                        height={300}
-                        showTooltip={true}
-                        showGrid={true}
-                        lines={[
-                            { dataKey: 'orders', color: '#3b82f6', name: 'Orders' }
-                        ]}
-                        xAxisKey="month"
-                        showLegend={true}
-                    />
-                </CardContent>
-            </Card>
-
-            {/* Helpdesk Section */}
-            <div className="grid gap-6 md:grid-cols-2 mt-6">
-                {/* Recent Helpdesk Activity */}
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-lg">{t('Recent Helpdesk Activity')}</CardTitle>
-                        {recentTickets && recentTickets.length > 0 && (
-                            <span className="text-sm text-muted-foreground">
-                                {recentTickets.length} {recentTickets.length === 1 ? 'ticket' : 'tickets'}
-                            </span>
-                        )}
-                    </CardHeader>
-                    <CardContent>
-                        {recentTickets && recentTickets.length > 0 ? (
-                            <div className="space-y-2">
-                                {recentTickets.map((ticket) => (
-                                    <Link
-                                        key={ticket.id}
-                                        href={route('helpdesk-tickets.show', ticket.id)}
-                                        className="block p-3 rounded-lg border hover:bg-accent/50 transition-all relative overflow-hidden"
-                                    >
-                                        {ticket.category_color && (
-                                            <div 
-                                                className="absolute left-0 top-0 bottom-0 w-1" 
-                                                style={{ backgroundColor: ticket.category_color }}
-                                            />
-                                        )}
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <span className="text-xs font-mono text-blue-600 font-semibold">#{ticket.ticket_id}</span>
-                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getPriorityBadgeColor(ticket.priority)}`}>
-                                                        {t(ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1))}
-                                                    </span>
-                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(ticket.status)}`}>
-                                                        {t(ticket.status.replace('_', ' ').charAt(0).toUpperCase() + ticket.status.replace('_', ' ').slice(1))}
-                                                    </span>
-                                                </div>
-                                                <p className="text-sm font-medium text-gray-900 mb-2 line-clamp-2">
-                                                    {ticket.title}
-                                                </p>
-                                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                                                    {ticket.category && (
-                                                        <>
-                                                            <div className="flex items-center gap-1.5">
-                                                                {ticket.category_color && (
-                                                                    <span 
-                                                                        className="w-2 h-2 rounded-full flex-shrink-0" 
-                                                                        style={{ backgroundColor: ticket.category_color }}
-                                                                    />
-                                                                )}
-                                                                <span className="font-medium">Category:</span>
-                                                                <span>{ticket.category}</span>
-                                                            </div>
-                                                            <span className="text-gray-300">•</span>
-                                                        </>
-                                                    )}
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="font-medium">From:</span>
-                                                        <span>{ticket.creator}</span>
-                                                    </div>
-                                                    <span className="text-gray-300">•</span>
-                                                    <div className="flex items-center gap-1">
-                                                        <span>{ticket.created_at}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <ExternalLink className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
-                                        </div>
-                                    </Link>
-                                ))}
+            <div className="space-y-6 pb-8">
+                <section className="relative overflow-hidden rounded-[28px] border border-slate-200/80 bg-[linear-gradient(135deg,#f8fafc_0%,#ffffff_45%,#ecfdf5_100%)] p-5 shadow-sm md:p-6">
+                    <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-emerald-200/35 blur-3xl" />
+                    <div className="pointer-events-none absolute -bottom-24 left-1/3 h-72 w-72 rounded-full bg-sky-200/30 blur-3xl" />
+                    <div className="relative">
+                        <div className="space-y-5">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <Badge className="border-emerald-200 bg-white/75 px-3 py-1 text-emerald-700 shadow-sm backdrop-blur">
+                                    <span className="mr-2 h-2 w-2 rounded-full bg-emerald-500" />
+                                    {t('Super Admin Command Center')}
+                                </Badge>
+                                <Badge variant="outline" className="bg-white/70 px-3 py-1 text-slate-600 shadow-sm backdrop-blur">
+                                    {t('Latest order month')}: {latestOrderMonth}
+                                </Badge>
                             </div>
-                        ) : (
-                            <div className="text-center py-12 text-muted-foreground">
-                                <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
-                                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                                    </svg>
+
+                            <div className="max-w-3xl">
+                                <h1 className="text-2xl font-semibold tracking-tight text-slate-950 md:text-3xl">
+                                    {t('Platform operations at a glance')}
+                                </h1>
+                                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 md:text-base">
+                                    {t('Track company growth, subscription revenue, plan coverage, and helpdesk response flow from one clean workspace.')}
+                                </p>
+                            </div>
+
+                            <div className="grid gap-3 sm:grid-cols-3">
+                                <div className="rounded-2xl border border-white/80 bg-white/70 p-4 shadow-sm backdrop-blur-md">
+                                    <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                                        <TrendingUp className="h-4 w-4 text-emerald-600" />
+                                        {t('Revenue')}
+                                    </div>
+                                    <p className="mt-3 text-xl font-semibold text-slate-950">{formatCurrency(safeStats.order_payments)}</p>
+                                    <p className="mt-1 text-xs text-slate-500">{t('Collected order payments')}</p>
                                 </div>
-                                <p className="font-medium text-gray-900 mb-1">{t('No recent activity')}</p>
-                                <p className="text-sm">{t('No tickets have been created yet')}</p>
+                                <div className="rounded-2xl border border-white/80 bg-white/70 p-4 shadow-sm backdrop-blur-md">
+                                    <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                                        <TicketCheck className="h-4 w-4 text-amber-600" />
+                                        {t('Tickets')}
+                                    </div>
+                                    <p className="mt-3 text-xl font-semibold text-slate-950">{pendingTicketCount}</p>
+                                    <p className="mt-1 text-xs text-slate-500">{t('Awaiting response')}</p>
+                                </div>
+                                <div className="rounded-2xl border border-white/80 bg-white/70 p-4 shadow-sm backdrop-blur-md">
+                                    <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                                        <Building2 className="h-4 w-4 text-sky-600" />
+                                        {t('Tenants')}
+                                    </div>
+                                    <p className="mt-3 text-xl font-semibold text-slate-950">{safeStats.total_companies}</p>
+                                    <p className="mt-1 text-xs text-slate-500">{t('Registered companies')}</p>
+                                </div>
                             </div>
-                        )}
-                    </CardContent>
-                </Card>
+                        </div>
+                    </div>
+                </section>
 
-                {/* Tickets Awaiting Your Response */}
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-lg">{t('Tickets Awaiting Your Response')}</CardTitle>
-                        {weeklyPendingTickets && weeklyPendingTickets.length > 0 && (
-                            <span className="text-sm text-muted-foreground">
-                                {weeklyPendingTickets.length} {weeklyPendingTickets.length === 1 ? 'ticket' : 'tickets'}
-                            </span>
-                        )}
-                    </CardHeader>
-                    <CardContent>
-                        {weeklyPendingTickets && weeklyPendingTickets.length > 0 ? (
-                            <div className="space-y-2">
-                                {weeklyPendingTickets.map((ticket) => {
-                                    const daysAgo = ticket.days_pending;
-                                    let timeDisplay = '';
-                                    
-                                    if (daysAgo < 1) {
-                                        timeDisplay = 'Today';
-                                    } else if (daysAgo < 2) {
-                                        timeDisplay = '1 day ago';
-                                    } else if (daysAgo < 30) {
-                                        timeDisplay = `${Math.floor(daysAgo)} days ago`;
-                                    } else if (daysAgo < 60) {
-                                        timeDisplay = '1 month ago';
-                                    } else if (daysAgo < 365) {
-                                        timeDisplay = `${Math.floor(daysAgo / 30)} months ago`;
-                                    } else {
-                                        timeDisplay = `${Math.floor(daysAgo / 365)} year${Math.floor(daysAgo / 365) > 1 ? 's' : ''} ago`;
-                                    }
+                <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {metricCards.map((metric) => {
+                        const Icon = metric.icon;
+                        const tone = toneStyles[metric.tone];
+                        return (
+                            <Card key={metric.label} className={`relative h-full overflow-hidden rounded-3xl ${tone.card} shadow-sm`}>
+                                <div className={`pointer-events-none absolute -right-16 -top-16 h-36 w-36 rounded-full bg-gradient-to-b ${tone.glow} to-transparent blur-2xl`} />
+                                <CardContent className="relative p-5">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div>
+                                            <p className="text-sm font-medium text-slate-600">{metric.label}</p>
+                                            <p className={`mt-3 text-3xl font-semibold tracking-tight ${tone.value}`}>{metric.value}</p>
+                                        </div>
+                                        <span className={`flex h-12 w-12 items-center justify-center rounded-2xl ring-1 ${tone.iconWrap}`}>
+                                            <Icon className={`h-6 w-6 ${tone.icon}`} />
+                                        </span>
+                                    </div>
+                                    <div className="mt-5">
+                                        <p className="text-sm text-slate-600">{metric.helper}</p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
+                </section>
 
-                                    return (
+                <section className="grid gap-6 xl:grid-cols-[1.55fr_0.85fr]">
+                    <Card className="overflow-hidden rounded-3xl border-slate-200/80 bg-white shadow-sm">
+                        <CardHeader className="border-b border-slate-100 pb-4">
+                            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white">
+                                            <BarChart3 className="h-5 w-5" />
+                                        </span>
+                                        <div>
+                                            <CardTitle className="text-lg text-slate-950">{t('Recent Orders (Monthly)')}</CardTitle>
+                                            <CardDescription>{t('Subscription activity across the year')}</CardDescription>
+                                        </div>
+                                    </div>
+                                </div>
+                                <Badge variant="outline" className="w-fit border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">
+                                    {safeStats.total_orders} {t('orders')}
+                                </Badge>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-5">
+                            {orderPieData.length > 0 ? (
+                                <div className="grid gap-5 rounded-2xl border border-slate-100 bg-slate-50/70 p-4 lg:grid-cols-[0.95fr_1.05fr]">
+                                    <div className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-100">
+                                        <PieChart
+                                            data={orderPieData}
+                                            dataKey="orders"
+                                            nameKey="month"
+                                            height={280}
+                                            donut={true}
+                                            innerRadius={58}
+                                            outerRadius={94}
+                                            showTooltip={true}
+                                            showLegend={false}
+                                        />
+                                    </div>
+                                    <div className="flex flex-col justify-center space-y-3">
+                                        <p className="text-sm font-semibold text-slate-950">{t('Orders by active month')}</p>
+                                        <div className="space-y-2">
+                                            {orderPieData.map((item) => (
+                                                <div key={item.month} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
+                                                    <span className="flex items-center gap-2 font-medium text-slate-700">
+                                                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                                                        {item.month}
+                                                    </span>
+                                                    <span className="font-semibold text-slate-950">{item.orders}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <p className="text-xs leading-5 text-slate-500">
+                                            {t('This keeps the dashboard compact while showing where order activity happened during the year.')}
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex h-[280px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-slate-500">
+                                    {t('No order data available')}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    <Card className="overflow-hidden rounded-3xl border-slate-200/80 bg-slate-950 text-white shadow-sm">
+                        <CardHeader className="pb-4">
+                            <CardTitle className="text-lg text-white">{t('Support pulse')}</CardTitle>
+                            <CardDescription className="text-slate-300">{t('Helpdesk load and response visibility')}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-slate-300">{t('Recent activity')}</p>
+                                        <p className="mt-1 text-2xl font-semibold">{recentTicketCount}</p>
+                                    </div>
+                                    <Headphones className="h-8 w-8 text-emerald-300" />
+                                </div>
+                            </div>
+                            <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-slate-300">{t('Created / resolved')}</p>
+                                        <p className="mt-1 text-2xl font-semibold">{createdTickets}<span className="text-slate-500"> / </span>{resolvedTickets}</p>
+                                    </div>
+                                    <CheckCircle2 className="h-8 w-8 text-sky-300" />
+                                </div>
+                            </div>
+                            <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm text-amber-100">{t('Awaiting response')}</p>
+                                        <p className="mt-1 text-2xl font-semibold text-white">{pendingTicketCount}</p>
+                                    </div>
+                                    <Clock3 className="h-8 w-8 text-amber-200" />
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </section>
+
+                <section className="grid gap-6 xl:grid-cols-2">
+                    <Card className="rounded-3xl border-slate-200/80 bg-white shadow-sm">
+                        <CardHeader className="flex flex-row items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                            <div>
+                                <CardTitle className="text-lg text-slate-950">{t('Recent Helpdesk Activity')}</CardTitle>
+                                <CardDescription>{t('Newest support items from all companies')}</CardDescription>
+                            </div>
+                            {recentTicketCount > 0 && (
+                                <Badge variant="outline" className="border-slate-200 bg-slate-50 text-slate-700">
+                                    {recentTicketCount} {recentTicketCount === 1 ? t('ticket') : t('tickets')}
+                                </Badge>
+                            )}
+                        </CardHeader>
+                        <CardContent className="p-4">
+                            {recentTicketCount > 0 ? (
+                                <div className="space-y-3">
+                                    {recentTickets.map((ticket) => (
                                         <Link
                                             key={ticket.id}
                                             href={route('helpdesk-tickets.show', ticket.id)}
-                                            className="block p-3 rounded-lg border hover:bg-accent/50 transition-all group relative overflow-hidden"
+                                            className="group block rounded-2xl border border-slate-200/80 bg-white p-4 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50/30 hover:shadow-sm"
                                         >
-                                            {ticket.category_color && (
-                                                <div 
-                                                    className="absolute left-0 top-0 bottom-0 w-1" 
-                                                    style={{ backgroundColor: ticket.category_color }}
+                                            <div className="flex items-start gap-3">
+                                                <span
+                                                    className="mt-1 h-10 w-1.5 shrink-0 rounded-full bg-slate-300"
+                                                    style={ticket.category_color ? { backgroundColor: ticket.category_color } : undefined}
                                                 />
-                                            )}
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <span className="text-xs font-mono text-blue-600 font-semibold">#{ticket.ticket_id}</span>
-                                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getPriorityBadgeColor(ticket.priority)}`}>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className="rounded-full bg-slate-950 px-2.5 py-1 text-xs font-semibold text-white">#{ticket.ticket_id}</span>
+                                                        <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${getPriorityBadgeColor(ticket.priority)}`}>
                                                             {t(ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1))}
                                                         </span>
+                                                        <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatusBadgeColor(ticket.status)}`}>
+                                                            {t(ticket.status.replace('_', ' ').charAt(0).toUpperCase() + ticket.status.replace('_', ' ').slice(1))}
+                                                        </span>
                                                     </div>
-                                                    <p className="text-sm font-medium text-gray-900 mb-2 line-clamp-2">
-                                                        {ticket.title}
-                                                    </p>
-                                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                                                        {ticket.category && (
-                                                            <>
-                                                                <div className="flex items-center gap-1.5">
-                                                                    {ticket.category_color && (
-                                                                        <span 
-                                                                            className="w-2 h-2 rounded-full flex-shrink-0" 
-                                                                            style={{ backgroundColor: ticket.category_color }}
-                                                                        />
-                                                                    )}
-                                                                    <span className="font-medium">Category:</span>
-                                                                    <span>{ticket.category}</span>
-                                                                </div>
-                                                                <span className="text-gray-300">•</span>
-                                                            </>
-                                                        )}
-                                                        <div className="flex items-center gap-1">
-                                                            <span className="font-medium">From:</span>
-                                                            <span>{ticket.creator}</span>
-                                                        </div>
-                                                        <span className="text-gray-300">•</span>
-                                                        <div className="flex items-center gap-1">
-                                                            <span className="font-medium text-orange-600">Waiting:</span>
-                                                            <span className="text-orange-600 font-medium">{timeDisplay}</span>
-                                                        </div>
+                                                    <p className="mt-3 line-clamp-2 text-sm font-semibold leading-6 text-slate-950">{ticket.title}</p>
+                                                    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+                                                        {ticket.category && <span>{ticket.category}</span>}
+                                                        <span>{ticket.creator}</span>
+                                                        <span>{ticket.created_at}</span>
                                                     </div>
                                                 </div>
-                                                <ExternalLink className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-1" />
+                                                <ExternalLink className="mt-1 h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-emerald-600" />
                                             </div>
                                         </Link>
-                                    );
-                                })}
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/70 px-6 py-12 text-center">
+                                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-500 shadow-sm">
+                                        <LifeBuoy className="h-6 w-6" />
+                                    </div>
+                                    <p className="font-semibold text-slate-950">{t('No recent activity')}</p>
+                                    <p className="mt-1 text-sm text-slate-500">{t('No tickets have been created yet')}</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    <Card className="rounded-3xl border-slate-200/80 bg-white shadow-sm">
+                        <CardHeader className="flex flex-row items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                            <div>
+                                <CardTitle className="text-lg text-slate-950">{t('Tickets Awaiting Your Response')}</CardTitle>
+                                <CardDescription>{t('Pending conversations needing Super Admin attention')}</CardDescription>
+                            </div>
+                            {pendingTicketCount > 0 && (
+                                <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
+                                    {pendingTicketCount} {pendingTicketCount === 1 ? t('ticket') : t('tickets')}
+                                </Badge>
+                            )}
+                        </CardHeader>
+                        <CardContent className="p-4">
+                            {pendingTicketCount > 0 ? (
+                                <div className="space-y-3">
+                                    {weeklyPendingTickets.map((ticket) => (
+                                        <Link
+                                            key={ticket.id}
+                                            href={route('helpdesk-tickets.show', ticket.id)}
+                                            className="group block rounded-2xl border border-amber-200/80 bg-amber-50/35 p-4 transition hover:-translate-y-0.5 hover:bg-amber-50 hover:shadow-sm"
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <span
+                                                    className="mt-1 h-10 w-1.5 shrink-0 rounded-full bg-amber-400"
+                                                    style={ticket.category_color ? { backgroundColor: ticket.category_color } : undefined}
+                                                />
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className="rounded-full bg-slate-950 px-2.5 py-1 text-xs font-semibold text-white">#{ticket.ticket_id}</span>
+                                                        <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${getPriorityBadgeColor(ticket.priority)}`}>
+                                                            {t(ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1))}
+                                                        </span>
+                                                        <span className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-xs font-semibold text-amber-700">
+                                                            {formatWaitingTime(ticket.days_pending)}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-3 line-clamp-2 text-sm font-semibold leading-6 text-slate-950">{ticket.title}</p>
+                                                    <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
+                                                        {ticket.category && <span>{ticket.category}</span>}
+                                                        <span>{ticket.creator}</span>
+                                                        <span>{ticket.created_at}</span>
+                                                    </div>
+                                                </div>
+                                                <ExternalLink className="mt-1 h-4 w-4 shrink-0 text-slate-400 transition group-hover:text-amber-600" />
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/60 px-6 py-12 text-center">
+                                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-emerald-600 shadow-sm">
+                                        <CheckCircle2 className="h-6 w-6" />
+                                    </div>
+                                    <p className="font-semibold text-slate-950">{t('All caught up!')}</p>
+                                    <p className="mt-1 text-sm text-slate-500">{t('No tickets awaiting response')}</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </section>
+
+                <Card className="overflow-hidden rounded-3xl border-slate-200/80 bg-white shadow-sm">
+                    <CardHeader className="border-b border-slate-100 pb-4">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+                                    <TrendingUp className="h-5 w-5" />
+                                </span>
+                                <div>
+                                    <CardTitle className="text-lg text-slate-950">{t('Monthly Ticket Trends')}</CardTitle>
+                                    <CardDescription>{t('Created and resolved tickets by month')}</CardDescription>
+                                </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">{createdTickets} {t('created')}</Badge>
+                                <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">{resolvedTickets} {t('resolved')}</Badge>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-5">
+                        {ticketChartData && ticketChartData.length > 0 ? (
+                            <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+                                <BarChart
+                                    data={ticketChartData}
+                                    dataKey="created"
+                                    height={300}
+                                    showTooltip={true}
+                                    showGrid={true}
+                                    bars={[
+                                        { dataKey: 'created', color: '#2563eb', name: 'Created' },
+                                        { dataKey: 'resolved', color: '#059669', name: 'Resolved' }
+                                    ]}
+                                    xAxisKey="month"
+                                    showLegend={true}
+                                />
                             </div>
                         ) : (
-                            <div className="text-center py-12 text-muted-foreground">
-                                <div className="mx-auto w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-3">
-                                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                </div>
-                                <p className="font-medium text-gray-900 mb-1">{t('All caught up!')}</p>
-                                <p className="text-sm">{t('No tickets awaiting response')}</p>
+                            <div className="flex h-[300px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-slate-500">
+                                {t('No ticket trend data available')}
                             </div>
                         )}
                     </CardContent>
                 </Card>
             </div>
-
-            {/* Monthly Ticket Trends */}
-            <Card className="mt-6">
-                <CardHeader>
-                    <CardTitle className="text-lg">{t('Monthly Ticket Trends')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {ticketChartData && ticketChartData.length > 0 ? (
-                        <LineChart
-                            data={ticketChartData}
-                            dataKey="created"
-                            height={300}
-                            showTooltip={true}
-                            showGrid={true}
-                            lines={[
-                                { dataKey: 'created', color: '#3b82f6', name: 'Created' },
-                                { dataKey: 'resolved', color: '#10b981', name: 'Resolved' }
-                            ]}
-                            xAxisKey="month"
-                            showLegend={true}
-                        />
-                    ) : (
-                        <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                            {t('No ticket trend data available')}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-
         </AuthenticatedLayout>
     );
 }

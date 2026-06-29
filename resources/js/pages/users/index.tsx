@@ -23,7 +23,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { FilterButton } from '@/components/ui/filter-button';
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
-import { ListGridToggle } from '@/components/ui/list-grid-toggle';
 import Create from './create';
 import EditUser from './edit';
 import ChangePassword from './change-password';
@@ -46,7 +45,6 @@ export default function Index() {
     const [sortField, setSortField] = useState(urlParams.get('sort') || '');
     const [sortDirection, setSortDirection] = useState(urlParams.get('direction') || 'asc');
 
-    const [viewMode, setViewMode] = useState<'list' | 'grid'>(urlParams.get('view') as 'list' | 'grid' || 'grid');
     const [modalState, setModalState] = useState<UserModalState>({
         isOpen: false,
         mode: '',
@@ -95,7 +93,7 @@ export default function Index() {
     });
 
     const handleFilter = () => {
-        router.get(route('users.index'), {...filters, per_page: perPage, sort: sortField, direction: sortDirection, view: viewMode}, {
+        router.get(route('users.index'), {...filters, per_page: perPage, sort: sortField, direction: sortDirection}, {
             preserveState: true,
             replace: true
         });
@@ -105,7 +103,7 @@ export default function Index() {
         const direction = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
         setSortField(field);
         setSortDirection(direction);
-        router.get(route('users.index'), {...filters, per_page: perPage, sort: field, direction, view: viewMode}, {
+        router.get(route('users.index'), {...filters, per_page: perPage, sort: field, direction}, {
             preserveState: true,
             replace: true
         });
@@ -113,7 +111,7 @@ export default function Index() {
 
     const clearFilters = () => {
         setFilters({ name: '', email: '', role: '', is_enable_login: '' });
-        router.get(route('users.index'), {per_page: perPage, view: viewMode});
+        router.get(route('users.index'), {per_page: perPage});
     };
 
     const openModal = (mode: 'add' | 'edit' | 'change-password' | 'upgrade-plan', data: User | null = null) => {
@@ -353,11 +351,11 @@ export default function Index() {
             <Head title={t('Users')} />
 
             {/* Main Content Card */}
-            <Card className="shadow-sm">
+            <Card className="overflow-hidden border-slate-200/80 bg-white/95 shadow-[0_18px_45px_rgba(15,23,42,0.06)]">
                 {/* Search & Controls Header */}
-                <CardContent className="p-6 border-b bg-gray-50/50">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1 max-w-md">
+                <CardContent className="border-b border-slate-200/80 bg-gradient-to-r from-slate-50 via-white to-emerald-50/40 p-5">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="flex-1 max-w-xl">
                             <SearchInput
                                 value={filters.name}
                                 onChange={(value) => setFilters({...filters, name: value})}
@@ -366,15 +364,9 @@ export default function Index() {
                             />
                         </div>
                         <div className="flex items-center gap-3">
-                            <ListGridToggle
-                                currentView={viewMode}
-                                routeName="users.index"
-                                filters={{...filters, per_page: perPage}}
-                            />
-                            <PerPageSelector
-                                routeName="users.index"
-                                filters={{...filters, view: viewMode}}
-                            />
+                            <Badge variant="outline" className="hidden rounded-full border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 md:inline-flex">
+                                {t('List View')}
+                            </Badge>
                             <div className="relative">
                                 <FilterButton
                                     showFilters={showFilters}
@@ -442,11 +434,10 @@ export default function Index() {
                     </CardContent>
                 )}
 
-                {/* Table Content */}
+                {/* User List Content */}
                 <CardContent className="p-0">
-                    {viewMode === 'list' ? (
-                        <div className="overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100 max-h-[70vh] rounded-none w-full">
-                            <div className="min-w-[800px]">
+                    <div className="overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent max-h-[70vh] rounded-none w-full bg-white">
+                        <div className="min-w-[900px]">
                             <DataTable
                                 data={users.data}
                                 columns={tableColumns}
@@ -468,205 +459,23 @@ export default function Index() {
                                     />
                                 }
                             />
-                            </div>
                         </div>
-                    ) : (
-                        <div className="overflow-auto max-h-[70vh] p-6">
-                            {users.data.length > 0 ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
-                                    {users.data.map((user) => (
-                                        <Card key={user.id} className="group relative overflow-hidden border border-gray-200 hover:border-primary/40 hover:shadow-xl transition-all duration-300">
-                                            {/* Status Badge - Top Right Corner */}
-                                            <div className="absolute top-3 right-3 z-10">
-                                                <span className={`px-2 py-1 rounded-full text-sm ${
-                                                    user.is_enable_login ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                                }`}>
-                                                    {user.is_enable_login ? t('Enabled') : t('Disabled')}
-                                                </span>
-                                            </div>
-
-                                            <div className="p-5">
-                                                {/* Avatar Section - Centered */}
-                                                <div className="flex flex-col items-center mb-4">
-                                                    <div className="relative mb-3">
-                                                        <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border-2 border-primary/30 shadow-lg group-hover:scale-110 transition-transform duration-300">
-                                                            {user.avatar ? (
-                                                                <img src={getImagePath(user.avatar)} alt={user.name} className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
-                                                                    <UserIcon className="w-7 h-7 text-primary" />
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white ${
-                                                            user.is_online ? 'bg-green-500' : 'bg-gray-400'
-                                                        }`} />
-                                                    </div>
-                                                    
-                                                    {/* Name */}
-                                                    <h3 className="font-bold text-base text-gray-900 text-center mb-1.5 line-clamp-1 px-2" title={user.name}>
-                                                        {user.name}
-                                                    </h3>
-                                                    
-                                                    {/* Role Badge */}
-                                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-primary/10 to-primary/5 text-primary border border-primary/20 capitalize">
-                                                        {user.type}
-                                                    </span>
-                                                </div>
-
-                                                {/* Contact Info */}
-                                                <div className="space-y-2 mb-4 bg-gray-50 rounded-lg p-3">
-                                                    <div className="flex items-center gap-2 text-xs text-gray-600">
-                                                        <svg className="w-4 h-4 flex-shrink-0 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                                        </svg>
-                                                        <span className="truncate font-medium" title={user.email}>{user.email}</span>
-                                                    </div>
-                                                    {user.mobile_no && (
-                                                        <div className="flex items-center gap-2 text-xs text-gray-600">
-                                                            <svg className="w-4 h-4 flex-shrink-0 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                                            </svg>
-                                                            <span className="font-medium">{user.mobile_no}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* Action Buttons */}
-                                                <div className="flex items-center justify-center gap-1.5 pt-3 border-t border-gray-200">
-                                                    {user.is_disable === 1 ? (
-                                                        <TooltipProvider>
-                                                            <Tooltip delayDuration={0}>
-                                                                <TooltipTrigger asChild>
-                                                                    <div className="h-9 w-9 flex items-center justify-center text-gray-400 bg-gray-100 rounded-lg">
-                                                                        <Lock className="h-4 w-4" />
-                                                                    </div>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent><p>{t('User is disabled')}</p></TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-                                                    ) : (
-                                                        <TooltipProvider>
-                                                            {auth.user?.permissions?.includes('impersonate-users') && user.id !== auth.user?.id && (
-                                                                <Tooltip delayDuration={0}>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button 
-                                                                            variant="ghost" 
-                                                                            size="sm" 
-                                                                            onClick={() => router.post(route('users.impersonate', user.id))} 
-                                                                            className="h-9 w-9 p-0 text-purple-600 hover:text-purple-700 rounded-lg transition-colors"
-                                                                        >
-                                                                            <UserCheck className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent><p>{t('Login As User')}</p></TooltipContent>
-                                                                </Tooltip>
-                                                            )}
-                                                            {auth.user?.permissions?.includes('view-admin-hub') && user.type === 'company' && (
-                                                                <Tooltip delayDuration={0}>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button 
-                                                                            variant="ghost" 
-                                                                            size="sm" 
-                                                                            onClick={() => router.get(route('users.admin-hub', user.id))} 
-                                                                            className="h-9 w-9 p-0 text-indigo-600 hover:text-indigo-700 rounded-lg transition-colors"
-                                                                        >
-                                                                            <Building2 className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent><p>{t('Admin Hub')}</p></TooltipContent>
-                                                                </Tooltip>
-                                                            )}
-                                                            {auth.user?.permissions?.includes('view-upgrade-plan') && auth.user?.type === 'superadmin' && user.type === 'company' && (
-                                                                <Tooltip delayDuration={0}>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button 
-                                                                            variant="ghost" 
-                                                                            size="sm" 
-                                                                            onClick={() => openModal('upgrade-plan', user)} 
-                                                                            className="h-9 w-9 p-0 text-amber-600 hover:text-amber-700 rounded-lg transition-colors"
-                                                                        >
-                                                                            <Crown className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent><p>{t('Upgrade Plan')}</p></TooltipContent>
-                                                                </Tooltip>
-                                                            )}
-                                                            {auth.user?.permissions?.includes('change-password-users') && (
-                                                                <Tooltip delayDuration={0}>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button 
-                                                                            variant="ghost" 
-                                                                            size="sm" 
-                                                                            onClick={() => openModal('change-password', user)} 
-                                                                            className="h-9 w-9 p-0 text-orange-600 hover:text-orange-700 rounded-lg transition-colors"
-                                                                        >
-                                                                            <Key className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent><p>{t('Change Password')}</p></TooltipContent>
-                                                                </Tooltip>
-                                                            )}
-                                                            {auth.user?.permissions?.includes('edit-users') && (
-                                                                <Tooltip delayDuration={0}>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button 
-                                                                            variant="ghost" 
-                                                                            size="sm" 
-                                                                            onClick={() => openModal('edit', user)} 
-                                                                            className="h-9 w-9 p-0 text-blue-600 hover:text-blue-700 rounded-lg transition-colors"
-                                                                        >
-                                                                            <Edit className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent><p>{t('Edit')}</p></TooltipContent>
-                                                                </Tooltip>
-                                                            )}
-                                                            {auth.user?.permissions?.includes('delete-users') && (
-                                                                <Tooltip delayDuration={0}>
-                                                                    <TooltipTrigger asChild>
-                                                                        <Button 
-                                                                            variant="ghost" 
-                                                                            size="sm" 
-                                                                            onClick={() => openDeleteDialog(user.id)} 
-                                                                            className="h-9 w-9 p-0 text-red-600 hover:text-red-700 rounded-lg transition-colors"
-                                                                        >
-                                                                            <Trash2 className="h-4 w-4" />
-                                                                        </Button>
-                                                                    </TooltipTrigger>
-                                                                    <TooltipContent><p>{t('Delete')}</p></TooltipContent>
-                                                                </Tooltip>
-                                                            )}            
-                                                        </TooltipProvider>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </Card>
-                                    ))}
-                                </div>
-                            ) : (
-                                <NoRecordsFound
-                                    icon={UsersIcon}
-                                    title={t('No users found')}
-                                    description={t('Get started by creating your first user.')}
-                                    hasFilters={!!(filters.name || filters.email || filters.role || filters.is_enable_login)}
-                                    onClearFilters={clearFilters}
-                                    createPermission="create-users"
-                                    onCreateClick={() => openModal('add')}
-                                    createButtonText={t('Create User')}
-                                />
-                            )}
-                        </div>
-                    )}
+                    </div>
                 </CardContent>
 
                 {/* Pagination Footer */}
-                <CardContent className="px-4 py-2 border-t bg-gray-50/30">
-                    <Pagination
-                        data={users}
-                        routeName="users.index"
-                        filters={{...filters, per_page: perPage, view: viewMode}}
-                    />
+                <CardContent className="border-t bg-slate-50/80 px-4 py-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <PerPageSelector
+                            routeName="users.index"
+                            filters={{...filters}}
+                        />
+                        <Pagination
+                            data={users}
+                            routeName="users.index"
+                            filters={{...filters, per_page: perPage}}
+                        />
+                    </div>
                 </CardContent>
             </Card>
 
