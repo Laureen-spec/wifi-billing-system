@@ -142,37 +142,68 @@ export default function SmsSettings({ pageTitle, subtitle, setting, platformSett
                     <div className="space-y-5">
                         <Card>
                             <CardHeader className="border-b py-4"><CardTitle className="text-base">SMS gateway rule</CardTitle></CardHeader>
-                            <CardContent className="grid gap-4 p-5 md:grid-cols-2">
-                                {isPlatform && (
+                            <CardContent className="space-y-4 p-5">
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    {isPlatform && (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="sms-scope">Setting scope</Label>
+                                            <select id="sms-scope" value={data.scope} onChange={(event) => setData('scope', event.target.value)} className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm">
+                                                <option value="platform">Super admin platform SMS</option>
+                                                <option value="isp">ISP SMS default</option>
+                                            </select>
+                                            <InputError message={errors.scope} />
+                                        </div>
+                                    )}
+
                                     <div className="space-y-2">
-                                        <Label htmlFor="sms-scope">Setting scope</Label>
-                                        <select id="sms-scope" value={data.scope} onChange={(event) => setData('scope', event.target.value)} className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm">
-                                            <option value="platform">Super admin platform SMS</option>
-                                            <option value="isp">ISP SMS default</option>
+                                        <Label htmlFor="sms-mode">Gateway rule</Label>
+                                        <select
+                                            id="sms-mode"
+                                            value={data.mode}
+                                            onChange={(event) => {
+                                                const mode = event.target.value;
+                                                setData('mode', mode);
+                                                setData('allow_system_sms', mode === 'platform');
+                                                setData('allow_own_sms', mode === 'own');
+                                            }}
+                                            className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                                        >
+                                            <option value="platform">Use system SMS balance</option>
+                                            <option value="own">Use own SMS API</option>
                                         </select>
-                                        <InputError message={errors.scope} />
+                                        <InputError message={errors.mode} />
+                                    </div>
+                                </div>
+
+                                {!isPlatform ? (
+                                    <div className="flex flex-col gap-3 rounded-2xl border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <p className="text-sm font-semibold text-foreground">
+                                                {usingSystemSms ? 'System SMS selected' : 'Own SMS API selected'}
+                                            </p>
+                                            <p className="mt-1 text-sm text-muted-foreground">
+                                                {usingSystemSms
+                                                    ? 'Admin will use the platform SMS gateway and pay from the SMS balance.'
+                                                    : 'Admin will use the configured provider credentials below.'}
+                                            </p>
+                                        </div>
+                                        <Button type="submit" size="sm" disabled={processing}>
+                                            <Save className="h-4 w-4" />
+                                            Save rule
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        <div className="flex items-center gap-3 rounded-xl border p-4">
+                                            <Checkbox checked={data.allow_system_sms} onCheckedChange={(value) => setData('allow_system_sms', Boolean(value))} />
+                                            <div><p className="font-medium">Allow system SMS</p><p className="text-xs text-muted-foreground">Admins can use platform SMS balance.</p></div>
+                                        </div>
+                                        <div className="flex items-center gap-3 rounded-xl border p-4">
+                                            <Checkbox checked={data.allow_own_sms} onCheckedChange={(value) => setData('allow_own_sms', Boolean(value))} />
+                                            <div><p className="font-medium">Allow own API</p><p className="text-xs text-muted-foreground">Admins can connect AfricasTalking or another provider.</p></div>
+                                        </div>
                                     </div>
                                 )}
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="sms-mode">Gateway rule</Label>
-                                    <select id="sms-mode" value={data.mode} onChange={(event) => setData('mode', event.target.value)} className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm">
-                                        <option value="platform">Use system SMS balance</option>
-                                        <option value="own">Use own SMS API</option>
-                                    </select>
-                                    <InputError message={errors.mode} />
-                                </div>
-
-                                <div className="md:col-span-2 grid gap-4 md:grid-cols-2">
-                                    <div className="flex items-center gap-3 rounded-xl border p-4">
-                                        <Checkbox checked={data.allow_system_sms} onCheckedChange={(value) => setData('allow_system_sms', Boolean(value))} />
-                                        <div><p className="font-medium">Allow system SMS</p><p className="text-xs text-muted-foreground">Admin uses platform gateway and pays from SMS balance.</p></div>
-                                    </div>
-                                    <div className="flex items-center gap-3 rounded-xl border p-4">
-                                        <Checkbox checked={data.allow_own_sms} onCheckedChange={(value) => setData('allow_own_sms', Boolean(value))} />
-                                        <div><p className="font-medium">Allow own API</p><p className="text-xs text-muted-foreground">Admin can connect AfricasTalking or another provider.</p></div>
-                                    </div>
-                                </div>
                             </CardContent>
                         </Card>
 
