@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import { useFlashMessages } from '@/hooks/useFlashMessages';
@@ -13,13 +13,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { Dialog } from "@/components/ui/dialog";
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
-import { Plus, Edit, Trash2, Ticket, Eye } from "lucide-react";
+import { Plus, Edit, Trash2, Ticket, Eye, Search, X } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDate } from '@/utils/helpers';
 import { FilterButton } from '@/components/ui/filter-button';
 import { Pagination } from "@/components/ui/pagination";
-import { SearchInput } from "@/components/ui/search-input";
-import { ListGridToggle } from '@/components/ui/list-grid-toggle';
 import Create from './create';
 import EditCoupon from './edit';
 import NoRecordsFound from '@/components/no-records-found';
@@ -43,13 +41,13 @@ export default function Index() {
     const [sortField, setSortField] = useState(urlParams.get('sort') || '');
     const [sortDirection, setSortDirection] = useState(urlParams.get('direction') || 'asc');
 
-    const [viewMode, setViewMode] = useState<'list' | 'grid'>(urlParams.get('view') as 'list' | 'grid' || 'list');
     const [modalState, setModalState] = useState<CouponModalState>({
         isOpen: false,
         mode: '',
         data: null
     });
     const [showFilters, setShowFilters] = useState(false);
+    const firstSearchRender = useRef(true);
 
     useFlashMessages();
 
@@ -61,7 +59,7 @@ export default function Index() {
     });
 
     const handleFilter = () => {
-        router.get(route('coupons.index'), {...filters, per_page: perPage, sort: sortField, direction: sortDirection, view: viewMode}, {
+        router.get(route('coupons.index'), {...filters, per_page: perPage, sort: sortField, direction: sortDirection}, {
             preserveState: true,
             replace: true
         });
@@ -71,7 +69,7 @@ export default function Index() {
         const direction = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
         setSortField(field);
         setSortDirection(direction);
-        router.get(route('coupons.index'), {...filters, per_page: perPage, sort: field, direction, view: viewMode}, {
+        router.get(route('coupons.index'), {...filters, per_page: perPage, sort: field, direction}, {
             preserveState: true,
             replace: true
         });
@@ -79,8 +77,33 @@ export default function Index() {
 
     const clearFilters = () => {
         setFilters({ name: '', code: '', type: '', status: '' });
-        router.get(route('coupons.index'), {per_page: perPage, view: viewMode});
+        router.get(route('coupons.index'), {per_page: perPage});
     };
+
+    const clearSearch = () => {
+        const nextFilters = {...filters, name: ''};
+        setFilters(nextFilters);
+        router.get(route('coupons.index'), {...nextFilters, per_page: perPage, sort: sortField, direction: sortDirection}, {
+            preserveState: true,
+            replace: true
+        });
+    };
+
+    useEffect(() => {
+        if (firstSearchRender.current) {
+            firstSearchRender.current = false;
+            return;
+        }
+
+        const timeout = window.setTimeout(() => {
+            router.get(route('coupons.index'), {...filters, per_page: perPage, sort: sortField, direction: sortDirection}, {
+                preserveState: true,
+                replace: true
+            });
+        }, 450);
+
+        return () => window.clearTimeout(timeout);
+    }, [filters.name]);
 
     const openModal = (mode: 'add' | 'edit', data: Coupon | null = null) => {
         setModalState({
@@ -242,26 +265,40 @@ export default function Index() {
             <Head title={t('Coupons')} />
 
             <Card className="shadow-sm">
-                <CardContent className="p-6 border-b bg-gray-50/50">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1 max-w-md">
-                            <SearchInput
-                                value={filters.name}
-                                onChange={(value) => setFilters({...filters, name: value})}
-                                onSearch={handleFilter}
-                                placeholder={t('Search coupons...')}
-                            />
+                <CardContent className="border-b bg-gradient-to-r from-slate-50 via-white to-emerald-50/40 p-5">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                        <div className="flex min-w-0 flex-1 flex-col gap-1">
+                            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700/80">
+                                {t('Coupon Registry')}
+                            </div>
+                            <div className="relative w-full max-w-2xl">
+                                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                <Input
+                                    value={filters.name}
+                                    onChange={(e) => setFilters({...filters, name: e.target.value})}
+                                    placeholder={t('Search coupons by name...')}
+                                    className="h-12 rounded-2xl border-slate-200 bg-white/90 pl-11 pr-11 text-base shadow-sm transition focus-visible:ring-emerald-500"
+                                />
+                                {filters.name && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={clearSearch}
+                                        className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full p-0 text-muted-foreground hover:text-foreground"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                {t('Typing automatically filters coupons. Use filters for code, type, and status.')}
+                            </p>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <ListGridToggle
-                                currentView={viewMode}
-                                routeName="coupons.index"
-                                filters={{...filters, per_page: perPage}}
-                            />
-                            <PerPageSelector
-                                routeName="coupons.index"
-                                filters={{...filters, view: viewMode}}
-                            />
+                        <div className="flex flex-wrap items-center gap-3">
+                            <span className="inline-flex h-10 items-center rounded-full border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700">
+                                {t('List View')}
+                            </span>
                             <div className="relative">
                                 <FilterButton
                                     showFilters={showFilters}
@@ -270,7 +307,7 @@ export default function Index() {
                                 {(() => {
                                     const activeFilters = [filters.code, filters.type, filters.status].filter(Boolean).length;
                                     return activeFilters > 0 && (
-                                        <span className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                                        <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
                                             {activeFilters}
                                         </span>
                                     );
@@ -279,7 +316,6 @@ export default function Index() {
                         </div>
                     </div>
                 </CardContent>
-
                 {showFilters && (
                     <CardContent className="p-6 bg-blue-50/30 border-b">
                         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -325,9 +361,8 @@ export default function Index() {
                 )}
 
                 <CardContent className="p-0">
-                    {viewMode === 'list' ? (
-                        <div className="overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100 max-h-[70vh] rounded-none w-full">
-                            <div className="min-w-[800px]">
+                    <div className="overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100 max-h-[70vh] rounded-none w-full">
+                        <div className="min-w-[800px]">
                             <DataTable
                                 data={coupons.data}
                                 columns={tableColumns}
@@ -349,142 +384,24 @@ export default function Index() {
                                     />
                                 }
                             />
-                            </div>
                         </div>
-                    ) : (
-                        <div className="overflow-auto max-h-[70vh] p-4">
-                            {coupons.data.length > 0 ? (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-                                    {coupons.data.map((coupon) => (
-                                        <Card key={coupon.id} className="border border-gray-200">
-                                            <div className="p-4">
-                                                <div className="flex items-center justify-between mb-3">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="p-1.5 bg-primary/10 rounded-lg">
-                                                            <Ticket className="h-4 w-4 text-primary" />
-                                                        </div>
-                                                        <h3 className="font-semibold text-sm break-words leading-tight">{coupon.name}</h3>
-                                                    </div>
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                                        coupon.status ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                                                    }`}>
-                                                        {coupon.status ? t('Active') : t('Inactive')}
-                                                    </span>
-                                                </div>
-                                                
-                                                <div className="space-y-2 mb-3">
-                                                    <div className="text-xs">
-                                                        <p className="text-gray-500 mb-1">{t('Code')}</p>
-                                                        <p className="font-mono bg-gray-100 px-2 py-1 rounded text-xs font-medium text-gray-900">{coupon.code}</p>
-                                                    </div>
-                                                    
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <div className="text-xs">
-                                                            <p className="text-gray-500 mb-1">{t('Discount')}</p>
-                                                            <p className="font-medium text-gray-900">
-                                                                {coupon.type === 'percentage' ? `${coupon.discount}%` : `${currencySymbol}${coupon.discount}`}
-                                                            </p>
-                                                        </div>
-                                                        <div className="text-xs">
-                                                            <p className="text-gray-500 mb-1">{t('Type')}</p>
-                                                            <p className="font-medium text-gray-900 capitalize">{coupon.type}</p>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    {(coupon.limit || coupon.expiry_date) && (
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            {coupon.limit && (
-                                                                <div className="text-xs">
-                                                                    <p className="text-gray-500 mb-1">{t('Limit')}</p>
-                                                                    <p className="font-medium text-gray-900">{coupon.limit}</p>
-                                                                </div>
-                                                            )}
-                                                            {coupon.expiry_date && (
-                                                                <div className="text-xs">
-                                                                    <p className="text-gray-500 mb-1">{t('Expiry')}</p>
-                                                                    <p className="font-medium text-gray-900">{formatDate(coupon.expiry_date, pageProps)}</p>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                
-                                                <div className="flex justify-end gap-1 pt-2 border-t">
-                                                    <TooltipProvider>
-                                                        {auth.user?.permissions?.includes('view-coupons') && (
-                                                            <Tooltip delayDuration={300}>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button 
-                                                                        variant="ghost" 
-                                                                        size="sm" 
-                                                                        onClick={() => router.visit(route('coupons.show', coupon.id))}
-                                                                        className="h-7 w-7 p-0 text-green-600 hover:text-green-700"
-                                                                    >
-                                                                        <Eye className="h-3 w-3" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>
-                                                                    <p>{t('View')}</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
-                                                        )}
-                                                        {auth.user?.permissions?.includes('edit-coupons') && (
-                                                            <Tooltip delayDuration={300}>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button variant="ghost" size="sm" onClick={() => openModal('edit', coupon)} className="h-7 w-7 p-0 text-blue-600 hover:text-blue-700">
-                                                                        <Edit className="h-3 w-3" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>
-                                                                    <p>{t('Edit')}</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
-                                                        )}
-                                                        {auth.user?.permissions?.includes('delete-coupons') && (
-                                                            <Tooltip delayDuration={300}>
-                                                                <TooltipTrigger asChild>
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="sm"
-                                                                        onClick={() => openDeleteDialog(coupon.id)}
-                                                                        className="h-7 w-7 p-0 text-red-600 hover:text-red-700"
-                                                                    >
-                                                                        <Trash2 className="h-3 w-3" />
-                                                                    </Button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>
-                                                                    <p>{t('Delete')}</p>
-                                                                </TooltipContent>
-                                                            </Tooltip>
-                                                        )}
-                                                    </TooltipProvider>
-                                                </div>
-                                            </div>
-                                        </Card>
-                                    ))}
-                                </div>
-                            ) : (
-                                <NoRecordsFound
-                                    icon={Ticket}
-                                    title={t('No coupons found')}
-                                    description={t('Get started by creating your first coupon.')}
-                                    hasFilters={!!(filters.name || filters.code || filters.type || filters.status)}
-                                    onClearFilters={clearFilters}
-                                    createPermission="create-coupons"
-                                    onCreateClick={() => openModal('add')}
-                                    createButtonText={t('Create Coupon')}
-                                />
-                            )}
-                        </div>
-                    )}
+                    </div>
                 </CardContent>
-
-                <CardContent className="px-4 py-2 border-t bg-gray-50/30">
-                    <Pagination
-                        data={coupons}
-                        routeName="coupons.index"
-                        filters={{...filters, per_page: perPage, view: viewMode}}
-                    />
+                <CardContent className="border-t bg-slate-50/70 px-5 py-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <PerPageSelector
+                            routeName="coupons.index"
+                            filters={{...filters, sort: sortField, direction: sortDirection}}
+                            className="h-11 w-40 rounded-xl bg-white"
+                        />
+                        <div className="flex-1">
+                            <Pagination
+                                data={coupons}
+                                routeName="coupons.index"
+                                filters={{...filters, per_page: perPage, sort: sortField, direction: sortDirection}}
+                            />
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
 
