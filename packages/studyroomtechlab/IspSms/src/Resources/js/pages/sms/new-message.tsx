@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Head, Link, useForm } from '@inertiajs/react';
 import {
+    AlertTriangle,
     ArrowLeft,
     CheckCircle2,
     CircleDot,
@@ -206,6 +207,8 @@ export default function NewSmsMessage({
     const audienceCount = audienceOptions.find((option) => option.key === data.audience)?.count || 0;
     const segmentsCount = Math.ceil(Math.max(data.message.length, 1) / 160);
     const canSubmit = data.message.trim().length > 0 && data.message.length <= 480 && audienceCount > 0 && !processing;
+    const smsConfigurationError = typeof errors.message === 'string'
+        && errors.message.toLowerCase().includes('configure now');
 
     const chooseAudience = (audience: Audience) => {
         setData('audience', audience);
@@ -279,6 +282,21 @@ export default function NewSmsMessage({
                         </Button>
                     </div>
                 </div>
+
+                {smsConfigurationError && (
+                    <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-start gap-3">
+                            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                            <div>
+                                <p className="font-semibold">SMS gateway needs configuration</p>
+                                <p className="mt-1 text-amber-800">{errors.message}</p>
+                            </div>
+                        </div>
+                        <Button asChild variant="outline" className="border-amber-300 bg-white text-amber-900 hover:bg-amber-100">
+                            <Link href={routes.settings}>Configure now</Link>
+                        </Button>
+                    </div>
+                )}
 
                 <div className="grid gap-4 md:grid-cols-3">
                     <MetricCard label="Reachable users" value={validCustomers.length} helper="valid phone numbers" icon={<Users className="h-5 w-5" />} />
@@ -409,7 +427,14 @@ export default function NewSmsMessage({
                                             <span>{data.message.length} / 480 characters</span>
                                             <span>{segmentsCount} SMS segment{segmentsCount === 1 ? '' : 's'}</span>
                                         </div>
-                                        <InputError message={errors.message} />
+                                        {smsConfigurationError ? (
+                                            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-destructive">
+                                                <span>{errors.message}</span>
+                                                <Link href={routes.settings} className="font-semibold underline underline-offset-4">Configure now</Link>
+                                            </div>
+                                        ) : (
+                                            <InputError message={errors.message} />
+                                        )}
                                     </div>
 
                                     <div className="space-y-3">

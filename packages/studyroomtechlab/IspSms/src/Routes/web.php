@@ -22,6 +22,7 @@ Route::middleware(['web', 'auth', 'PlanModuleCheck:IspSms'])
 
         Route::get('/sms/topup', [IspSmsTopupController::class, 'create'])->name('sms.topup');
         Route::post('/sms/topup', [IspSmsTopupController::class, 'store'])->name('sms.topup.store');
+        Route::post('/sms/topups/{topup}/approve', [IspSmsTopupController::class, 'approve'])->name('sms.topups.approve');
 
         Route::get('/sms/templates', [IspSmsController::class, 'templates'])->name('sms.templates.index');
         Route::post('/sms/templates', [IspSmsTemplateController::class, 'store'])->name('sms.templates.store');
