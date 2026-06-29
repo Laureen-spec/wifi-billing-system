@@ -81,9 +81,7 @@ class PaymentCenterController extends Controller
         $this->authorizeAccess($request);
 
         $validated = $request->validate([
-            'customer_name' => ['required', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'account' => ['nullable', 'string', 'max:100'],
+            'customer_id' => ['required', 'integer', 'min:1'],
             'receipt' => ['nullable', 'string', 'max:120'],
             'method' => ['required', 'string', 'in:Cash,Bank,Voucher'],
             'amount' => ['required', 'numeric', 'min:0.01'],
@@ -96,7 +94,7 @@ class PaymentCenterController extends Controller
 
         return redirect()
             ->route('isp-payment-center.index')
-            ->with('success', 'Manual payment recorded.');
+            ->with('success', 'Payment recorded for the selected customer.');
     }
 
     private function authorizeAccess(Request $request): void

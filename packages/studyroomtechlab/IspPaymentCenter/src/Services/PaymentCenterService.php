@@ -2,6 +2,7 @@
 
 namespace StudyRoomTechLab\IspPaymentCenter\Services;
 
+use App\Services\IspTenantResolver;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\Request;
@@ -9,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class PaymentCenterService
 {
@@ -21,6 +23,7 @@ class PaymentCenterService
     {
         $filters = $this->filters($request);
         $query = $this->baseQuery();
+        $customers = $this->customerOptions($request);
 
         if (! $query) {
             return [
@@ -32,6 +35,7 @@ class PaymentCenterService
                 'columnsUsed' => $this->columnsUsed(),
                 'exportEnabled' => false,
                 'recordPaymentEnabled' => $this->manualPaymentsReady(),
+                'customers' => $customers,
             ];
         }
 
@@ -50,6 +54,7 @@ class PaymentCenterService
             'columnsUsed' => $this->columnsUsed(),
             'exportEnabled' => true,
             'recordPaymentEnabled' => $this->manualPaymentsReady(),
+            'customers' => $customers,
         ];
     }
 
@@ -72,17 +77,22 @@ class PaymentCenterService
     {
         if (! $this->manualPaymentsReady()) {
             throw ValidationException::withMessages([
-                'manual_payment' => 'Manual payment storage is not ready. Run package migrations first.',
+                'manual_payment' => 'Payment Center storage is not ready. Run package migrations first.',
             ]);
         }
 
+        $customer = $this->findCustomerForRequest($request, (int) $validated['customer_id']);
+        $snapshot = $this->customerSnapshot($customer);
+
         $record = [];
-        $this->setManualValue($record, 'customer_name', $validated['customer_name']);
-        $this->setManualValue($record, 'phone', $validated['phone'] ?? null);
-        $this->setManualValue($record, 'account', $validated['account'] ?? null);
+        $this->setManualValue($record, 'customer_id', $snapshot['id']);
+        $this->setManualValue($record, 'customer_name', $snapshot['name']);
+        $this->setManualValue($record, 'phone', $snapshot['phone']);
+        $this->setManualValue($record, 'account', $snapshot['account']);
         $this->setManualValue($record, 'receipt', $validated['receipt'] ?: $this->manualReceipt());
         $this->setManualValue($record, 'method', $validated['method']);
         $this->setManualValue($record, 'source', 'Manual');
+        $this->setManualValue($record, 'package', $snapshot['package']);
         $this->setManualValue($record, 'amount', $validated['amount']);
         $this->setManualValue($record, 'currency', strtoupper($validated['currency'] ?? 'KES'));
         $this->setManualValue($record, 'status', $validated['status']);
@@ -118,6 +128,7 @@ class PaymentCenterService
             ], $this->columns(self::MPESA_TABLE))),
             'isp_payment_center_manual_payments' => array_values(array_intersect([
                 'id',
+                'customer_id',
                 'customer_name',
                 'phone',
                 'account',
@@ -141,6 +152,75 @@ class PaymentCenterService
             ], $this->columns('internet_packages'))) : [],
             'provisioning_tokens' => Schema::hasTable('provisioning_tokens') ? 'available_not_joined' : 'missing',
         ];
+    }
+
+    public function customerOptions(Request $request, int $limit = 500): array
+    {
+        $table = $this->customerTable();
+        if (! $table || ! $this->hasColumn($table, 'id')) {
+            return [];
+        }
+
+        $query = DB::table($table . ' as c');
+        $packageNameColumn = $this->firstColumn('internet_packages', ['name', 'title']);
+        $packageJoined = false;
+        if ($this->hasColumn($table, 'internet_package_id') && Schema::hasTable('internet_packages') && $this->hasColumn('internet_packages', 'id')) {
+            $query->leftJoin('internet_packages as p', 'p.id', '=', 'c.internet_package_id');
+            $packageJoined = true;
+        }
+
+        $nameColumn = $this->firstColumn($table, ['name', 'full_name', 'customer_name', 'company_name', 'contact_person_name', 'username']);
+        $phoneColumn = $this->firstColumn($table, ['phone', 'phone_number', 'mobile', 'mobile_number', 'contact_person_mobile', 'customer_phone']);
+        $accountColumn = $this->firstColumn($table, ['account_number', 'customer_code', 'username', 'ip_address', 'mac_address']);
+        $amountColumn = $this->firstColumn($table, ['monthly_amount', 'monthly_fee', 'amount_due', 'balance']);
+        $connectionColumn = $this->firstColumn($table, ['connection_status', 'status']);
+        $billingColumn = $this->firstColumn($table, ['billing_status']);
+
+        $selects = [
+            'c.id as id',
+            $nameColumn ? "c.{$nameColumn} as name" : DB::raw('NULL as name'),
+            $phoneColumn ? "c.{$phoneColumn} as phone" : DB::raw('NULL as phone'),
+            $accountColumn ? "c.{$accountColumn} as account" : DB::raw('NULL as account'),
+            $amountColumn ? "c.{$amountColumn} as amount" : DB::raw('NULL as amount'),
+            $connectionColumn ? "c.{$connectionColumn} as connection_status" : DB::raw('NULL as connection_status'),
+            $billingColumn ? "c.{$billingColumn} as billing_status" : DB::raw('NULL as billing_status'),
+            ($packageJoined && $packageNameColumn) ? "p.{$packageNameColumn} as package_name" : DB::raw('NULL as package_name'),
+        ];
+
+        $this->applyCustomerTenantScope($query, $request, $table);
+
+        if ($nameColumn) {
+            $query->orderBy("c.{$nameColumn}");
+        } else {
+            $query->orderBy('c.id');
+        }
+
+        return $query
+            ->select($selects)
+            ->limit($limit)
+            ->get()
+            ->map(function (object $row): array {
+                $name = trim((string) ($row->name ?: 'Customer #' . $row->id));
+                $phone = $row->phone ? trim((string) $row->phone) : null;
+                $account = $row->account ? trim((string) $row->account) : null;
+                $amount = is_numeric($row->amount ?? null) ? (float) $row->amount : null;
+                $subtitle = trim(implode(' · ', array_filter([$phone, $account, $row->package_name ?? null])));
+
+                return [
+                    'id' => (string) $row->id,
+                    'name' => $name,
+                    'label' => $subtitle ? $name . ' — ' . $subtitle : $name,
+                    'phone' => $phone,
+                    'account' => $account,
+                    'package' => $row->package_name ?? null,
+                    'amount' => $amount,
+                    'amount_formatted' => $amount !== null ? $this->formatMoney($amount, 'KES') : null,
+                    'connection_status' => $row->connection_status ?? null,
+                    'billing_status' => $row->billing_status ?? null,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     private function baseQuery(): ?Builder
@@ -228,11 +308,39 @@ class PaymentCenterService
             return null;
         }
 
-        return DB::table(self::MANUAL_TABLE . ' as m')->select([
+        $query = DB::table(self::MANUAL_TABLE . ' as m');
+        $customerTable = $this->customerTable();
+        $customerJoined = $customerTable
+            && $this->hasColumn(self::MANUAL_TABLE, 'customer_id')
+            && $this->hasColumn($customerTable, 'id');
+
+        $customerNameColumn = $customerJoined ? $this->firstColumn($customerTable, ['name', 'full_name', 'customer_name', 'company_name', 'contact_person_name', 'username']) : null;
+        $customerPhoneColumn = $customerJoined ? $this->firstColumn($customerTable, ['phone', 'phone_number', 'mobile', 'mobile_number', 'contact_person_mobile', 'customer_phone']) : null;
+        $customerAccountColumn = $customerJoined ? $this->firstColumn($customerTable, ['account_number', 'customer_code', 'username', 'ip_address', 'mac_address']) : null;
+        $customerPackageColumn = $customerJoined ? $this->firstColumn($customerTable, ['internet_package_id']) : null;
+
+        if ($customerJoined) {
+            $query->leftJoin($customerTable . ' as c', 'c.id', '=', 'm.customer_id');
+        }
+
+        $packageExpressions = [];
+        if ($this->hasColumn(self::MANUAL_TABLE, 'package')) {
+            $packageExpressions[] = 'm.package';
+        }
+
+        $packageNameColumn = $this->firstColumn('internet_packages', ['name', 'title']);
+        if ($customerJoined && $customerPackageColumn && Schema::hasTable('internet_packages') && $this->hasColumn('internet_packages', 'id')) {
+            $query->leftJoin('internet_packages as p', 'p.id', '=', 'c.' . $customerPackageColumn);
+            if ($packageNameColumn) {
+                $packageExpressions[] = "p.{$packageNameColumn}";
+            }
+        }
+
+        return $query->select([
             DB::raw("CONCAT('manual-', m.id) as id"),
             'm.id as sort_id',
             DB::raw("'manual' as record_source"),
-            DB::raw('NULL as customer_id'),
+            $this->selectTableColumn(self::MANUAL_TABLE, 'm', 'customer_id', 'customer_id'),
             $this->selectTableColumn(self::MANUAL_TABLE, 'm', 'receipt', 'receipt'),
             $this->selectTableColumn(self::MANUAL_TABLE, 'm', 'phone', 'phone'),
             $this->selectTableColumn(self::MANUAL_TABLE, 'm', 'account', 'account'),
@@ -245,10 +353,19 @@ class PaymentCenterService
             DB::raw('NULL as provisioning_triggered'),
             $this->coalesceTableColumns(self::MANUAL_TABLE, 'm', ['recorded_at', 'created_at'], 'payment_date'),
             $this->selectTableColumn(self::MANUAL_TABLE, 'm', 'notes', 'notes'),
-            $this->selectTableColumn(self::MANUAL_TABLE, 'm', 'package', 'package_name'),
-            $this->selectTableColumn(self::MANUAL_TABLE, 'm', 'customer_name', 'customer_name'),
-            $this->selectTableColumn(self::MANUAL_TABLE, 'm', 'phone', 'display_phone'),
-            $this->selectTableColumn(self::MANUAL_TABLE, 'm', 'account', 'display_account'),
+            $this->coalesceExpressions($packageExpressions, 'package_name'),
+            $this->coalesceExpressions(array_filter([
+                $customerNameColumn ? "c.{$customerNameColumn}" : null,
+                $this->hasColumn(self::MANUAL_TABLE, 'customer_name') ? 'm.customer_name' : null,
+            ]), 'customer_name'),
+            $this->coalesceExpressions(array_filter([
+                $this->hasColumn(self::MANUAL_TABLE, 'phone') ? 'm.phone' : null,
+                $customerPhoneColumn ? "c.{$customerPhoneColumn}" : null,
+            ]), 'display_phone'),
+            $this->coalesceExpressions(array_filter([
+                $this->hasColumn(self::MANUAL_TABLE, 'account') ? 'm.account' : null,
+                $customerAccountColumn ? "c.{$customerAccountColumn}" : null,
+            ]), 'display_account'),
         ]);
     }
 
@@ -333,7 +450,7 @@ class PaymentCenterService
         }
 
         return [
-            $this->amountCard('todays-collections', "Today's Collections", $todayQuery, 'Collected today'),
+            $this->amountCard('todays-collections', "Today's Collections", $todayQuery, 'Confirmed today'),
             $this->amountCard('this-week', 'This Week', $weekQuery, 'Confirmed this week'),
             $this->amountCard('this-month', 'This Month', $monthQuery, 'Confirmed this month'),
             $this->countCard('pending-verification', 'Pending Verification', $this->statusQuery(['pending', 'processing', 'queued']), 'Awaiting confirmation'),
@@ -346,9 +463,9 @@ class PaymentCenterService
     private function emptySummary(): array
     {
         return [
-            ['key' => 'todays-collections', 'title' => "Today's Collections", 'value' => 'KES 0.00', 'description' => 'Collected today', 'tone' => 'pink'],
+            ['key' => 'todays-collections', 'title' => "Today's Collections", 'value' => 'KES 0.00', 'description' => 'Confirmed today', 'tone' => 'green'],
             ['key' => 'this-week', 'title' => 'This Week', 'value' => 'KES 0.00', 'description' => 'Confirmed this week', 'tone' => 'blue'],
-            ['key' => 'this-month', 'title' => 'This Month', 'value' => 'KES 0.00', 'description' => 'Confirmed this month', 'tone' => 'green'],
+            ['key' => 'this-month', 'title' => 'This Month', 'value' => 'KES 0.00', 'description' => 'Confirmed this month', 'tone' => 'slate'],
             ['key' => 'pending-verification', 'title' => 'Pending Verification', 'value' => '0', 'description' => 'Awaiting confirmation', 'tone' => 'amber'],
             ['key' => 'wallet-posted', 'title' => 'Wallet Posted', 'value' => '0', 'description' => 'Posted to wallet', 'tone' => 'slate'],
             ['key' => 'provisioned-payments', 'title' => 'Provisioned Payments', 'value' => '0', 'description' => 'Provisioning triggered', 'tone' => 'violet'],
@@ -366,9 +483,9 @@ class PaymentCenterService
             'value' => $this->formatMoney($amount, 'KES'),
             'description' => $description,
             'tone' => match ($key) {
-                'todays-collections' => 'pink',
+                'todays-collections' => 'green',
                 'this-week' => 'blue',
-                default => 'green',
+                default => 'slate',
             },
         ];
     }
@@ -419,7 +536,8 @@ class PaymentCenterService
 
         return [
             'id' => $row->id,
-            'customer' => $row->customer_name ?: ($row->customer_id ? 'Customer #' . $row->customer_id : 'Walk-in / Hotspot customer'),
+            'customer' => $row->customer_name ?: ($row->customer_id ? 'Customer #' . $row->customer_id : 'Unmatched customer'),
+            'customer_id' => $row->customer_id,
             'phone' => $row->display_phone ?: $row->phone,
             'account' => $row->display_account ?: $row->account,
             'receipt' => $row->receipt,
@@ -500,6 +618,92 @@ class PaymentCenterService
             WHEN {$collectionMode} <> '' THEN {$collectionMode}
             ELSE 'Hotspot'
         END as source");
+    }
+
+    private function findCustomerForRequest(Request $request, int $customerId): object
+    {
+        $table = $this->customerTable();
+        if (! $table || ! $this->hasColumn($table, 'id')) {
+            throw ValidationException::withMessages([
+                'customer_id' => 'Customer table was not found. Create customers before recording payments.',
+            ]);
+        }
+
+        $query = DB::table($table . ' as c')->where('c.id', $customerId);
+        $packageNameColumn = $this->firstColumn('internet_packages', ['name', 'title']);
+        $packageJoined = false;
+        if ($this->hasColumn($table, 'internet_package_id') && Schema::hasTable('internet_packages') && $this->hasColumn('internet_packages', 'id')) {
+            $query->leftJoin('internet_packages as p', 'p.id', '=', 'c.internet_package_id');
+            $packageJoined = true;
+        }
+
+        $this->applyCustomerTenantScope($query, $request, $table);
+
+        $customer = $query
+            ->select([
+                'c.*',
+                ($packageJoined && $packageNameColumn) ? "p.{$packageNameColumn} as package_name" : DB::raw('NULL as package_name'),
+            ])
+            ->first();
+
+        if (! $customer) {
+            throw ValidationException::withMessages([
+                'customer_id' => 'Select a valid customer from your customer table.',
+            ]);
+        }
+
+        return $customer;
+    }
+
+    private function customerSnapshot(object $customer): array
+    {
+        $id = (int) ($customer->id ?? 0);
+        $name = $this->rowValue($customer, ['name', 'full_name', 'customer_name', 'company_name', 'contact_person_name', 'username']);
+        $phone = $this->rowValue($customer, ['phone', 'phone_number', 'mobile', 'mobile_number', 'contact_person_mobile', 'customer_phone']);
+        $account = $this->rowValue($customer, ['account_number', 'customer_code', 'username', 'ip_address', 'mac_address']);
+        $package = $this->rowValue($customer, ['package_name']);
+
+        return [
+            'id' => $id,
+            'name' => $name ?: 'Customer #' . $id,
+            'phone' => $phone,
+            'account' => $account,
+            'package' => $package,
+        ];
+    }
+
+    private function rowValue(object $row, array $columns): ?string
+    {
+        foreach ($columns as $column) {
+            if (property_exists($row, $column) && $row->{$column} !== null && $row->{$column} !== '') {
+                return (string) $row->{$column};
+            }
+        }
+
+        return null;
+    }
+
+    private function applyCustomerTenantScope(Builder $query, Request $request, string $table): void
+    {
+        if (! $this->hasColumn($table, 'isp_id') || $this->isPlatform($request)) {
+            return;
+        }
+
+        try {
+            $isp = app(IspTenantResolver::class)->resolve($request);
+            $query->where('c.isp_id', $isp->id);
+        } catch (Throwable) {
+            $query->whereRaw('1 = 0');
+        }
+    }
+
+    private function isPlatform(Request $request): bool
+    {
+        try {
+            return app(IspTenantResolver::class)->isPlatform($request);
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     private function selectTableColumn(string $table, string $tableAlias, string $column, string $alias, string $fallback = 'NULL'): mixed

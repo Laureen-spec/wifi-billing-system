@@ -9,20 +9,20 @@ type SummaryCardProps = {
 };
 
 const toneClasses: Record<string, string> = {
-    pink: 'border-l-pink-500',
+    pink: 'border-l-rose-400',
     blue: 'border-l-sky-500',
-    green: 'border-l-emerald-500',
+    green: 'border-l-emerald-600',
     amber: 'border-l-amber-500',
     violet: 'border-l-violet-500',
-    red: 'border-l-rose-500',
+    red: 'border-l-rose-600',
     slate: 'border-l-slate-400',
 };
 
 export function SummaryCard({ title, value, description, tone = 'slate' }: SummaryCardProps) {
     return (
-        <div className={`rounded-lg border border-l-4 bg-card p-4 shadow-sm ${toneClasses[tone] || toneClasses.slate}`}>
-            <div className="text-sm text-muted-foreground">{title}</div>
-            <div className="mt-2 text-2xl font-semibold tracking-normal text-foreground">{value}</div>
+        <div className={`rounded-lg border border-l-4 bg-background p-4 shadow-sm ${toneClasses[tone] || toneClasses.slate}`}>
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>
+            <div className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{value}</div>
             <div className="mt-1 text-xs text-muted-foreground">{description}</div>
         </div>
     );
@@ -33,7 +33,7 @@ export function FilterPill({ active, label, onClick }: { active: boolean; label:
         <button
             type="button"
             onClick={onClick}
-            className={`rounded-full border px-3 py-1.5 text-sm transition ${
+            className={`rounded-md border px-3 py-1.5 text-sm transition ${
                 active
                     ? 'border-primary bg-primary text-primary-foreground shadow-sm'
                     : 'border-input bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground'
@@ -44,18 +44,21 @@ export function FilterPill({ active, label, onClick }: { active: boolean; label:
     );
 }
 
-export function StatusBadge({ value }: { value?: string | null }) {
+export function StatusBadge({ value, compact = false }: { value?: string | null; compact?: boolean }) {
     const normalized = String(value || 'unknown').toLowerCase();
     const isGood = ['paid', 'confirmed', 'success', 'completed', 'posted', 'provisioned'].includes(normalized);
     const isBad = ['failed', 'cancelled', 'canceled', 'expired', 'reversed', 'refunded', 'chargeback'].includes(normalized);
+    const isNeutral = ['not posted', 'not_posted', 'not provisioned', 'not_provisioned', 'unknown'].includes(normalized);
     const className = isGood
         ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300'
         : isBad
             ? 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300'
-            : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300';
+            : isNeutral
+                ? 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-950/30 dark:text-slate-300'
+                : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300';
 
     return (
-        <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium capitalize ${className}`}>
+        <span className={`inline-flex w-fit rounded-full border font-medium capitalize ${compact ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs'} ${className}`}>
             {String(value || 'Unknown').replace(/_/g, ' ')}
         </span>
     );
@@ -63,13 +66,13 @@ export function StatusBadge({ value }: { value?: string | null }) {
 
 export function EmptyState() {
     return (
-        <div className="rounded-lg border border-dashed bg-muted/30 p-10 text-center">
+        <div className="rounded-lg border border-dashed bg-muted/20 p-10 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border bg-background text-muted-foreground">
                 <LockKeyhole className="h-5 w-5" />
             </div>
             <h3 className="mt-4 text-base font-semibold text-foreground">No payment activity found</h3>
             <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                Collections and transaction records will appear here as existing payment tables receive data.
+                Payment records will appear here after M-Pesa confirmations or customer-linked manual collections are saved.
             </p>
         </div>
     );

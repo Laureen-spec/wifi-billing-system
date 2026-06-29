@@ -13,6 +13,7 @@ class MpesaSetting extends Model
         'isp_id',
         'owner_type',
         'collection_mode',
+        'active_gateway',
         'environment',
         'business_name',
         'shortcode',
@@ -26,6 +27,12 @@ class MpesaSetting extends Model
         'is_default',
         'is_active',
         'allow_isp_direct',
+        'system_payment_channel',
+        'system_till_number',
+        'system_paybill_number',
+        'system_account_number',
+        'system_phone_number',
+        'documentation_url',
         'created_by',
         'updated_by',
     ];
@@ -40,6 +47,54 @@ class MpesaSetting extends Model
     public function transactions(): HasMany
     {
         return $this->hasMany(MpesaTransaction::class, 'mpesa_setting_id');
+    }
+
+
+    public function toPlatformPayload(): array
+    {
+        return [
+            'id' => $this->id,
+            'active_gateway' => $this->active_gateway ?: 'mpesa',
+            'environment' => $this->environment ?: 'sandbox',
+            'business_name' => $this->business_name,
+            'shortcode' => $this->shortcode,
+            'account_reference' => $this->account_reference,
+            'callback_url' => $this->callback_url,
+            'commission_type' => $this->commission_type ?: 'percentage',
+            'commission_value' => $this->commission_value,
+            'allow_isp_direct' => (bool) $this->allow_isp_direct,
+            'is_active' => (bool) $this->is_active,
+            'documentation_url' => $this->documentation_url,
+            'updated_at' => $this->updated_at?->toDateTimeString(),
+            'has_consumer_key' => ! empty($this->consumer_key),
+            'has_consumer_secret' => ! empty($this->consumer_secret),
+            'has_passkey' => ! empty($this->passkey),
+        ];
+    }
+
+    public function toAdminPayload(): array
+    {
+        return [
+            'id' => $this->id,
+            'payment_mode' => $this->collection_mode === 'isp_direct' ? 'own' : 'system',
+            'gateway' => $this->active_gateway ?: 'mpesa',
+            'environment' => $this->environment ?: 'sandbox',
+            'business_name' => $this->business_name,
+            'shortcode' => $this->shortcode,
+            'account_reference' => $this->account_reference,
+            'callback_url' => $this->callback_url,
+            'system_payment_channel' => $this->system_payment_channel ?: 'till',
+            'system_till_number' => $this->system_till_number,
+            'system_paybill_number' => $this->system_paybill_number,
+            'system_account_number' => $this->system_account_number,
+            'system_phone_number' => $this->system_phone_number,
+            'documentation_url' => $this->documentation_url,
+            'is_active' => (bool) $this->is_active,
+            'updated_at' => $this->updated_at?->toDateTimeString(),
+            'has_consumer_key' => ! empty($this->consumer_key),
+            'has_consumer_secret' => ! empty($this->consumer_secret),
+            'has_passkey' => ! empty($this->passkey),
+        ];
     }
 
     public function isPlatform(): bool

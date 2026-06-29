@@ -14,6 +14,7 @@ return new class extends Migration
 
         Schema::create('isp_payment_center_manual_payments', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('customer_id')->nullable()->index();
             $table->string('customer_name')->nullable();
             $table->string('phone')->nullable();
             $table->string('account')->nullable();
