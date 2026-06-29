@@ -103,8 +103,6 @@ export function NavUser({
   if (inHeader) {
     return (
       <div className="flex items-center gap-3">
-        <LanguageSwitcher variant="header" />
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

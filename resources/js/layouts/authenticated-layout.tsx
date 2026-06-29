@@ -11,6 +11,7 @@ import {
     BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { NavUser } from "@/components/nav-user";
+import { TopbarActions } from "@/components/topbar-actions";
 import { usePage, Head, Link, router } from "@inertiajs/react";
 import { PageProps } from "@/types";
 import { BrandProvider, useBrand } from "@/contexts/brand-context";
@@ -75,10 +76,10 @@ function AuthenticatedLayoutContent({
                 dir={settings.layoutDirection === 'rtl' ? 'rtl' : 'ltr'}
             >
                 <header
-                    className={`bg-background/95 backdrop-blur-md flex h-14 shrink-0 items-center gap-2 px-6 py-2 border-b shadow-sm mb-2 justify-between`}
+                    className={`bg-background/95 backdrop-blur-md flex min-h-16 shrink-0 items-center gap-3 px-6 py-2 border-b shadow-sm mb-2 justify-between`}
                     >
                     {/* Sidebar + Breadcrumb */}
-                    <div className={`flex items-center gap-2 ${ settings.layoutDirection === "rtl" ? "order-2 flex-row-reverse" : "order-1" }`} >
+                    <div className={`flex min-w-0 items-center gap-2 ${ settings.layoutDirection === "rtl" ? "order-2 flex-row-reverse" : "order-1" }`} >
                         {/* SidebarTrigger */}
                         <SidebarTrigger className={`-ml-1 ${ settings.layoutDirection === "rtl" ? "order-3" : "order-1" }`} />
 
@@ -86,7 +87,7 @@ function AuthenticatedLayoutContent({
                         <Separator orientation="vertical" className="mr-2 h-4 order-2" />
 
                         {/* Breadcrumb */}
-                        <Breadcrumb className={`${ settings.layoutDirection === "rtl" ? "order-1" : "order-3" }`} >
+                        <Breadcrumb className={`${ settings.layoutDirection === "rtl" ? "order-1" : "order-3" } hidden md:block`} >
                             <BreadcrumbList className={`flex text-sm ${ settings.layoutDirection === "rtl" ? "justify-end" : "justify-start" }`} >
                             <BreadcrumbItem>
                                 <BreadcrumbLink asChild>
@@ -113,7 +114,7 @@ function AuthenticatedLayoutContent({
 
                     {/* NavUser */}
                     <div
-                        className={`flex items-center gap-3 ${
+                        className={`flex items-center gap-2 ${
                         settings.layoutDirection === "rtl" ? "order-1 flex-row-reverse" : "order-2"
                         }`}
                     >
@@ -129,6 +130,7 @@ function AuthenticatedLayoutContent({
                                 {t('Leave Login As User')}
                             </Button>
                         )}
+                        <TopbarActions />
                         <NavUser user={auth.user} inHeader={true} />
                     </div>
                 </header>
