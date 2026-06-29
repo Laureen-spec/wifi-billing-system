@@ -1,14 +1,8 @@
-import { Gauge, UserCog, Images, WalletCards, TicketCheck, ShoppingBag, MessagesSquare, FileSignature, ReceiptText, Bot } from 'lucide-react';
+import { UserCog, Images, WalletCards, TicketCheck, ShoppingBag, MessagesSquare, FileSignature, ReceiptText, Bot } from 'lucide-react';
 import { NavItem } from '@/types';
 
+
 export const getCompanyMenu = (t: (key: string) => string): NavItem[] => [
-    {
-        title: t('Dashboard'),
-        icon: Gauge,
-        permission: 'manage-dashboard',
-        name: 'dashboard',
-        order: 1,
-    },
     {
         title: t('User Management'),
         icon: UserCog,
