@@ -1,10 +1,10 @@
 import {
-    LayoutDashboard,
-    MonitorUp,
-    Package,
+    Gauge,
+    MonitorDot,
+    Boxes,
     Router,
-    Settings,
-    Users,
+    Settings2,
+    UsersRound,
     Wifi,
 } from 'lucide-react';
 import { NavItem } from '@/types';
@@ -30,7 +30,7 @@ export const getWifiBillingMenu = (t: (key: string) => string): NavItem[] => ([
             {
                 title: t('Dashboard'),
                 href: routeUrl('wifi-billing.dashboard'),
-                icon: LayoutDashboard,
+                icon: Gauge,
                 permission: 'view-wifi-dashboard',
                 permissions: ['view-wifi-dashboard', 'manage-wifi-dashboard'],
                 menuKey: 'isp-dashboard',
@@ -40,7 +40,7 @@ export const getWifiBillingMenu = (t: (key: string) => string): NavItem[] => ([
             {
                 title: t('Customers'),
                 href: routeUrl('wifi-billing.customers.index'),
-                icon: Users,
+                icon: UsersRound,
                 permission: 'view-isp-customers',
                 permissions: ['view-isp-customers', 'manage-isp-customers'],
                 menuKey: 'isp-customers',
@@ -60,7 +60,7 @@ export const getWifiBillingMenu = (t: (key: string) => string): NavItem[] => ([
             {
                 title: t('Live Sessions'),
                 href: routeUrl('wifi-billing.live-sessions.index'),
-                icon: MonitorUp,
+                icon: MonitorDot,
                 permission: 'view-mikrotik-routers',
                 permissions: ['view-mikrotik-routers', 'manage-mikrotik-routers'],
                 menuKey: 'isp-live-sessions',
@@ -70,7 +70,7 @@ export const getWifiBillingMenu = (t: (key: string) => string): NavItem[] => ([
             {
                 title: t('Plans'),
                 href: routeUrl('wifi-billing.packages.index'),
-                icon: Package,
+                icon: Boxes,
                 permission: 'view-internet-packages',
                 permissions: ['view-internet-packages', 'manage-internet-packages'],
                 menuKey: 'isp-plans',
@@ -80,7 +80,7 @@ export const getWifiBillingMenu = (t: (key: string) => string): NavItem[] => ([
             {
                 title: t('Settings'),
                 href: routeUrl('wifi-billing.settings.index'),
-                icon: Settings,
+                icon: Settings2,
                 permission: 'view-wifi-dashboard',
                 permissions: ['view-wifi-dashboard', 'manage-wifi-dashboard'],
                 menuKey: 'isp-settings',

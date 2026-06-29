@@ -350,51 +350,37 @@ export default function MediaLibraryDemo() {
   const totalPages = Math.ceil(filteredMedia.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentMedia = filteredMedia.slice(startIndex, startIndex + itemsPerPage);
+  const totalStorageUsed = useMemo(() => filteredMedia.reduce((acc, item) => acc + item.size, 0), [filteredMedia]);
+  const imageCount = useMemo(() => filteredMedia.filter(item => item.mime_type.startsWith('image/')).length, [filteredMedia]);
+  const folderCount = directories.length + 1;
+  const isRootLibrary = currentDirectory === null && !showAllFiles;
+  const activeDirectoryName = currentDirectory ? directories.find(d => d.id === currentDirectory)?.name : null;
 
   const allFilesFolder = useMemo(() => (
-    <div
+    <button
+      type="button"
       key="all-files-folder"
-      className="group relative bg-card border-2 rounded-xl overflow-hidden hover:shadow-xl hover:scale-105 hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+      className="group flex min-h-[176px] flex-col justify-between rounded-3xl border border-slate-200 bg-white/90 p-5 text-left shadow-[0_18px_45px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-[0_24px_60px_rgba(15,23,42,0.10)]"
       onClick={() => {
         setCurrentDirectory(null);
         setShowAllFiles(true);
-        setSearchTerm(''); // Clear search when viewing all files
+        setSearchTerm('');
       }}
     >
-      {/* Directory Preview Container */}
-      <div className="relative aspect-square bg-muted/30 flex items-center justify-center">
-        <div className="flex flex-col items-center justify-center p-4">
-          <div className="mb-2 text-primary group-hover:scale-110 transition-transform duration-300">
-            <Folder className="h-16 w-16" />
-          </div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 transition-transform group-hover:scale-105">
+          <FolderOpen className="h-6 w-6" />
         </div>
-
-        {/* Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300" />
-
-        {/* Directory Type Badge */}
-        <div className="absolute top-3 left-3">
-          <Badge variant="secondary" className="text-xs font-semibold bg-background shadow-md">
-            📂 {t('FOLDER')}
-          </Badge>
-        </div>
+        <Badge variant="secondary" className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+          {t('Library')}
+        </Badge>
       </div>
-
-      {/* Directory Content */}
-      <div className="p-4 space-y-2">
-        <div>
-          <h3 className="text-sm font-semibold truncate flex items-center gap-2 group-hover:text-primary transition-colors" title="All Files">
-            <FolderOpen className="h-4 w-4 text-primary" />
-            {t('All Files')}
-          </h3>
-          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-            {t('View all files')}
-          </p>
-        </div>
+      <div className="space-y-2">
+        <h3 className="truncate text-base font-bold text-slate-950" title="All Files">{t('All Files')}</h3>
+        <p className="text-sm leading-6 text-slate-500">{t('Open every uploaded asset across folders.')}</p>
       </div>
-    </div>
-  ), []);
+    </button>
+  ), [t]);
 
   const breadcrumbs = [
     { label: t('Media Library') }
@@ -409,12 +395,13 @@ export default function MediaLibraryDemo() {
           <Button
             variant="outline"
             onClick={() => setShowCreateDirectory(true)}
+            className="rounded-xl border-slate-200 bg-white text-slate-700 shadow-sm hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"
           >
             <Plus className="h-4 w-4 mr-2" />
             {t('New Folder')}
           </Button>
-          <Button onClick={() => setIsUploadModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
+          <Button onClick={() => setIsUploadModalOpen(true)} className="rounded-xl bg-emerald-600 text-white shadow-sm hover:bg-emerald-700">
+            <Upload className="h-4 w-4 mr-2" />
             {t('Upload Files')}
           </Button>
         </div>
@@ -422,80 +409,38 @@ export default function MediaLibraryDemo() {
     >
       <Head title={t('Media Library')} />
       <div className="space-y-6">
-
-        {/* Combined: Breadcrumb, Search & Stats */}
-        <Card className="shadow-sm">
-          <CardContent className="p-4">
-            {/* Top Row: Breadcrumb & Stats */}
-            <div className="flex items-center justify-between gap-4 mb-4">
-              {/* Left: Navigation */}
-              <nav className="flex items-center space-x-1 text-sm">
+        <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.07)]">
+          <div className="grid gap-6 p-6 lg:grid-cols-[1fr_360px]">
+            <div className="space-y-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-emerald-700">
+                <ImageIcon className="h-3.5 w-3.5" />
+                {t('Media Vault')}
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">{t('Organize every file from one clean workspace')}</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-500">
+                  {t('Manage uploads, folders, previews, links, and downloads without leaving the admin panel.')}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => {
                     setCurrentDirectory(null);
                     setShowAllFiles(false);
-                    setSearchTerm(''); // Clear search when going home
+                    setSearchTerm('');
                   }}
-                  className="flex items-center gap-2 h-8 px-2 hover:bg-muted font-medium transition-all text-muted-foreground hover:text-foreground"
+                  className="h-9 rounded-full border border-slate-200 bg-white px-3 text-slate-600 shadow-sm hover:bg-slate-50 hover:text-slate-950"
                 >
-                  <Home className="h-4 w-4" />
+                  <Home className="mr-2 h-4 w-4" />
                   {t('Media Library')}
                 </Button>
-                {currentDirectory && (
-                  <>
-                    <span className="mx-1 text-muted-foreground/40">/</span>
-                    <span className="flex items-center gap-2 px-2 py-1 text-foreground font-medium">
-                      <Folder className="h-3.5 w-3.5 text-primary" />
-                      {directories.find(d => d.id === currentDirectory)?.name || t('Directory')}
-                    </span>
-                  </>
+                {(activeDirectoryName || showAllFiles) && (
+                  <span className="rounded-full bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-500">
+                    {activeDirectoryName || t('All Files')}
+                  </span>
                 )}
-                {showAllFiles && (
-                  <>
-                    <span className="mx-1 text-muted-foreground/40">/</span>
-                    <span className="flex items-center gap-2 px-2 py-1 text-foreground font-medium">
-                      <Folder className="h-3.5 w-3.5 text-primary" />
-                      {t('All Files')}
-                    </span>
-                  </>
-                )}
-              </nav>
-
-              {/* Right: Stats & Back Button */}
-              <div className="flex items-center gap-4">
-                {/* Compact Stats */}
-                <div className="hidden md:flex items-center gap-4 text-xs">
-                  <div className="flex items-center gap-1.5">
-                    <ImageIcon className="h-3.5 w-3.5 text-primary" />
-                    <span className="font-semibold">{filteredMedia.length}</span>
-                    <span className="text-muted-foreground">{t('Files')}</span>
-                  </div>
-                  <div className="h-4 w-px bg-border" />
-                  <div className="flex items-center gap-1.5">
-                    <HardDrive className="h-3.5 w-3.5 text-primary" />
-                    <span className="font-semibold">
-                      {formatFileSize(useMemo(() => filteredMedia.reduce((acc, item) => acc + item.size, 0), [filteredMedia]))}
-                    </span>
-                  </div>
-                  <div className="h-4 w-px bg-border" />
-                  <div className="flex items-center gap-1.5">
-                    <ImageIcon className="h-3.5 w-3.5 text-primary" />
-                    <span className="font-semibold">
-                      {filteredMedia.filter(item => item.mime_type.startsWith('image/')).length}
-                    </span>
-                    <span className="text-muted-foreground">{t('Images')}</span>
-                  </div>
-                  <div className="h-4 w-px bg-border" />
-                  <div className="flex items-center gap-1.5">
-                    <Folder className="h-3.5 w-3.5 text-primary" />
-                    <span className="font-semibold">{directories.length + 1}</span>
-                    <span className="text-muted-foreground">{t('Folders')}</span>
-                  </div>
-                </div>
-
-                {/* Back Button */}
                 {(currentDirectory !== null || showAllFiles) && (
                   <Button
                     variant="outline"
@@ -503,54 +448,90 @@ export default function MediaLibraryDemo() {
                     onClick={() => {
                       setCurrentDirectory(null);
                       setShowAllFiles(false);
-                      setSearchTerm(''); // Clear search when going back
+                      setSearchTerm('');
                     }}
-                    className="flex items-center gap-2 h-8 px-3 font-medium"
+                    className="h-9 rounded-full border-slate-200 bg-white px-3 text-slate-700 shadow-sm hover:bg-slate-50"
                   >
-                    <ArrowLeft className="h-3.5 w-3.5" />
+                    <ArrowLeft className="mr-2 h-4 w-4" />
                     {t('Back')}
                   </Button>
                 )}
               </div>
             </div>
 
-            {/* Bottom Row: Search Bar */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder={t('Search media files...')}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-9"
-              />
-              {searchTerm && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
-                  onClick={() => setSearchTerm('')}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              )}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">{t('Files')}</span>
+                  <ImageIcon className="h-4 w-4 text-emerald-700" />
+                </div>
+                <div className="mt-3 text-2xl font-bold text-slate-950">{filteredMedia.length}</div>
+              </div>
+              <div className="rounded-2xl border border-sky-100 bg-sky-50/70 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-[0.16em] text-sky-700">{t('Images')}</span>
+                  <BarChart3 className="h-4 w-4 text-sky-700" />
+                </div>
+                <div className="mt-3 text-2xl font-bold text-slate-950">{imageCount}</div>
+              </div>
+              <div className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">{t('Folders')}</span>
+                  <Folder className="h-4 w-4 text-amber-700" />
+                </div>
+                <div className="mt-3 text-2xl font-bold text-slate-950">{folderCount}</div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{t('Storage')}</span>
+                  <HardDrive className="h-4 w-4 text-slate-500" />
+                </div>
+                <div className="mt-3 text-xl font-bold text-slate-950">{formatFileSize(totalStorageUsed)}</div>
+              </div>
             </div>
-            {searchTerm && (
-              <p className="text-xs text-muted-foreground mt-2">
-                {t('Found')} <span className="font-semibold">{(currentDirectory === null && !showAllFiles) ? filteredDirectories.length + filteredMedia.length : filteredMedia.length}</span> {t('results')}
-              </p>
-            )}
+          </div>
+
+          <div className="border-t border-slate-100 bg-slate-50/70 p-5">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="relative w-full lg:max-w-xl">
+                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                <Input
+                  placeholder={t('Search files, folders, or extensions...')}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="h-12 rounded-2xl border-slate-200 bg-white pl-12 pr-12 text-[15px] shadow-sm focus-visible:border-emerald-300 focus-visible:ring-emerald-100"
+                />
+                {searchTerm && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full p-0 text-slate-500 hover:bg-slate-100"
+                    onClick={() => setSearchTerm('')}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <div className="text-sm text-slate-500">
+                {searchTerm ? (
+                  <span>{t('Found')} <strong className="text-slate-900">{isRootLibrary ? filteredDirectories.length + filteredMedia.length : filteredMedia.length}</strong> {t('results')}</span>
+                ) : (
+                  <span>{t('Showing')} <strong className="text-slate-900">{isRootLibrary ? filteredDirectories.length + 1 : filteredMedia.length}</strong> {isRootLibrary ? t('folders') : t('files')}</span>
+                )}
+              </div>
+            </div>
 
             {showCreateDirectory && (
-              <div className="mt-4 p-4 border-2 border-dashed border-primary/30 rounded-xl bg-primary/5">
-                <div className="flex gap-2">
+              <div className="mt-4 rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/60 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row">
                   <Input
                     placeholder={t('Directory name...')}
                     value={newDirectoryName}
                     onChange={(e) => setNewDirectoryName(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && createDirectory()}
-                    className="h-11 border-2 focus:border-primary"
+                    className="h-11 rounded-xl border-emerald-100 bg-white focus-visible:border-emerald-300 focus-visible:ring-emerald-100"
                   />
-                  <Button onClick={createDirectory} size="sm" className="h-11 px-6 font-semibold shadow-md">
+                  <Button onClick={createDirectory} size="sm" className="h-11 rounded-xl bg-emerald-600 px-6 font-semibold hover:bg-emerald-700">
                     {t('Create')}
                   </Button>
                   <Button
@@ -560,7 +541,7 @@ export default function MediaLibraryDemo() {
                       setShowCreateDirectory(false);
                       setNewDirectoryName('');
                     }}
-                    className="h-11 px-6 font-semibold"
+                    className="h-11 rounded-xl bg-white px-6 font-semibold"
                   >
                     {t('Cancel')}
                   </Button>
@@ -569,16 +550,16 @@ export default function MediaLibraryDemo() {
             )}
 
             {editingDirectory && (
-              <div className="mt-4 p-4 border-2 border-dashed border-primary/30 rounded-xl bg-primary/5">
-                <div className="flex gap-2">
+              <div className="mt-4 rounded-2xl border border-dashed border-sky-200 bg-sky-50/60 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row">
                   <Input
                     placeholder={t('Directory name...')}
                     value={editDirectoryName}
                     onChange={(e) => setEditDirectoryName(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && updateDirectory()}
-                    className="h-11 border-2 focus:border-primary"
+                    className="h-11 rounded-xl border-sky-100 bg-white focus-visible:border-sky-300 focus-visible:ring-sky-100"
                   />
-                  <Button onClick={updateDirectory} size="sm" className="h-11 px-6 font-semibold shadow-md">
+                  <Button onClick={updateDirectory} size="sm" className="h-11 rounded-xl px-6 font-semibold">
                     {t('Update')}
                   </Button>
                   <Button
@@ -588,120 +569,113 @@ export default function MediaLibraryDemo() {
                       setEditingDirectory(null);
                       setEditDirectoryName('');
                     }}
-                    className="h-11 px-6 font-semibold"
+                    className="h-11 rounded-xl bg-white px-6 font-semibold"
                   >
                     {t('Cancel')}
                   </Button>
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
-        {/* Media Grid */}
-        <Card>
-          <CardContent className="p-6">
-            {loading ? (
-              <div className="text-center py-20">
-                <div className="relative mx-auto w-24 h-24 mb-6">
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary to-primary/50 animate-spin"></div>
-                  <div className="absolute inset-2 rounded-full bg-background flex items-center justify-center">
-                    <ImageIcon className="h-10 w-10 text-primary animate-pulse" />
+        <Card className="overflow-hidden rounded-[2rem] border-slate-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
+          <CardContent className="p-0">
+            <div className="flex flex-col gap-2 border-b border-slate-100 bg-white px-6 py-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-slate-950">{isRootLibrary ? t('Folder workspace') : t('File workspace')}</h3>
+                <p className="text-sm text-slate-500">{isRootLibrary ? t('Choose a folder or open all files.') : t('Preview, copy, download, or remove uploaded assets.')}</p>
+              </div>
+              <Badge variant="outline" className="w-fit rounded-full border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">
+                {isRootLibrary ? t('Library root') : activeDirectoryName || t('All Files')}
+              </Badge>
+            </div>
+
+            <div className="p-6">
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+                    <ImageIcon className="h-8 w-8 animate-pulse" />
+                  </div>
+                  <p className="text-base font-semibold text-slate-500">{t('Loading media...')}</p>
+                </div>
+              ) : (currentMedia.length === 0 && filteredDirectories.length === 0 && isRootLibrary) ? (
+                <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/70 px-6 py-20 text-center">
+                  <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-sm ring-1 ring-slate-200">
+                    <ImageIcon className="h-8 w-8" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-950">{searchTerm ? t('No results found') : t('No media files found')}</h3>
+                  <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
+                    {searchTerm ? t('No folders or files match "{{term}}"', { term: searchTerm }) : t('Get started by uploading your first file')}
+                  </p>
+                  {!searchTerm && (
+                    <Button
+                      onClick={() => setIsUploadModalOpen(true)}
+                      className="mt-6 rounded-xl bg-emerald-600 px-6 font-semibold text-white hover:bg-emerald-700"
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      {t('Upload Files')}
+                    </Button>
+                  )}
+                </div>
+              ) : currentMedia.length === 0 && (currentDirectory !== null || showAllFiles) ? (
+                <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50/70 px-6 py-20 text-center">
+                  <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-slate-500 shadow-sm ring-1 ring-slate-200">
+                    <Folder className="h-8 w-8" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-950">{t('This folder is empty')}</h3>
+                  <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
+                    {searchTerm ? t('No files match your search') : t('Upload files to this folder to get started')}
+                  </p>
+                  <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                    <Button
+                      onClick={() => setIsUploadModalOpen(true)}
+                      className="rounded-xl bg-emerald-600 px-6 font-semibold text-white hover:bg-emerald-700"
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      {t('Upload Files')}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setCurrentDirectory(null);
+                        setShowAllFiles(false);
+                        setSearchTerm('');
+                      }}
+                      className="rounded-xl bg-white px-6 font-semibold"
+                    >
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      {t('Back to Library')}
+                    </Button>
                   </div>
                 </div>
-                <p className="text-lg font-semibold text-muted-foreground animate-pulse">{t('Loading media...')}</p>
-              </div>
-            ) : (currentMedia.length === 0 && filteredDirectories.length === 0 && (currentDirectory === null && !showAllFiles)) ? (
-              <div className="text-center py-20">
-                <div className="mx-auto w-32 h-32 bg-gradient-to-br from-primary/20 to-primary/5 rounded-3xl flex items-center justify-center mb-6 shadow-lg">
-                  <ImageIcon className="h-16 w-16 text-primary" />
-                </div>
-                <h3 className="text-2xl font-bold mb-3">{searchTerm ? t('No results found') : t('No media files found')}</h3>
-                <p className="text-muted-foreground text-lg mb-8 max-w-md mx-auto">
-                  {searchTerm ? t('No folders or files match "{{term}}"', { term: searchTerm }) : t('Get started by uploading your first file')}
-                </p>
-                {!searchTerm && (
-                  <Button
-                    onClick={() => setIsUploadModalOpen(true)}
-                    size="lg"
-                    className="h-12 px-8 text-base font-semibold shadow-lg"
-                  >
-                    <Plus className="h-5 w-5 mr-2" />
-                    {t('Upload Files')}
-                  </Button>
-                )}
-              </div>
-            ) : currentMedia.length === 0 && (currentDirectory !== null || showAllFiles) ? (
-              <div className="text-center py-20">
-                <div className="mx-auto w-32 h-32 bg-gradient-to-br from-muted/50 to-muted/20 rounded-3xl flex items-center justify-center mb-6">
-                  <Folder className="h-16 w-16 text-muted-foreground" />
-                </div>
-                <h3 className="text-2xl font-bold mb-3">{t('This folder is empty')}</h3>
-                <p className="text-muted-foreground text-lg mb-8 max-w-md mx-auto">
-                  {searchTerm ? t('No files match your search') : t('Upload files to this folder to get started')}
-                </p>
-                <div className="flex items-center justify-center gap-3">
-                  <Button
-                    onClick={() => setIsUploadModalOpen(true)}
-                    size="lg"
-                    className="h-12 px-8 text-base font-semibold shadow-lg"
-                  >
-                    <Plus className="h-5 w-5 mr-2" />
-                    {t('Upload Files')}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setCurrentDirectory(null);
-                      setShowAllFiles(false);
-                      setSearchTerm(''); // Clear search when going back to library
-                    }}
-                    size="lg"
-                    className="h-12 px-8 text-base font-semibold"
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    {t('Back to Library')}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
-                  {/* All Files Folder - Only show when not in a specific directory and not showing all files */}
-                  {currentDirectory === null && !showAllFiles && (!searchTerm || 'all files'.includes(searchTerm.toLowerCase())) && allFilesFolder}
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {isRootLibrary && (!searchTerm || 'all files'.includes(searchTerm.toLowerCase())) && allFilesFolder}
 
-                  {/* Directory Cards - Only show when not in a specific directory and not showing all files */}
-                  {currentDirectory === null && !showAllFiles && filteredDirectories.map((directory: any) => (
-                    <div
-                      key={`dir-${directory.id}`}
-                      className="group relative bg-card border-2 rounded-xl overflow-hidden hover:shadow-xl hover:scale-105 hover:-translate-y-1 transition-all duration-300 cursor-pointer"
-                      onClick={() => {
-                        setMedia([]);
-                        setFilteredMedia([]);
-                        setCurrentDirectory(directory.id);
-                        setShowAllFiles(false);
-                        setSearchTerm(''); // Clear search when entering folder
-                      }}
-                    >
-                      {/* Directory Preview Container */}
-                      <div className="relative aspect-square bg-muted/30 flex items-center justify-center">
-                        <div className="flex flex-col items-center justify-center p-4">
-                          <div className="mb-2 text-primary group-hover:scale-110 transition-transform duration-300">
-                            <Folder className="h-16 w-16" />
+                    {isRootLibrary && filteredDirectories.map((directory: any) => (
+                      <div
+                        key={`dir-${directory.id}`}
+                        className="group flex min-h-[176px] flex-col justify-between rounded-3xl border border-slate-200 bg-white/90 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-[0_24px_60px_rgba(15,23,42,0.10)]"
+                        onClick={() => {
+                          setMedia([]);
+                          setFilteredMedia([]);
+                          setCurrentDirectory(directory.id);
+                          setShowAllFiles(false);
+                          setSearchTerm('');
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 ring-1 ring-amber-100 transition-transform group-hover:scale-105">
+                            <Folder className="h-6 w-6" />
                           </div>
-                        </div>
-
-                        {/* Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300" />
-
-                        {/* Directory Actions */}
-                        <div className="absolute top-2 right-2">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
                                 size="sm"
-                                variant="secondary"
-                                className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 bg-background/95 hover:bg-background shadow-md"
+                                variant="ghost"
+                                className="h-9 w-9 rounded-full p-0 text-slate-500 hover:bg-slate-100"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <MoreHorizontal className="h-4 w-4" />
@@ -729,230 +703,157 @@ export default function MediaLibraryDemo() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
-
-                        {/* Directory Type Badge */}
-                        <div className="absolute top-3 left-3">
-                          <Badge variant="secondary" className="text-xs font-semibold bg-background shadow-md">
-                            📁 FOLDER
-                          </Badge>
-                        </div>
-                      </div>
-
-                      {/* Directory Content */}
-                      <div className="p-4 space-y-2">
-                        <div>
-                          <h3 className="text-sm font-semibold truncate flex items-center gap-2 group-hover:text-primary transition-colors" title={directory.name}>
-                            <FolderOpen className="h-4 w-4 text-primary" />
-                            {directory.name}
-                          </h3>
-                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
+                        <div className="space-y-2" onClick={() => {
+                          setMedia([]);
+                          setFilteredMedia([]);
+                          setCurrentDirectory(directory.id);
+                          setShowAllFiles(false);
+                          setSearchTerm('');
+                        }}>
+                          <h3 className="truncate text-base font-bold text-slate-950" title={directory.name}>{directory.name}</h3>
+                          <p className="flex items-center gap-2 text-sm text-slate-500">
+                            <span className="h-2 w-2 rounded-full bg-amber-400" />
                             {t('Directory')}
                           </p>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
 
-                  {/* Media Files - Only show when in a directory or showing all files */}
-                  {(currentDirectory !== null || showAllFiles) && currentMedia.map((item) => (
-                    <div
-                      key={item.id}
-                      className="group relative bg-card border-2 rounded-xl overflow-hidden hover:shadow-xl hover:scale-105 hover:-translate-y-1 transition-all duration-300"
-                    >
-                      {/* File Preview Container */}
-                      <div className="relative aspect-square bg-gradient-to-br from-muted/30 to-muted/60 flex items-center justify-center">
-                        {item.mime_type.startsWith('image/') ? (
-                          <>
+                    {(currentDirectory !== null || showAllFiles) && currentMedia.map((item) => (
+                      <div
+                        key={item.id}
+                        className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_18px_45px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-[0_24px_60px_rgba(15,23,42,0.10)]"
+                      >
+                        <div className="relative aspect-[4/3] bg-slate-50">
+                          {item.mime_type.startsWith('image/') ? (
                             <img
                               src={item.thumb_url}
                               alt={item.name}
-                              className="w-full h-full object-cover"
+                              className="h-full w-full object-cover"
                               onError={(e) => {
                                 e.currentTarget.src = item.url;
                               }}
                             />
-                            {/* Image Overlay on Hover */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300" />
-                          </>
-                        ) : (
-                          <div className="flex flex-col items-center justify-center p-4">
-                            <div className="mb-3 transform group-hover:scale-110 transition-transform duration-300">
-                              {getFileIcon(item.mime_type)}
+                          ) : (
+                            <div className="flex h-full flex-col items-center justify-center p-5 text-center">
+                              <div className="mb-3 transition-transform duration-300 group-hover:scale-105">
+                                {getFileIcon(item.mime_type)}
+                              </div>
+                              <div className="max-w-full truncate rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 shadow-sm ring-1 ring-slate-200">
+                                {item.mime_type.split('/')[1]?.toUpperCase() || 'FILE'}
+                              </div>
                             </div>
-                            <div className="text-xs text-center font-semibold text-muted-foreground truncate w-full px-2">
+                          )}
+                          <div className="absolute inset-x-0 bottom-0 flex translate-y-4 items-center justify-center gap-2 bg-gradient-to-t from-slate-950/70 to-transparent p-4 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+                            <Button size="sm" variant="secondary" className="h-9 w-9 rounded-full p-0 bg-white/95" onClick={(e) => { e.stopPropagation(); handleShowInfo(item); }}>
+                              <Info className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="secondary" className="h-9 w-9 rounded-full p-0 bg-white/95" onClick={(e) => { e.stopPropagation(); handleCopyLink(item.url); }}>
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="secondary" className="h-9 w-9 rounded-full p-0 bg-white/95" onClick={(e) => { e.stopPropagation(); handleDownload(item.url); }}>
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <div className="absolute left-3 top-3">
+                            <Badge variant="secondary" className="rounded-full bg-white/95 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-600 shadow-sm backdrop-blur">
                               {item.mime_type.split('/')[1]?.toUpperCase() || 'FILE'}
+                            </Badge>
+                          </div>
+                          {!infoModalOpen && !isUploadModalOpen && (
+                            <div className="absolute right-3 top-3">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button size="sm" variant="secondary" className="h-9 w-9 rounded-full bg-white/95 p-0 shadow-sm backdrop-blur hover:bg-white">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-40">
+                                  <DropdownMenuItem onClick={() => handleShowInfo(item)}>
+                                    <Info className="h-4 w-4 mr-2" />
+                                    {t('View Info')}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleCopyLink(item.url)}>
+                                    <Copy className="h-4 w-4 mr-2" />
+                                    {t('Copy Link')}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleDownload(item.url)}>
+                                    <Download className="h-4 w-4 mr-2" />
+                                    {t('Download')}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => deleteMedia(item.id)} className="text-destructive focus:text-destructive">
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    {t('Delete')}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
-                          </div>
-                        )}
-
-                        {/* Quick Actions - Show on Hover */}
-                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="h-9 w-9 p-0 bg-background/95 hover:bg-background shadow-lg backdrop-blur-sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleShowInfo(item);
-                            }}
-                          >
-                            <Info className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="h-9 w-9 p-0 bg-background/95 hover:bg-background shadow-lg backdrop-blur-sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCopyLink(item.url);
-                            }}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="secondary"
-                            className="h-9 w-9 p-0 bg-background/95 hover:bg-background shadow-lg backdrop-blur-sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDownload(item.url);
-                            }}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
+                          )}
                         </div>
 
-                        {/* Action Dropdown */}
-                        {!infoModalOpen && !isUploadModalOpen && (
-                          <div className="absolute top-2 right-2">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 bg-background/95 hover:bg-background shadow-md"
-                                >
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-40">
-                                <DropdownMenuItem onClick={() => handleShowInfo(item)}>
-                                  <Info className="h-4 w-4 mr-2" />
-                                  {t('View Info')}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleCopyLink(item.url)}>
-                                  <Copy className="h-4 w-4 mr-2" />
-                                  {t('Copy Link')}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDownload(item.url)}>
-                                  <Download className="h-4 w-4 mr-2" />
-                                  {t('Download')}
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() => deleteMedia(item.id)}
-                                  className="text-destructive focus:text-destructive"
-                                >
-                                  <X className="h-4 w-4 mr-2" />
-                                  {t('Delete')}
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        )}
-
-                        {/* File Type Badge */}
-                        <div className="absolute top-3 left-3">
-                          <Badge variant="secondary" className="text-xs font-semibold bg-background/95 backdrop-blur-sm shadow-md">
-                            {item.mime_type.split('/')[1].toUpperCase()}
-                          </Badge>
-                        </div>
-                      </div>
-
-                      {/* Card Content */}
-                      <div className="p-4 space-y-2 bg-gradient-to-b from-transparent to-muted/30">
-                        <div>
-                          <h3 className="text-sm font-semibold truncate group-hover:text-primary transition-colors" title={item.name}>
-                            {item.name}
-                          </h3>
-                          <div className="flex items-center justify-between mt-2">
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <div className="space-y-3 p-4">
+                          <h3 className="truncate text-sm font-bold text-slate-950" title={item.name}>{item.name}</h3>
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 ring-1 ring-slate-200">
                               <HardDrive className="h-3 w-3" />
                               {formatFileSize(item.size)}
-                            </p>
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            </span>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-50 px-2.5 py-1 ring-1 ring-slate-200">
                               <Calendar className="h-3 w-3" />
                               {formatDate(item.created_at)}
-                            </p>
+                            </span>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
 
-                {/* Pagination - Only show when viewing files (not on root with folders) */}
-                {totalPages > 1 && (currentDirectory !== null || showAllFiles) && (
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 mt-6 border-t-2">
-                    <div className="text-sm text-muted-foreground font-medium">
-                      {t('Showing')} <span className="font-bold text-foreground">{startIndex + 1}</span> {t('to')} <span className="font-bold text-foreground">{Math.min(startIndex + itemsPerPage, filteredMedia.length)}</span> {t('of')} <span className="font-bold text-foreground">{filteredMedia.length}</span> {t('files')}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={currentPage === 1}
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        className="h-10 px-4 font-semibold"
-                      >
-                        {t('Previous')}
-                      </Button>
-
-                      <div className="flex gap-1">
-                        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                          let page;
-                          if (totalPages <= 5) {
-                            page = i + 1;
-                          } else if (currentPage <= 3) {
-                            page = i + 1;
-                          } else if (currentPage >= totalPages - 2) {
-                            page = totalPages - 4 + i;
-                          } else {
-                            page = currentPage - 2 + i;
-                          }
-
-                          return (
-                            <Button
-                              key={page}
-                              variant={currentPage === page ? 'default' : 'outline'}
-                              size="sm"
-                              className={`w-10 h-10 font-semibold transition-all duration-200 ${
-                                currentPage === page ? 'shadow-lg scale-110' : 'hover:scale-105'
-                              }`}
-                              onClick={() => setCurrentPage(page)}
-                            >
-                              {page}
-                            </Button>
-                          );
-                        })}
+                  {totalPages > 1 && (currentDirectory !== null || showAllFiles) && (
+                    <div className="mt-6 flex flex-col items-center justify-between gap-4 border-t border-slate-100 pt-5 sm:flex-row">
+                      <div className="text-sm text-slate-500">
+                        {t('Showing')} <span className="font-bold text-slate-950">{startIndex + 1}</span> {t('to')} <span className="font-bold text-slate-950">{Math.min(startIndex + itemsPerPage, filteredMedia.length)}</span> {t('of')} <span className="font-bold text-slate-950">{filteredMedia.length}</span> {t('files')}
                       </div>
 
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={currentPage === totalPages}
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        className="h-10 px-4 font-semibold"
-                      >
-                        {t('Next')}
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} className="h-10 rounded-xl bg-white px-4 font-semibold">
+                          {t('Previous')}
+                        </Button>
+                        <div className="flex gap-1">
+                          {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                            let page;
+                            if (totalPages <= 5) {
+                              page = i + 1;
+                            } else if (currentPage <= 3) {
+                              page = i + 1;
+                            } else if (currentPage >= totalPages - 2) {
+                              page = totalPages - 4 + i;
+                            } else {
+                              page = currentPage - 2 + i;
+                            }
+
+                            return (
+                              <Button
+                                key={page}
+                                variant={currentPage === page ? 'default' : 'outline'}
+                                size="sm"
+                                className={`h-10 w-10 rounded-xl font-semibold ${currentPage === page ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-white'}`}
+                                onClick={() => setCurrentPage(page)}
+                              >
+                                {page}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                        <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} className="h-10 rounded-xl bg-white px-4 font-semibold">
+                          {t('Next')}
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </>
-            )}
+                  )}
+                </>
+              )}
+            </div>
           </CardContent>
         </Card>
 

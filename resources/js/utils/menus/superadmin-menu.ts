@@ -1,4 +1,4 @@
-import { Gauge, UsersRound, Settings2, Images, Boxes, WalletCards, Mails, BellRing, Headset, SlidersHorizontal } from 'lucide-react';
+import { Gauge, UsersRound, Settings2, Images, Boxes, WalletCards, Mails, BellRing, TicketCheck, SlidersHorizontal } from 'lucide-react';
 import { NavItem } from '@/types';
 
 type SuperAdminNavItem = NavItem & {
@@ -17,15 +17,15 @@ export const getSuperAdminMenu = (t: (key: string) => string): NavItem[] => ([
         order: 1,
     },
     {
-        title: t('Users'),
+        title: t('Staff'),
         href: route('users.index'),
         icon: UsersRound,
         permission: 'manage-users',
         order: 20,
     },
     {
-        title: t('Helpdesk'),
-        icon: Headset,
+        title: t('Tickets'),
+        icon: TicketCheck,
         permission: 'manage-helpdesk-tickets',
         order: 2750,
         children: [
