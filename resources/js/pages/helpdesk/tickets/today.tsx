@@ -277,20 +277,18 @@ export default function Today() {
             <Head title={t('Today\'s Tickets')} />
 
             <div className="space-y-6">
-                <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-slate-300" />
-                    <div className="absolute right-0 top-0 h-44 w-44 rounded-full bg-emerald-100/70 blur-3xl" />
-                    <div className="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+                <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
                         <div>
-                            <p className="text-xs font-bold uppercase tracking-[0.26em] text-emerald-700">{t('Helpdesk — Today')}</p>
+                            <p className="text-xs font-bold uppercase tracking-[0.28em] text-emerald-700">{t('Helpdesk — Today')}</p>
                             <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950">{t('Response board')}</h1>
                             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
                                 {t('A priority-based board for tickets that need attention today.')}
                             </p>
                         </div>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <div className="grid gap-3 sm:grid-cols-[190px_minmax(260px,1fr)] xl:w-[620px]">
                             <Select value={activePriorityFilter} onValueChange={(value) => setActivePriorityFilter(value)}>
-                                <SelectTrigger className="h-12 rounded-2xl border-slate-200 bg-white shadow-sm sm:w-[180px]">
+                                <SelectTrigger className="h-12 rounded-2xl bg-white">
                                     <div className="flex items-center"><Filter className="mr-2 h-4 w-4" /> <SelectValue /></div>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -302,13 +300,13 @@ export default function Today() {
                                 </SelectContent>
                             </Select>
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                                 <Input
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder={t('Search tickets...')}
-                                    className="h-12 rounded-2xl border-slate-200 bg-white pl-10 pr-10 shadow-sm sm:w-80"
+                                    className="h-12 rounded-2xl border-slate-200 pl-11 pr-10 shadow-sm focus-visible:ring-emerald-500/20"
                                 />
                                 {searchQuery && (
                                     <button
@@ -324,11 +322,11 @@ export default function Today() {
                         </div>
                     </div>
 
-                    <div className="relative mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         {statCards.map((item) => {
                             const Icon = item.icon;
                             return (
-                                <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 shadow-sm">
+                                <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                     <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${item.tone}`}>
                                         <Icon className="h-5 w-5" />
                                     </div>

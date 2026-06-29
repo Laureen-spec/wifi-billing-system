@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
 import { useFlashMessages } from '@/hooks/useFlashMessages';
 import { useDeleteHandler } from '@/hooks/useDeleteHandler';
@@ -8,9 +8,9 @@ import AuthenticatedLayout from "@/layouts/authenticated-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { Plus, Edit as EditIcon, Trash2, Tag } from 'lucide-react';
+import { Plus, Edit as EditIcon, Trash2, Tag, Search, X } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { SearchInput } from "@/components/ui/search-input";
+import { Input } from "@/components/ui/input";
 import { PerPageSelector } from "@/components/ui/per-page-selector";
 import { DataTable } from "@/components/ui/data-table";
 import NoRecordsFound from '@/components/no-records-found';
@@ -27,6 +27,7 @@ export default function Index() {
     const urlParams = new URLSearchParams(window.location.search);
 
     const [searchName, setSearchName] = useState(urlParams.get('name') || '');
+    const didMountSearch = useRef(false);
 
     const [perPage] = useState(urlParams.get('per_page') || '10');
     const [sortField, setSortField] = useState(urlParams.get('sort') || '');
@@ -77,6 +78,19 @@ export default function Index() {
         setSearchName('');
         router.get(route('helpdesk-categories.index'), {per_page: perPage});
     };
+
+    useEffect(() => {
+        if (!didMountSearch.current) {
+            didMountSearch.current = true;
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            handleFilter();
+        }, 450);
+
+        return () => window.clearTimeout(timer);
+    }, [searchName]);
 
     const openModal = (mode: 'add' | 'edit', data: any = null) => {
         setModalState({ isOpen: true, mode, data });
@@ -183,21 +197,30 @@ export default function Index() {
             <Head title={t('Helpdesk Categories')} />
 
             <Card className="shadow-sm">
-                <CardContent className="p-6 border-b bg-gray-50/50">
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="flex-1 max-w-md">
-                            <SearchInput
-                                value={searchName}
-                                onChange={(value) => setSearchName(value)}
-                                onSearch={handleFilter}
-                                placeholder={t('Search categories...')}
-                            />
+                <CardContent className="border-b border-slate-200 bg-white p-4 sm:p-5">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">{t('Helpdesk categories')}</p>
+                            <p className="mt-1 text-sm text-slate-500">{t('Organize tickets by department, issue type, or service queue.')}</p>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <PerPageSelector
-                                routeName="helpdesk-categories.index"
-                                filters={{name: searchName}}
+                        <div className="relative w-full lg:max-w-md">
+                            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <Input
+                                value={searchName}
+                                onChange={(e) => setSearchName(e.target.value)}
+                                placeholder={t('Search categories...')}
+                                className="h-12 rounded-2xl border-slate-200 bg-white pl-11 pr-10 shadow-sm focus-visible:ring-emerald-500/20"
                             />
+                            {searchName && (
+                                <button
+                                    type="button"
+                                    onClick={clearFilters}
+                                    className="absolute right-3 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                    aria-label={t('Clear search')}
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            )}
                         </div>
                     </div>
                 </CardContent>
@@ -221,9 +244,6 @@ export default function Index() {
                                         description={t('Get started by creating your first category.')}
                                         hasFilters={!!searchName}
                                         onClearFilters={clearFilters}
-                                        createPermission="create-helpdesk-categories"
-                                        onCreateClick={() => openModal('add')}
-                                        createButtonText={t('Create Category')}
                                         className="h-auto"
                                     />
                                 }
@@ -232,12 +252,22 @@ export default function Index() {
                     </div>
                 </CardContent>
 
-                <CardContent className="px-4 py-2 border-t bg-gray-50/30">
-                    <Pagination
-                        data={categories}
-                        routeName="helpdesk-categories.index"
-                        filters={{name: searchName, per_page: perPage}}
-                    />
+                <CardContent className="border-t border-slate-200 bg-white px-4 py-3 sm:px-5">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <PerPageSelector
+                            routeName="helpdesk-categories.index"
+                            filters={{ name: searchName, sort: sortField, direction: sortDirection }}
+                            defaultValue={perPage}
+                            className="h-11 w-36 rounded-xl border-slate-200 bg-white"
+                        />
+                        <div className="flex-1">
+                            <Pagination
+                                data={categories}
+                                routeName="helpdesk-categories.index"
+                                filters={{name: searchName, per_page: perPage, sort: sortField, direction: sortDirection}}
+                            />
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
 
