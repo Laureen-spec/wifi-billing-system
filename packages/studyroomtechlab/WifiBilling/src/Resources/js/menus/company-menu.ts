@@ -11,6 +11,7 @@ import {
     Package,
     Receipt,
     Router,
+    Settings,
     Ticket,
     UserCheck,
     Users,
@@ -20,6 +21,14 @@ import {
 declare global {
     function route(name: string): string;
 }
+
+const safeRoute = (name: string, fallback: string) => {
+    try {
+        return route(name);
+    } catch {
+        return fallback;
+    }
+};
 
 const withQuery = (url: string, query: string) => `${url}?${query}`;
 
@@ -134,6 +143,14 @@ export const wifiBillingCompanyMenu = (t: (key: string) => string) => ({
                     permission: 'view-isp-customers',
                     permissions: ['view-isp-customers', 'manage-isp-customers'],
                     order: 20,
+                },
+                {
+                    title: t('Payment Addon'),
+                    href: safeRoute('mpesa-payment.settings.admin', '/mpesa-payment/admin-settings'),
+                    icon: Settings,
+                    permission: 'view-isp-customers',
+                    permissions: ['view-isp-customers', 'manage-isp-customers', 'manage-settings'],
+                    order: 25,
                 },
                 {
                     title: t('Receipts'),

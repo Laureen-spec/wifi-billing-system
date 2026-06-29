@@ -1,0 +1,12 @@
+{
+    "name": "Expenses",
+    "alias": "Expenses",
+    "description": "Standalone ISP expense ledger add-on for tracking outgoing money, receipts, categories, and net revenue impact.",
+    "priority": 58,
+    "version": 1.0,
+    "monthly_price": 0,
+    "yearly_price": 0,
+    "package_name": "expenses",
+    "display": true,
+    "for_admin": false
+}

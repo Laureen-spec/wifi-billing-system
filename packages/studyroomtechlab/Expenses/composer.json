@@ -1,0 +1,22 @@
+{
+    "name": "studyroomtechlab/expenses",
+    "description": "ISP expense ledger add-on for StudyRoom Connect.",
+    "type": "library",
+    "license": "proprietary",
+    "autoload": {
+        "psr-4": {
+            "StudyRoomTechLab\\Expenses\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "StudyRoomTechLab\\Expenses\\Providers\\ExpensesServiceProvider"
+            ]
+        }
+    },
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^12.0"
+    }
+}
