@@ -8,10 +8,18 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { allSettingsItems } from '@/utils/settings';
 import { getSettingsComponent } from '@/utils/settings-components';
 
+const getHashSection = () => {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  return window.location.hash.replace('#', '');
+};
+
 export default function Settings() {
   const { t } = useTranslation();
-  const { auth, globalSettings = {}, emailProviders = {}, cacheSize = '0.00' } = usePage().props as any;
-  const [activeSection, setActiveSection] = useState('brand-settings');
+  const { auth, globalSettings = {}, emailProviders = {}, cacheSize = '0.00', mpesaPaymentSettings = null } = usePage().props as any;
+  const [activeSection, setActiveSection] = useState(() => getHashSection() || 'brand-settings');
 
   const userPermissions = auth?.user?.permissions || [];
   const userRoles = auth?.user?.roles || [];
@@ -24,34 +32,40 @@ export default function Settings() {
 
   const visibleSections = sidebarNavItems;
 
+  const activeItem = useMemo(() => {
+    return visibleSections.find((item) => item.href.replace('#', '') === activeSection) || visibleSections[0] || null;
+  }, [activeSection, visibleSections]);
+
   const handleNavClick = (href: string) => {
     const id = href.replace('#', '');
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-      setActiveSection(id);
+    setActiveSection(id);
+
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${id}`);
     }
   };
 
   useEffect(() => {
-    const handleScroll = () => {
-      const sections = sidebarNavItems.map(item => item.href.replace('#', ''));
+    if (!visibleSections.length) {
+      return;
+    }
 
-      for (const sectionId of sections) {
-        const element = document.getElementById(sectionId);
-        if (element) {
-          const rect = element.getBoundingClientRect();
-          if (rect.top <= 100 && rect.bottom >= 100) {
-            setActiveSection(sectionId);
-            break;
-          }
-        }
-      }
-    };
+    const hashSection = getHashSection();
+    const hashItem = visibleSections.find((item) => item.href.replace('#', '') === hashSection);
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    if (hashItem) {
+      setActiveSection(hashSection);
+      return;
+    }
+
+    const stillVisible = visibleSections.some((item) => item.href.replace('#', '') === activeSection);
+
+    if (!stillVisible) {
+      setActiveSection(visibleSections[0].href.replace('#', ''));
+    }
+  }, [visibleSections, activeSection]);
+
+  const ActiveComponent = activeItem ? getSettingsComponent(activeItem.component, activatedPackages) : null;
 
   return (
     <AuthenticatedLayout
@@ -60,55 +74,74 @@ export default function Settings() {
     >
       <Head title={t('Settings')} />
 
-      <div className="flex flex-col md:flex-row gap-8">
+      <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         {/* Sidebar Navigation */}
-        <div className="md:w-64 flex-shrink-0">
-          <div className="sticky top-4">
-            <ScrollArea className="h-[calc(100vh-8rem)]">
-              <div className="pr-4 space-y-1">
-                {visibleSections.map((item) => (
-                  <Button
-                    key={item.href}
-                    variant="ghost"
-                    className={cn('w-full justify-start', {
-                      'bg-muted font-medium': activeSection === item.href.replace('#', ''),
-                    })}
-                    onClick={() => handleNavClick(item.href)}
-                  >
-                    <item.icon className="h-4 w-4 mr-2" />
-                    {item.title}
-                  </Button>
-                ))}
+        <aside className="min-w-0">
+          <div className="sticky top-4 rounded-2xl border bg-card p-3 shadow-sm">
+            <div className="px-3 py-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {t('Settings Menu')}
+              </p>
+            </div>
+
+            <ScrollArea className="h-[calc(100vh-12rem)] pr-2">
+              <div className="space-y-1">
+                {visibleSections.map((item) => {
+                  const itemId = item.href.replace('#', '');
+                  const isActive = activeSection === itemId;
+
+                  return (
+                    <Button
+                      key={`${item.href}-${item.component}`}
+                      variant="ghost"
+                      className={cn(
+                        'w-full justify-start gap-3 rounded-xl px-3 py-5 text-left text-sm font-medium',
+                        isActive && 'bg-primary/10 text-primary shadow-none hover:bg-primary/10 hover:text-primary'
+                      )}
+                      onClick={() => handleNavClick(item.href)}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{item.title}</span>
+                    </Button>
+                  );
+                })}
               </div>
             </ScrollArea>
           </div>
-        </div>
+        </aside>
 
-        {/* Main Content */}
-        <div className="flex-1">
-          <ScrollArea className="h-[calc(100vh-8rem)]">
-            <div className="pr-4">
-              {visibleSections.map((item) => {
-                const sectionId = item.href.replace('#', '');
-                const Component = getSettingsComponent(item.component, activatedPackages);
-                if (!Component) return null;
+        {/* Single active settings page */}
+        <main className="min-w-0">
+          <div className="mb-5 rounded-2xl border bg-card px-6 py-5 shadow-sm">
+            <p className="text-sm text-muted-foreground">{t('Settings')}</p>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {activeItem?.title || t('Settings')}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {activeItem?.component === 'payment-gateway-settings'
+                ? t('Configure platform payment methods and M-Pesa collection rules from one clean page.')
+                : t('Update the selected system configuration page.')}
+            </p>
+          </div>
 
-                return (
-                  <section key={sectionId} id={sectionId} className="mb-8">
-                    <Suspense fallback={<div className="p-4">Loading...</div>}>
-                      <Component
-                        userSettings={globalSettings}
-                        auth={auth}
-                        emailProviders={emailProviders}
-                        cacheSize={cacheSize}
-                      />
-                    </Suspense>
-                  </section>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        </div>
+          <div id={activeItem?.href.replace('#', '')} className="min-w-0">
+            <Suspense fallback={<div className="rounded-2xl border bg-card p-6 shadow-sm">{t('Loading...')}</div>}>
+              {ActiveComponent ? (
+                <ActiveComponent
+                  userSettings={globalSettings}
+                  auth={auth}
+                  emailProviders={emailProviders}
+                  cacheSize={cacheSize}
+                  mpesaPaymentSettings={mpesaPaymentSettings}
+                />
+              ) : (
+                <div className="rounded-2xl border bg-card p-6 text-sm text-muted-foreground shadow-sm">
+                  {t('This settings page is not available.')}
+                </div>
+              )}
+            </Suspense>
+          </div>
+        </main>
       </div>
     </AuthenticatedLayout>
   );
