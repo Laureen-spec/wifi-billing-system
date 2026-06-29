@@ -1,0 +1,22 @@
+{
+    "name": "studyroomtechlab/tr069",
+    "description": "TR069 CPE provisioning add-on for StudyRoom Connect WiFi Billing.",
+    "type": "library",
+    "license": "proprietary",
+    "autoload": {
+        "psr-4": {
+            "StudyRoomTechLab\\Tr069\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "StudyRoomTechLab\\Tr069\\Providers\\Tr069ServiceProvider"
+            ]
+        }
+    },
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^12.0"
+    }
+}
