@@ -106,6 +106,14 @@ class IspSmsSettingsController extends Controller
             }
         }
 
+        $allowSystemSms = $isPlatform
+            ? $request->boolean('allow_system_sms', true)
+            : $data['mode'] === 'platform';
+
+        $allowOwnSms = $isPlatform
+            ? $request->boolean('allow_own_sms', true)
+            : $data['mode'] === 'own';
+
         $setting->fill([
             'scope' => $scope,
             'isp_id' => $ispId,
@@ -115,8 +123,8 @@ class IspSmsSettingsController extends Controller
             'username' => $data['username'] ?? null,
             'callback_url' => $data['callback_url'] ?? null,
             'is_active' => $request->boolean('is_active', true),
-            'allow_system_sms' => $request->boolean('allow_system_sms', true),
-            'allow_own_sms' => $request->boolean('allow_own_sms', true),
+            'allow_system_sms' => $allowSystemSms,
+            'allow_own_sms' => $allowOwnSms,
             'free_sms_remaining' => $data['free_sms_remaining'] ?? ($setting->free_sms_remaining ?? 5),
             'sms_balance' => $data['sms_balance'] ?? ($setting->sms_balance ?? 0),
             'estimated_cost_per_sms' => $data['estimated_cost_per_sms'] ?? ($setting->estimated_cost_per_sms ?? 1),
