@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Head, usePage, router } from '@inertiajs/react';
 import { useTranslation } from 'react-i18next';
 import { useFlashMessages } from '@/hooks/useFlashMessages';
@@ -15,14 +15,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from "@/components/ui/label";
 import { InputError } from "@/components/ui/input-error";
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
-import { Plus, Edit, Trash2, Key, Users as UsersIcon, User as UserIcon, UserCheck, History, Lock, Building2, Crown, Package, Check, Users, HardDrive, Layers, ChevronLeft } from "lucide-react";
+import { Plus, Edit, Trash2, Key, Users as UsersIcon, UserCheck, History, Lock, Building2, Crown, Package, Check, Users, HardDrive, Layers, ChevronLeft, Search, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { getImagePath, formatAdminCurrency, getPackageFavicon, getPackageAlias } from '@/utils/helpers';
+import { formatAdminCurrency, getPackageFavicon, getPackageAlias } from '@/utils/helpers';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FilterButton } from '@/components/ui/filter-button';
 import { Pagination } from "@/components/ui/pagination";
-import { SearchInput } from "@/components/ui/search-input";
 import Create from './create';
 import EditUser from './edit';
 import ChangePassword from './change-password';
@@ -81,6 +80,23 @@ export default function Index() {
         return Object.keys(errors).length === 0;
     };
     const [showFilters, setShowFilters] = useState(false);
+    const hasMountedSearch = useRef(false);
+
+    useEffect(() => {
+        if (!hasMountedSearch.current) {
+            hasMountedSearch.current = true;
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            router.get(route('users.index'), {...filters, per_page: perPage, sort: sortField, direction: sortDirection}, {
+                preserveState: true,
+                replace: true
+            });
+        }, 450);
+
+        return () => window.clearTimeout(timer);
+    }, [filters.name]);
 
     useFlashMessages();
 
@@ -140,23 +156,6 @@ export default function Index() {
     };
 
     const tableColumns = [
-        {
-            key: 'avatar',
-            header: t('Avatar'),
-            render: (value: string) => (
-                <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 border flex items-center justify-center">
-                    {value ? (
-                        <img
-                            src={getImagePath(value)}
-                            alt="Avatar"
-                            className="w-full h-full object-cover"
-                        />
-                    ) : (
-                        <UserIcon className="w-5 h-5 text-gray-400" />
-                    )}
-                </div>
-            )
-        },
         {
             key: 'name',
             header: t('Name'),
@@ -312,8 +311,8 @@ export default function Index() {
 
     return (
         <AuthenticatedLayout
-            breadcrumbs={[{label: t('Users')}]}
-            pageTitle={t('Manage Users')}
+            breadcrumbs={[{label: t('Staff')}]}
+            pageTitle={t('Manage Staff')}
             pageActions={
                 <div className="flex gap-2">
                     <TooltipProvider>
@@ -348,7 +347,7 @@ export default function Index() {
                 </div>
             }
         >
-            <Head title={t('Users')} />
+            <Head title={t('Staff')} />
 
             {/* Main Content Card */}
             <Card className="overflow-hidden border-slate-200/80 bg-white/95 shadow-[0_18px_45px_rgba(15,23,42,0.06)]">
@@ -356,12 +355,27 @@ export default function Index() {
                 <CardContent className="border-b border-slate-200/80 bg-gradient-to-r from-slate-50 via-white to-emerald-50/40 p-5">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div className="flex-1 max-w-xl">
-                            <SearchInput
-                                value={filters.name}
-                                onChange={(value) => setFilters({...filters, name: value})}
-                                onSearch={handleFilter}
-                                placeholder={t('Search users...')}
-                            />
+                            <div className="relative w-full">
+                                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                <Input
+                                    value={filters.name}
+                                    onChange={(e) => setFilters({...filters, name: e.target.value})}
+                                    placeholder={t('Search staff by name...')}
+                                    className="h-12 rounded-2xl border-slate-200 bg-white/90 pl-11 pr-11 text-base shadow-sm focus-visible:ring-emerald-500/20"
+                                />
+                                {filters.name && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setFilters({...filters, name: ''})}
+                                        className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full p-0 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                                        aria-label={t('Clear search')}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                         <div className="flex items-center gap-3">
                             <Badge variant="outline" className="hidden rounded-full border-emerald-200 bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 md:inline-flex">
@@ -448,13 +462,13 @@ export default function Index() {
                                 emptyState={
                                     <NoRecordsFound
                                         icon={UsersIcon}
-                                        title={t('No users found')}
-                                        description={t('Get started by creating your first user.')}
+                                        title={t('No staff found')}
+                                        description={t('Get started by creating your first staff account.')}
                                         hasFilters={!!(filters.name || filters.email || filters.role || filters.is_enable_login)}
                                         onClearFilters={clearFilters}
                                         createPermission="create-users"
                                         onCreateClick={() => openModal('add')}
-                                        createButtonText={t('Create User')}
+                                        createButtonText={t('Create Staff')}
                                         className="h-auto"
                                     />
                                 }

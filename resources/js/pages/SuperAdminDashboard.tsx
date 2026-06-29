@@ -3,7 +3,7 @@ import { Head, Link } from "@inertiajs/react";
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { BarChart, PieChart } from '@/components/charts';
+import { LineChart, PieChart } from '@/components/charts';
 import {
     BarChart3,
     Building2,
@@ -316,36 +316,54 @@ export default function SuperAdminDashboard({ stats, chartData, ticketChartData,
                         </CardHeader>
                         <CardContent className="p-5">
                             {orderPieData.length > 0 ? (
-                                <div className="grid gap-5 rounded-2xl border border-slate-100 bg-slate-50/70 p-4 lg:grid-cols-[0.95fr_1.05fr]">
-                                    <div className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-100">
+                                <div className="grid gap-5 rounded-3xl border border-slate-100 bg-gradient-to-br from-slate-50 to-white p-4 lg:grid-cols-[0.9fr_1.1fr]">
+                                    <div className="relative rounded-3xl border border-slate-100 bg-white p-4 shadow-sm">
+                                        <div className="absolute inset-x-0 top-4 mx-auto flex w-fit flex-col items-center rounded-2xl border border-slate-100 bg-white/90 px-3 py-2 text-center shadow-sm backdrop-blur">
+                                            <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-400">{t('Total')}</span>
+                                            <span className="text-xl font-semibold text-slate-950">{safeStats.total_orders}</span>
+                                        </div>
                                         <PieChart
                                             data={orderPieData}
                                             dataKey="orders"
                                             nameKey="month"
-                                            height={280}
+                                            height={245}
                                             donut={true}
-                                            innerRadius={58}
-                                            outerRadius={94}
+                                            innerRadius={64}
+                                            outerRadius={92}
+                                            separatorNone={false}
                                             showTooltip={true}
                                             showLegend={false}
                                         />
                                     </div>
-                                    <div className="flex flex-col justify-center space-y-3">
-                                        <p className="text-sm font-semibold text-slate-950">{t('Orders by active month')}</p>
-                                        <div className="space-y-2">
-                                            {orderPieData.map((item) => (
-                                                <div key={item.month} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm">
-                                                    <span className="flex items-center gap-2 font-medium text-slate-700">
-                                                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                                                        {item.month}
-                                                    </span>
-                                                    <span className="font-semibold text-slate-950">{item.orders}</span>
-                                                </div>
-                                            ))}
+                                    <div className="flex flex-col justify-center space-y-4">
+                                        <div>
+                                            <p className="text-sm font-semibold text-slate-950">{t('Orders distribution')}</p>
+                                            <p className="mt-1 text-xs leading-5 text-slate-500">
+                                                {t('A compact monthly split of subscription orders without taking over the dashboard.')}
+                                            </p>
                                         </div>
-                                        <p className="text-xs leading-5 text-slate-500">
-                                            {t('This keeps the dashboard compact while showing where order activity happened during the year.')}
-                                        </p>
+                                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                                            {orderPieData.map((item) => {
+                                                const percentage = safeStats.total_orders > 0
+                                                    ? Math.round((item.orders / safeStats.total_orders) * 100)
+                                                    : 0;
+
+                                                return (
+                                                    <div key={item.month} className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm">
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <span className="flex items-center gap-2 font-medium text-slate-700">
+                                                                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                                                                {item.month}
+                                                            </span>
+                                                            <span className="font-semibold text-slate-950">{item.orders}</span>
+                                                        </div>
+                                                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                                                            <div className="h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: item.color }} />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
                             ) : (
@@ -356,37 +374,59 @@ export default function SuperAdminDashboard({ stats, chartData, ticketChartData,
                         </CardContent>
                     </Card>
 
-                    <Card className="overflow-hidden rounded-3xl border-slate-200/80 bg-slate-950 text-white shadow-sm">
-                        <CardHeader className="pb-4">
-                            <CardTitle className="text-lg text-white">{t('Support pulse')}</CardTitle>
-                            <CardDescription className="text-slate-300">{t('Helpdesk load and response visibility')}</CardDescription>
+                    <Card className="overflow-hidden rounded-3xl border-slate-200/80 bg-white shadow-sm">
+                        <CardHeader className="border-b border-slate-100 pb-4">
+                            <div className="flex items-center gap-2">
+                                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+                                    <Headphones className="h-5 w-5" />
+                                </span>
+                                <div>
+                                    <CardTitle className="text-lg text-slate-950">{t('Support pulse')}</CardTitle>
+                                    <CardDescription>{t('Helpdesk load and response visibility')}</CardDescription>
+                                </div>
+                            </div>
                         </CardHeader>
-                        <CardContent className="space-y-3">
-                            <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
-                                <div className="flex items-center justify-between">
+                        <CardContent className="space-y-3 p-5">
+                            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+                                <div className="flex items-center justify-between gap-4">
                                     <div>
-                                        <p className="text-sm text-slate-300">{t('Recent activity')}</p>
-                                        <p className="mt-1 text-2xl font-semibold">{recentTicketCount}</p>
+                                        <p className="text-sm font-medium text-emerald-800">{t('Recent activity')}</p>
+                                        <p className="mt-1 text-2xl font-semibold text-slate-950">{recentTicketCount}</p>
                                     </div>
-                                    <Headphones className="h-8 w-8 text-emerald-300" />
+                                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-sm ring-1 ring-emerald-100">
+                                        <Headphones className="h-6 w-6" />
+                                    </span>
                                 </div>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-white/10 p-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm text-slate-300">{t('Created / resolved')}</p>
-                                        <p className="mt-1 text-2xl font-semibold">{createdTickets}<span className="text-slate-500"> / </span>{resolvedTickets}</p>
+                            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                                <div className="rounded-2xl border border-sky-100 bg-sky-50/60 p-4">
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div>
+                                            <p className="text-sm font-medium text-sky-800">{t('Created')}</p>
+                                            <p className="mt-1 text-2xl font-semibold text-slate-950">{createdTickets}</p>
+                                        </div>
+                                        <CheckCircle2 className="h-6 w-6 text-sky-600" />
                                     </div>
-                                    <CheckCircle2 className="h-8 w-8 text-sky-300" />
+                                </div>
+                                <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div>
+                                            <p className="text-sm font-medium text-emerald-800">{t('Resolved')}</p>
+                                            <p className="mt-1 text-2xl font-semibold text-slate-950">{resolvedTickets}</p>
+                                        </div>
+                                        <TicketCheck className="h-6 w-6 text-emerald-600" />
+                                    </div>
                                 </div>
                             </div>
-                            <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4">
-                                <div className="flex items-center justify-between">
+                            <div className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4">
+                                <div className="flex items-center justify-between gap-4">
                                     <div>
-                                        <p className="text-sm text-amber-100">{t('Awaiting response')}</p>
-                                        <p className="mt-1 text-2xl font-semibold text-white">{pendingTicketCount}</p>
+                                        <p className="text-sm font-medium text-amber-800">{t('Awaiting response')}</p>
+                                        <p className="mt-1 text-2xl font-semibold text-slate-950">{pendingTicketCount}</p>
                                     </div>
-                                    <Clock3 className="h-8 w-8 text-amber-200" />
+                                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-amber-700 shadow-sm ring-1 ring-amber-100">
+                                        <Clock3 className="h-6 w-6" />
+                                    </span>
                                 </div>
                             </div>
                         </CardContent>
@@ -535,19 +575,21 @@ export default function SuperAdminDashboard({ stats, chartData, ticketChartData,
                     </CardHeader>
                     <CardContent className="p-5">
                         {ticketChartData && ticketChartData.length > 0 ? (
-                            <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
-                                <BarChart
+                            <div className="rounded-3xl border border-slate-100 bg-gradient-to-br from-slate-50 to-white p-4">
+                                <LineChart
                                     data={ticketChartData}
                                     dataKey="created"
-                                    height={300}
+                                    xAxisKey="month"
+                                    height={315}
                                     showTooltip={true}
                                     showGrid={true}
-                                    bars={[
-                                        { dataKey: 'created', color: '#2563eb', name: 'Created' },
-                                        { dataKey: 'resolved', color: '#059669', name: 'Resolved' }
-                                    ]}
-                                    xAxisKey="month"
                                     showLegend={true}
+                                    showDots={true}
+                                    strokeWidth={3}
+                                    lines={[
+                                        { dataKey: 'created', color: '#2563eb', name: 'Created', type: 'monotone' },
+                                        { dataKey: 'resolved', color: '#059669', name: 'Resolved', type: 'monotone' },
+                                    ]}
                                 />
                             </div>
                         ) : (
