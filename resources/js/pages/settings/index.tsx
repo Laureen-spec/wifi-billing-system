@@ -23,6 +23,10 @@ const settingDescription = (component?: string, t?: (key: string) => string) => 
     return t('Configure platform payment methods, M-Pesa credentials, and collection rules.');
   }
 
+  if (component === 'admin-module-settings') {
+    return t('Open the payment, SMS, hotspot portal, and template settings available to your ISP workspace.');
+  }
+
   if (component === 'currency-settings') {
     return t('Manage default currency and invoice formatting.');
   }
@@ -151,13 +155,15 @@ export default function Settings() {
                           <span className="block truncate text-xs font-normal text-muted-foreground">
                             {item.component === 'payment-gateway-settings'
                               ? t('Manage payment gateways')
-                              : item.component === 'brand-settings'
-                                ? t('Logo, colors and branding')
-                                : item.component === 'system-settings'
-                                  ? t('General system preferences')
-                                  : item.component === 'currency-settings'
-                                    ? t('Manage currencies')
-                                    : t('Configure settings')}
+                              : item.component === 'admin-module-settings'
+                                ? t('SMS, payment and hotspot')
+                                : item.component === 'brand-settings'
+                                  ? t('Logo, colors and branding')
+                                  : item.component === 'system-settings'
+                                    ? t('General system preferences')
+                                    : item.component === 'currency-settings'
+                                      ? t('Manage currencies')
+                                      : t('Configure settings')}
                           </span>
                         </span>
                       </Button>

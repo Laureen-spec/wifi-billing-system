@@ -115,6 +115,36 @@ const dedupeSettingsItems = (items: SettingMenuItem[]): SettingMenuItem[] => {
     return deduped;
 };
 
+
+const adminWorkspaceSettingPermissions = [
+    'manage-settings',
+    'manage-dashboard',
+    'manage-company-settings',
+    'manage-brand-settings',
+    'manage-system-settings',
+    'manage-currency-settings',
+    'manage-wifi-billing',
+    'manage-hotspot-template',
+    'manage-mpesa-payment',
+    'manage-payment-settings',
+    'manage-sms',
+    'manage-isp-sms',
+    'manage-sms-settings',
+    'manage-sms-templates',
+];
+
+const canSeeSettingItem = (item: SettingMenuItem, userPermissions: string[]): boolean => {
+    if (userPermissions.includes(item.permission)) {
+        return true;
+    }
+
+    if (item.component === 'admin-module-settings') {
+        return adminWorkspaceSettingPermissions.some(permission => userPermissions.includes(permission));
+    }
+
+    return false;
+};
+
 const sortSettingsItems = (items: SettingMenuItem[]): SettingMenuItem[] => {
     return [...items].sort((a, b) => {
         const aPriority = isPaymentSettingsItem(a) ? 0 : 1;
@@ -136,6 +166,6 @@ export const allSettingsItems = (userPermissions: string[], userRoles: string[],
 
     return dedupeSettingsItems(
         sortSettingsItems(allItems)
-            .filter(item => userPermissions.includes(item.permission))
+            .filter(item => canSeeSettingItem(item, userPermissions))
     );
 };
