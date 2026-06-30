@@ -310,31 +310,33 @@ export default function Index() {
             <Head title={t('Support Tickets')} />
 
             <div className="space-y-6">
-                <section className="relative overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-white via-emerald-50/50 to-slate-50 p-6 text-slate-950 shadow-sm">
-                    <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-emerald-200/60 blur-3xl" />
-                    <div className="absolute bottom-0 left-1/3 h-32 w-32 rounded-full bg-sky-100/70 blur-3xl" />
-                    <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                <section className="rounded-3xl border border-slate-200 bg-white p-5 text-slate-950 shadow-sm">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="max-w-2xl">
-                            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700 shadow-sm">
+                            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-700">
                                 <Sparkles className="h-3.5 w-3.5" />
                                 {t('Service Desk')}
                             </div>
-                            <h1 className="text-3xl font-black tracking-tight md:text-4xl">{t('Helpdesk command center')}</h1>
-                            <p className="mt-3 text-sm leading-6 text-slate-600 md:text-base">
-                                {t('Track support tickets, assign priority, and keep every customer conversation moving from one clean workspace.')}
+                            <h1 className="text-2xl font-bold tracking-tight md:text-[30px]">{t('Helpdesk command center')}</h1>
+                            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
+                                {t('Track support tickets, assign priority, and keep customer conversations moving from one clean workspace.')}
                             </p>
                         </div>
-                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-[560px]">
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-[520px]">
                             {metricCards.map((item) => {
                                 const Icon = item.icon;
                                 return (
-                                    <div key={item.label} className="rounded-2xl border border-slate-200 bg-white/85 p-4 shadow-sm backdrop-blur">
-                                        <div className={`mb-3 flex h-10 w-10 items-center justify-center rounded-xl ${item.tone}`}>
-                                            <Icon className="h-5 w-5" />
+                                    <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${item.tone}`}>
+                                                <Icon className="h-4 w-4" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-xl font-bold leading-none">{item.value}</p>
+                                                <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600">{item.label}</p>
+                                            </div>
                                         </div>
-                                        <p className="text-2xl font-black">{item.value}</p>
-                                        <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-600">{item.label}</p>
-                                        <p className="mt-1 text-xs text-slate-500">{item.helper}</p>
+                                        <p className="mt-2 text-xs text-slate-500">{item.helper}</p>
                                     </div>
                                 );
                             })}

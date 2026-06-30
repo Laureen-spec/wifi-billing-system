@@ -81,6 +81,9 @@ export default function Index() {
     };
     const [showFilters, setShowFilters] = useState(false);
     const hasMountedSearch = useRef(false);
+    const isSuperAdmin = auth.user?.type === 'superadmin';
+    const listingLabel = isSuperAdmin ? t('Companies') : t('Staff');
+    const pageHeading = isSuperAdmin ? t('Manage Companies') : t('Manage Staff');
 
     useEffect(() => {
         if (!hasMountedSearch.current) {
@@ -311,8 +314,8 @@ export default function Index() {
 
     return (
         <AuthenticatedLayout
-            breadcrumbs={[{label: t('Staff')}]}
-            pageTitle={t('Manage Staff')}
+            breadcrumbs={[{label: listingLabel}]}
+            pageTitle={pageHeading}
             pageActions={
                 <div className="flex gap-2">
                     <TooltipProvider>
@@ -347,7 +350,7 @@ export default function Index() {
                 </div>
             }
         >
-            <Head title={t('Staff')} />
+            <Head title={pageHeading} />
 
             {/* Main Content Card */}
             <Card className="overflow-hidden border-slate-200/80 bg-white/95 shadow-[0_18px_45px_rgba(15,23,42,0.06)]">
@@ -360,7 +363,7 @@ export default function Index() {
                                 <Input
                                     value={filters.name}
                                     onChange={(e) => setFilters({...filters, name: e.target.value})}
-                                    placeholder={t('Search staff by name...')}
+                                    placeholder={isSuperAdmin ? t('Search companies by name...') : t('Search staff by name...')}
                                     className="h-12 rounded-2xl border-slate-200 bg-white/90 pl-11 pr-11 text-base shadow-sm focus-visible:ring-emerald-500/20"
                                 />
                                 {filters.name && (
@@ -462,13 +465,13 @@ export default function Index() {
                                 emptyState={
                                     <NoRecordsFound
                                         icon={UsersIcon}
-                                        title={t('No staff found')}
-                                        description={t('Get started by creating your first staff account.')}
+                                        title={isSuperAdmin ? t('No companies found') : t('No staff found')}
+                                        description={isSuperAdmin ? t('Get started by creating your first company account.') : t('Get started by creating your first staff account.')}
                                         hasFilters={!!(filters.name || filters.email || filters.role || filters.is_enable_login)}
                                         onClearFilters={clearFilters}
                                         createPermission="create-users"
                                         onCreateClick={() => openModal('add')}
-                                        createButtonText={t('Create Staff')}
+                                        createButtonText={isSuperAdmin ? t('Create Company') : t('Create Staff')}
                                         className="h-auto"
                                     />
                                 }

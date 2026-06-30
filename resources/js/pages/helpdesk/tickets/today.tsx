@@ -59,14 +59,6 @@ export default function Today() {
         defaultMessage: t('Are you sure you want to delete this ticket?'),
     });
 
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        router.get(route('helpdesk-tickets.today'), { search: searchQuery }, {
-            preserveState: true,
-            replace: true,
-        });
-    };
-
     const clearSearch = () => {
         setSearchQuery('');
         router.get(route('helpdesk-tickets.today'));
@@ -294,7 +286,7 @@ export default function Today() {
                                 {t('A priority-based board for tickets that need attention today.')}
                             </p>
                         </div>
-                        <form onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                             <Select value={activePriorityFilter} onValueChange={(value) => setActivePriorityFilter(value)}>
                                 <SelectTrigger className="rounded-xl bg-white sm:w-[170px]">
                                     <div className="flex items-center"><Filter className="mr-2 h-4 w-4" /> <SelectValue /></div>
@@ -318,8 +310,7 @@ export default function Today() {
                                 />
                             </div>
                             {searchQuery && <Button type="button" variant="outline" onClick={clearSearch} className="rounded-xl">{t('Clear')}</Button>}
-                            <Button type="submit" className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">{t('Search')}</Button>
-                        </form>
+                        </div>
                     </div>
 
                     <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
