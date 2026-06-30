@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import InputError from '@/components/ui/input-error';
 import { Label } from '@/components/ui/label';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, BellRing, Coins, ExternalLink, MessageSquare, Save, ShieldCheck, Tags, Wallet } from 'lucide-react';
+import { ArrowLeft, BellRing, Coins, MessageSquare, Save, Tags, Wallet } from 'lucide-react';
 import { FormEvent, ReactNode } from 'react';
 
 type Setting = {
@@ -270,7 +270,7 @@ export default function SmsSettings({ pageTitle, subtitle, setting, platformSett
                     <div className="space-y-5">
                         {!isPlatform ? (
                             <Card>
-                                <CardHeader className="border-b py-4"><CardTitle className="text-base">System alert</CardTitle></CardHeader>
+                                <CardHeader className="border-b bg-muted/20 py-4"><CardTitle className="text-base">System alert</CardTitle></CardHeader>
                                 <CardContent className="space-y-4 p-5 text-sm">
                                     <div className={`rounded-2xl border p-4 ${lowBalance ? 'border-amber-200 bg-amber-50 text-amber-900' : 'bg-muted/20 text-muted-foreground'}`}>
                                         <div className="flex items-start gap-3"><BellRing className="mt-0.5 h-5 w-5" /><div><p className="font-medium text-foreground">Low balance monitor</p><p className="mt-1">Alert phone: {data.low_balance_alert_phone || 'Not configured'}</p><p>Threshold: {data.low_balance_alert_threshold || '10'}</p>{current?.low_balance_alerted_at && <p>Last alert: {current.low_balance_alerted_at}</p>}</div></div>
@@ -280,7 +280,7 @@ export default function SmsSettings({ pageTitle, subtitle, setting, platformSett
                             </Card>
                         ) : (
                             <Card>
-                                <CardHeader className="border-b py-4"><CardTitle className="text-base">Super admin SMS gateway</CardTitle></CardHeader>
+                                <CardHeader className="border-b bg-muted/20 py-4"><CardTitle className="text-base">Super admin SMS gateway</CardTitle></CardHeader>
                                 <CardContent className="space-y-3 p-5 text-sm text-muted-foreground">
                                     <div className="rounded-2xl border bg-muted/20 p-4">
                                         Configure the platform SMS provider here. Admins who pick system SMS will use this gateway and pay from their SMS balance.
@@ -292,21 +292,16 @@ export default function SmsSettings({ pageTitle, subtitle, setting, platformSett
                             </Card>
                         )}
 
-                        <Card>
-                            <CardHeader className="border-b py-4"><CardTitle className="text-base">Gateway summary</CardTitle></CardHeader>
+                        <Card className="overflow-hidden">
+                            <CardHeader className="border-b bg-muted/20 py-4">
+                                <CardTitle className="text-base">Gateway summary</CardTitle>
+                                <p className="text-xs text-muted-foreground">Current SMS configuration snapshot.</p>
+                            </CardHeader>
                             <CardContent className="space-y-3 p-5 text-sm">
                                 <SummaryRow label="Rule" value={usingSystemSms ? 'System SMS' : 'Own API'} />
                                 <SummaryRow label="Provider" value={usingSystemSms ? 'Platform gateway' : selectedProvider?.label || 'Not selected'} />
                                 <SummaryRow label="Status" value={data.is_active ? 'Active' : 'Inactive'} />
                                 <SummaryRow label="Last updated" value={current?.updated_at || 'Not saved yet'} />
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="border-b py-4"><CardTitle className="text-base">Access rule</CardTitle></CardHeader>
-                            <CardContent className="space-y-3 p-5 text-sm text-muted-foreground">
-                                <div className="flex gap-3 rounded-xl border p-4"><ShieldCheck className="mt-0.5 h-5 w-5 text-primary" /><div><p className="font-medium text-foreground">Admin and Super Admin</p><p>Both can access SMS settings and Email / SMS Log. Super Admin controls platform gateway and charging.</p></div></div>
-                                <div className="flex gap-3 rounded-xl border p-4"><ExternalLink className="mt-0.5 h-5 w-5 text-primary" /><div><p className="font-medium text-foreground">Own API mode</p><p>Choose an available gateway, then fill only the fields required by that provider.</p></div></div>
                             </CardContent>
                         </Card>
                     </div>
@@ -332,5 +327,5 @@ function MetricCard({ icon, label, value, hint }: { icon: ReactNode; label: stri
 }
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
-    return <div className="flex items-center justify-between rounded-xl border px-3 py-2"><span className="text-muted-foreground">{label}</span><span className="font-medium text-foreground">{value}</span></div>;
+    return <div className="flex items-center justify-between gap-4 rounded-xl border bg-background px-3 py-2.5"><span className="text-muted-foreground">{label}</span><span className="text-right font-medium text-foreground">{value}</span></div>;
 }
