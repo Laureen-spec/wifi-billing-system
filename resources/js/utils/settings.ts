@@ -120,9 +120,6 @@ const adminWorkspaceSettingPermissions = [
     'manage-settings',
     'manage-dashboard',
     'manage-company-settings',
-    'manage-brand-settings',
-    'manage-system-settings',
-    'manage-currency-settings',
     'manage-wifi-billing',
     'manage-hotspot-template',
     'manage-mpesa-payment',
@@ -138,7 +135,13 @@ const canSeeSettingItem = (item: SettingMenuItem, userPermissions: string[]): bo
         return true;
     }
 
-    if (item.component === 'admin-module-settings') {
+    if (
+        item.component === 'admin-module-settings'
+        || item.component === 'admin-payment-settings'
+        || item.component === 'admin-sms-settings'
+        || item.component === 'admin-sms-template-settings'
+        || item.component === 'admin-hotspot-template-settings'
+    ) {
         return adminWorkspaceSettingPermissions.some(permission => userPermissions.includes(permission));
     }
 

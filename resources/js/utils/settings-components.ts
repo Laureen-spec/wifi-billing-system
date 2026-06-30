@@ -17,6 +17,10 @@ const coreComponents = {
   'ai-agent-settings': lazy(() => import('@/pages/settings/components/ai-agent-settings')),
   'menu-preferences': lazy(() => import('@/pages/settings/components/menu-preferences')),
   'admin-module-settings': lazy(() => import('@/pages/settings/components/admin-module-settings')),
+  'admin-payment-settings': lazy(() => import('@/pages/settings/components/admin-payment-settings')),
+  'admin-sms-settings': lazy(() => import('@/pages/settings/components/admin-sms-settings')),
+  'admin-sms-template-settings': lazy(() => import('@/pages/settings/components/admin-sms-template-settings')),
+  'admin-hotspot-template-settings': lazy(() => import('@/pages/settings/components/admin-hotspot-template-settings')),
 };
 
 let packageComponentsCache: Record<string, any> | null = null;

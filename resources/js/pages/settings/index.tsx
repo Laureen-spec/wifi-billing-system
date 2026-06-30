@@ -19,31 +19,41 @@ const getHashSection = () => {
 const settingDescription = (component?: string, t?: (key: string) => string) => {
   if (!t) return '';
 
-  if (component === 'payment-gateway-settings') {
-    return t('Configure platform payment methods, M-Pesa credentials, and collection rules.');
-  }
+  const descriptions: Record<string, string> = {
+    'payment-gateway-settings': 'Configure platform payment methods, M-Pesa credentials, and collection rules.',
+    'admin-module-settings': 'Open the payment, SMS, hotspot portal, and template settings available to your ISP workspace.',
+    'admin-payment-settings': 'Open the admin payment collection settings for the current ISP workspace.',
+    'admin-sms-settings': 'Open the admin SMS gateway and balance settings for the current ISP workspace.',
+    'admin-sms-template-settings': 'Open the SMS template settings for customer communication.',
+    'admin-hotspot-template-settings': 'Open the hotspot portal template settings for customer package payments.',
+    'company-settings': 'Update the current company profile settings for this workspace only.',
+    'menu-preferences': 'Rename sidebar menu labels for your own account and reset them any time.',
+    'currency-settings': 'Manage default currency and invoice formatting.',
+    'brand-settings': 'Update logo, colors, branding, and product identity.',
+    'system-settings': 'Manage system preferences and platform behavior.',
+  };
 
-  if (component === 'admin-module-settings') {
-    return t('Open the payment, SMS, hotspot portal, and template settings available to your ISP workspace.');
-  }
+  return t(descriptions[component || ''] || 'Update the selected system configuration page.');
+};
 
-  if (component === 'currency-settings') {
-    return t('Manage default currency and invoice formatting.');
-  }
+const settingSubtitle = (component?: string, t?: (key: string) => string) => {
+  if (!t) return '';
 
-  if (component === 'brand-settings') {
-    return t('Update logo, colors, branding, and product identity.');
-  }
+  const subtitles: Record<string, string> = {
+    'payment-gateway-settings': 'Manage payment gateways',
+    'admin-module-settings': 'Workspace settings',
+    'admin-payment-settings': 'Admin payment setup',
+    'admin-sms-settings': 'Gateway and SMS balance',
+    'admin-sms-template-settings': 'Message templates',
+    'admin-hotspot-template-settings': 'Hotspot portal setup',
+    'brand-settings': 'Logo, colors and branding',
+    'system-settings': 'General system preferences',
+    'currency-settings': 'Manage currencies',
+    'company-settings': 'Company profile only',
+    'menu-preferences': 'Rename your sidebar',
+  };
 
-  if (component === 'system-settings') {
-    return t('Manage system preferences and platform behavior.');
-  }
-
-  if (component === 'menu-preferences') {
-    return t('Rename sidebar menu labels for your own account and reset them any time.');
-  }
-
-  return t('Update the selected system configuration page.');
+  return t(subtitles[component || ''] || 'Configure settings');
 };
 
 export default function Settings() {
@@ -153,17 +163,7 @@ export default function Settings() {
                         <span className="min-w-0">
                           <span className="block truncate">{item.title}</span>
                           <span className="block truncate text-xs font-normal text-muted-foreground">
-                            {item.component === 'payment-gateway-settings'
-                              ? t('Manage payment gateways')
-                              : item.component === 'admin-module-settings'
-                                ? t('SMS, payment and hotspot')
-                                : item.component === 'brand-settings'
-                                  ? t('Logo, colors and branding')
-                                  : item.component === 'system-settings'
-                                    ? t('General system preferences')
-                                    : item.component === 'currency-settings'
-                                      ? t('Manage currencies')
-                                      : t('Configure settings')}
+                            {settingSubtitle(item.component, t)}
                           </span>
                         </span>
                       </Button>

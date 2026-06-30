@@ -52,12 +52,6 @@ class SettingController extends Controller
         $adminSettingPermissions = [
             'manage-dashboard',
             'manage-company-settings',
-            'manage-brand-settings',
-            'manage-system-settings',
-            'manage-currency-settings',
-            'manage-email-settings',
-            'manage-bank-transfer-settings',
-            'manage-ai-agent-settings',
             'manage-wifi-billing',
             'manage-internet-packages',
             'manage-hotspot-settings',

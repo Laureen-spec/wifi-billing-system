@@ -31,6 +31,9 @@ const packageNameCandidates = (packageName: string): string[] => {
         'isp-sms': 'IspSms',
         'ispsms': 'IspSms',
         'sms': 'IspSms',
+        'isp-report': 'IspReport',
+        'ispreport': 'IspReport',
+        'reports': 'IspReport',
     };
 
     return Array.from(new Set([
@@ -133,6 +136,44 @@ const groupMenusByParent = (menuItems: NavItem[], packageMenuItems: NavItem[]): 
     });
 
     return groupedItems;
+};
+
+
+const menuDedupeKey = (item: NavItem): string => {
+    const menuItem = item as NavItem & { menuKey?: string; routeName?: string };
+    const rawKey = menuItem.menuKey || item.name || menuItem.routeName || item.href || item.title;
+    return String(rawKey || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+};
+
+const dedupeMenuItems = (items: NavItem[]): NavItem[] => {
+    const seen = new Set<string>();
+    const deduped: NavItem[] = [];
+
+    items.forEach((item) => {
+        const key = menuDedupeKey(item);
+
+        if (key && seen.has(key)) {
+            const existing = deduped.find((candidate) => menuDedupeKey(candidate) === key);
+            if (existing) {
+                existing.children = dedupeMenuItems([
+                    ...(existing.children || []),
+                    ...(item.children || []),
+                ]).sort((a, b) => (a.order || 999) - (b.order || 999));
+            }
+            return;
+        }
+
+        if (key) {
+            seen.add(key);
+        }
+
+        deduped.push({
+            ...item,
+            children: item.children ? dedupeMenuItems(item.children) : item.children,
+        });
+    });
+
+    return deduped;
 };
 
 const normalizeVisibilityKey = (value?: string | null): string => {
@@ -370,7 +411,7 @@ export const allMenuItems = (): NavItem[] => {
     
     // Then group all children (package + custom children) with their parents
     const allChildMenus = [...packageMenuItems, ...customChildMenus];
-    const finalGroupedMenuItems = groupMenusByParent(coreWithCustomParents, allChildMenus);
+    const finalGroupedMenuItems = dedupeMenuItems(groupMenusByParent(coreWithCustomParents, allChildMenus));
 
     const sortedMenuItems = finalGroupedMenuItems.sort((a, b) => (a.order || 999) - (b.order || 999));
 

@@ -1,4 +1,4 @@
-import { Palette, Building, SettingsIcon, Mail, DollarSign, CreditCard, Bot, PanelLeft, SlidersHorizontal } from 'lucide-react';
+import { Building, CreditCard, FileText, MessageSquareText, PanelLeft, SlidersHorizontal, Wifi } from 'lucide-react';
 
 export interface SettingMenuItem {
   order: number;
@@ -20,22 +20,38 @@ export const getCompanySettings = (t: (key: string) => string): SettingMenuItem[
   },
   {
     order: 10,
-    title: t('Brand Settings'),
-    href: '#brand-settings',
-    icon: Palette,
-    permission: 'manage-brand-settings',
-    component: 'brand-settings'
+    title: t('Payment Settings'),
+    href: '#payment-settings',
+    icon: CreditCard,
+    permission: 'manage-dashboard',
+    component: 'admin-payment-settings'
   },
   {
     order: 20,
-    title: t('System Settings'),
-    href: '#system-settings',
-    icon: SettingsIcon,
-    permission: 'manage-system-settings',
-    component: 'system-settings'
+    title: t('SMS Settings'),
+    href: '#sms-settings',
+    icon: MessageSquareText,
+    permission: 'manage-dashboard',
+    component: 'admin-sms-settings'
   },
   {
-    order: 25,
+    order: 30,
+    title: t('SMS Template Settings'),
+    href: '#sms-template-settings',
+    icon: FileText,
+    permission: 'manage-dashboard',
+    component: 'admin-sms-template-settings'
+  },
+  {
+    order: 40,
+    title: t('Hotspot Template Settings'),
+    href: '#hotspot-template-settings',
+    icon: Wifi,
+    permission: 'manage-dashboard',
+    component: 'admin-hotspot-template-settings'
+  },
+  {
+    order: 50,
     title: t('Menu Preferences'),
     href: '#menu-preferences',
     icon: PanelLeft,
@@ -43,51 +59,11 @@ export const getCompanySettings = (t: (key: string) => string): SettingMenuItem[
     component: 'menu-preferences'
   },
   {
-    order: 30,
+    order: 60,
     title: t('Company Settings'),
     href: '#company-settings',
     icon: Building,
     permission: 'manage-company-settings',
     component: 'company-settings'
-  },
-  {
-    order: 35,
-    title: t('AI Agent Settings'),
-    href: '#ai-agent-settings',
-    icon: Bot,
-    permission: 'manage-ai-agent-settings',
-    component: 'ai-agent-settings'
-  },
-  {
-    order: 40,
-    title: t('Currency Settings'),
-    href: '#currency-settings',
-    icon: DollarSign,
-    permission: 'manage-currency-settings',
-    component: 'currency-settings'
-  },
-  {
-    order: 500,
-    title: t('Email Settings'),
-    href: '#email-settings',
-    icon: Mail,
-    permission: 'manage-email-settings',
-    component: 'email-settings'
-  },
-  {
-    order: 510,
-    title: t('Email Notification Settings'),
-    href: '#email-notification-settings',
-    icon: Mail,
-    permission: 'manage-email-notification-settings',
-    component: 'email-notification-settings'
-  },
-  {
-    order: 1000,
-    title: t('Bank Transfer Settings'),
-    href: '#bank-transfer-settings',
-    icon: CreditCard,
-    permission: 'manage-bank-transfer-settings',
-    component: 'bank-transfer-settings'
   }
 ];
