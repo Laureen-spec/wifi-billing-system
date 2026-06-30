@@ -6,12 +6,30 @@ import { getCompanyMenu } from './menus/company-menu';
 import { getWifiBillingMenu } from './menus/wifi-billing-menu';
 import * as LucideIcons from 'lucide-react';
 
+const WORKSPACE_PARENT_ADDON_PACKAGES = [
+    'IspSms',
+    'IspReport',
+    'tr069',
+    'loyalty',
+    'IspPaymentCenter',
+    'Expenses',
+];
+
+const normalizePackageToken = (value: string): string => String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+    .trim();
+
+
 // Get role-based core menu items
 const getCoreMenuItems = (userRoles: string[], t: (key: string) => string): NavItem[] => {
+    const installedParentAddonMenus = getWorkspaceParentAddonMenuItems(userRoles, t);
+
     if (userRoles.includes('superadmin')) {
-        return getSuperAdminMenu(t);
+        return [...getSuperAdminMenu(t), ...installedParentAddonMenus];
     }
-    return [...getCompanyMenu(t), ...getWifiBillingMenu(t)];
+
+    return [...getCompanyMenu(t), ...getWifiBillingMenu(t), ...installedParentAddonMenus];
 };
 
 const packageNameCandidates = (packageName: string): string[] => {
@@ -32,18 +50,12 @@ const packageNameCandidates = (packageName: string): string[] => {
         'ispsms': 'IspSms',
         'sms': 'IspSms',
         'isp-report': 'IspReport',
-        'isp-reports': 'IspReport',
         'ispreport': 'IspReport',
         'reports': 'IspReport',
+        'isp-reports': 'IspReport',
         'tr069': 'tr069',
         'tr-069': 'tr069',
-        'cwmp': 'tr069',
         'loyalty': 'loyalty',
-        'rewards': 'loyalty',
-        'reward': 'loyalty',
-        'loyalty-points': 'loyalty',
-        'expenses': 'Expenses',
-        'leads': 'Leads',
     };
 
     return Array.from(new Set([
@@ -55,57 +67,64 @@ const packageNameCandidates = (packageName: string): string[] => {
     ].filter(Boolean) as string[]));
 };
 
-// Auto-load package menus based on activated packages
-const getPackageMenuItems = (userRoles: string[], activatedPackages: string[], t: (key: string) => string): NavItem[] => {
+const packageExportToMenuItems = (module: Record<string, any>, t: (key: string) => string): NavItem[] => {
     const menuItems: NavItem[] = [];
-    const menuType = userRoles.includes('superadmin') ? 'superadmin-menu' : 'company-menu';
 
+    Array.from(new Set(Object.values(module))).forEach((item: any) => {
+        const result = typeof item === 'function' ? item(t) : item;
+        const items = Array.isArray(result) ? result : [result];
+        menuItems.push(...items.filter(Boolean));
+    });
+
+    return menuItems;
+};
+
+const workspaceParentAddonPackageAliases = (): Set<string> => {
+    return new Set(
+        WORKSPACE_PARENT_ADDON_PACKAGES
+            .flatMap((packageName) => packageNameCandidates(packageName))
+            .map(normalizePackageToken)
+    );
+};
+
+const isWorkspaceParentAddonPackage = (packageName: string): boolean => {
+    const parentAliases = workspaceParentAddonPackageAliases();
+
+    return packageNameCandidates(packageName).some((candidate) => parentAliases.has(normalizePackageToken(candidate)));
+};
+
+const loadPackageMenuItems = (userRoles: string[], packageNames: string[], t: (key: string) => string): NavItem[] => {
+    const menuType = userRoles.includes('superadmin') ? 'superadmin-menu' : 'company-menu';
     const packageRoots = ['studyroomtechlab', 'workdo'];
     const allModules = {
         ...import.meta.glob('../../../packages/studyroomtechlab/*/src/Resources/js/menus/*.ts', { eager: true }),
         ...import.meta.glob('../../../packages/workdo/*/src/Resources/js/menus/*.ts', { eager: true }),
     };
 
-    // Ensure activatedPackages is an array before iterating.
-    // Some workspace add-ons can exist on disk before the database activation
-    // rows/user_active_modules rows are synced. Load these package menu files
-    // when they exist, then visibility/permissions can still hide restricted items.
+    return Array.from(new Set(packageNames.filter(Boolean)))
+        .filter((packageName) => !['wifibilling', 'wifi-billing'].includes(String(packageName).toLowerCase()))
+        .flatMap((packageName) => {
+            const module = packageNameCandidates(String(packageName))
+                .flatMap((candidate) => packageRoots.map((packageRoot) => allModules[`../../../packages/${packageRoot}/${candidate}/src/Resources/js/menus/${menuType}.ts`] as any))
+                .find(Boolean);
+
+            return module ? packageExportToMenuItems(module, t) : [];
+        });
+};
+
+// Installed StudyRoom workspace add-ons are parent menus, same pattern as WiFi Billing.
+// They are loaded from their package menu files, not forced as child items.
+const getWorkspaceParentAddonMenuItems = (userRoles: string[], t: (key: string) => string): NavItem[] => {
+    return loadPackageMenuItems(userRoles, WORKSPACE_PARENT_ADDON_PACKAGES, t);
+};
+
+// Auto-load package menus based on activated packages, excluding workspace parent add-ons
+// already loaded above to avoid duplicates.
+const getPackageMenuItems = (userRoles: string[], activatedPackages: string[], t: (key: string) => string): NavItem[] => {
     const packageList = Array.isArray(activatedPackages) ? activatedPackages : [];
-    const alwaysAvailableWorkspacePackages = [
-        'IspSms',
-        'isp-sms',
-        'IspReport',
-        'isp-report',
-        'Tr069',
-        'tr069',
-        'loyalty',
-        'Loyalty',
-        'IspPaymentCenter',
-        'isp-payment-center',
-        'Expenses',
-        'Leads',
-    ];
-    const effectivePackages = Array.from(new Set([...packageList, ...alwaysAvailableWorkspacePackages]));
+    const childOrExternalPackages = packageList.filter((packageName) => !isWorkspaceParentAddonPackage(String(packageName)));
 
-    effectivePackages.forEach(packageName => {
-        if (['wifibilling', 'wifi-billing'].includes(String(packageName).toLowerCase())) {
-            return;
-        }
-
-        const module = packageNameCandidates(String(packageName))
-            .flatMap((candidate) => packageRoots.map((packageRoot) => allModules[`../../../packages/${packageRoot}/${candidate}/src/Resources/js/menus/${menuType}.ts`] as any))
-            .find(Boolean);
-
-        if (module) {
-            Object.values(module).forEach((item: any) => {
-                const result = typeof item === 'function' ? item(t) : item;
-                const items = Array.isArray(result) ? result : [result];
-                menuItems.push(...items);
-            });
-        }
-    });
-
-    return menuItems;
+    return loadPackageMenuItems(userRoles, childOrExternalPackages, t);
 };
 
 // Get custom menu items from database
@@ -167,10 +186,7 @@ const groupMenusByParent = (menuItems: NavItem[], packageMenuItems: NavItem[]): 
 
 const menuDedupeKey = (item: NavItem): string => {
     const menuItem = item as NavItem & { menuKey?: string; routeName?: string };
-    // Use the concrete item identity first. Some children intentionally share
-    // the parent menuKey, so using menuKey first can collapse valid children
-    // such as SMS Settings, Compose SMS, and SMS Templates into one item.
-    const rawKey = item.name || menuItem.routeName || item.href || item.title || menuItem.menuKey;
+    const rawKey = menuItem.menuKey || item.name || menuItem.routeName || item.href || item.title;
     return String(rawKey || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 };
 
