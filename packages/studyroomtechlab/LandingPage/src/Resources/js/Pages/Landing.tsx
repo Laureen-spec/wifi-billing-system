@@ -54,7 +54,7 @@ export default function Landing({ settings }: LandingProps) {
     };
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-white text-slate-900 antialiased">
             <Head title={`${settings?.company_name || 'StudyRoomTechLab WiFi Billing'} - WiFi and ISP Billing Platform`}>
                 {faviconUrl && <link rel="icon" type="image/x-icon" href={faviconUrl} />}
             </Head>

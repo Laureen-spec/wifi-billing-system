@@ -1,4 +1,5 @@
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
 import { getImagePath } from '@/utils/helpers';
 import { useTranslation } from 'react-i18next';
 
@@ -6,68 +7,22 @@ interface HeroProps {
     settings?: any;
 }
 
-const HERO_VARIANTS = {
-    hero1: {
-        section: 'bg-white py-20',
-        container: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8',
-         title: 'text-4xl md:text-5xl font-bold text-slate-900 mb-6 leading-tight',
-        subtitle: 'text-xl text-slate-700 mb-8 leading-relaxed',
-        buttons: 'flex flex-col sm:flex-row gap-4',
-        primaryBtn: 'text-white px-8 py-3 rounded-lg text-lg font-medium flex items-center transition-all duration-300 shadow-lg hover:shadow-xl',
-        secondaryBtn: 'border-2 border-gray-300 text-slate-700 px-8 py-3 rounded-lg text-lg font-medium hover:bg-gray-50 transition-all duration-300',
-        layout: 'right-split',
-        showImage: true
-    },
-    hero2: {
-        section: 'bg-white py-20',
-        container: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8',
-        title: 'text-4xl md:text-5xl font-bold text-slate-900 mb-6',
-        subtitle: 'text-xl text-slate-700 mb-8',
-        buttons: 'flex flex-col sm:flex-row gap-4 justify-center',
-        primaryBtn: 'text-white px-8 py-3 rounded-md text-lg font-medium flex items-center justify-center transition-colors',
-        secondaryBtn: 'border border-gray-300 text-slate-700 px-8 py-3 rounded-md text-lg font-medium hover:bg-gray-50',
-        layout: 'split',
-        showImage: true
-    },
-    hero3: {
-        section: 'relative bg-gray-900 py-32 md:py-40 overflow-hidden',
-        container: 'relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white z-10',
-        title: 'text-4xl md:text-6xl lg:text-7xl font-bold mb-8 leading-tight drop-shadow-2xl',
-        subtitle: 'text-xl md:text-2xl mb-12 max-w-4xl mx-auto opacity-95 leading-relaxed',
-        buttons: 'flex flex-col sm:flex-row gap-6 justify-center items-center',
-        primaryBtn: 'text-white px-10 py-4 rounded-2xl text-lg font-semibold flex items-center justify-center transition-all duration-300 shadow-2xl hover:shadow-3xl transform hover:-translate-y-1 backdrop-blur-sm',
-        secondaryBtn: 'border-2 border-white/30 text-white px-10 py-4 rounded-2xl text-lg font-semibold hover:bg-white/10 hover:border-white/50 transition-all duration-300 backdrop-blur-sm',
-        layout: 'background',
-        showImage: false
-    },
-    hero4: {
-        section: 'bg-white py-16 md:py-20 border-b border-gray-100',
-        container: 'max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center',
-        title: 'text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900 mb-6 leading-tight tracking-tight',
-        subtitle: 'text-lg md:text-xl text-slate-700 mb-8 max-w-2xl mx-auto leading-relaxed font-medium',
-        buttons: 'flex flex-col sm:flex-row gap-3 justify-center items-center',
-        primaryBtn: 'text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 hover:scale-105 shadow-sm hover:shadow-md',
-        secondaryBtn: 'text-slate-700 px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-gray-50 transition-all duration-200 border border-gray-200 hover:border-gray-300',
-        layout: 'minimal',
-        showImage: false
-    }
-};
-
 export default function Hero({ settings }: HeroProps) {
     const { t } = useTranslation();
     const sectionData = settings?.config_sections?.sections?.hero || {};
-    const variant = sectionData.variant || 'hero1';
-    const config = HERO_VARIANTS[variant as keyof typeof HERO_VARIANTS] || HERO_VARIANTS.hero1;
+    const colors = settings?.config_sections?.colors || { primary: '#0f766e', secondary: '#0ea5e9', accent: '#f59e0b' };
 
     const title = sectionData.title || 'Run Your ISP with StudyRoomTechLab WiFi Billing';
-    const subtitle = sectionData.subtitle || 'The complete WiFi and ISP billing platform that combines WiFi billing, ISP billing, MikroTik billing, customer subscriptions, and M-Pesa-ready payments into a single powerful platform. Streamline operations, boost productivity, and grow your business with our integrated suite of tools.';
-    const primaryButtonText = sectionData.primary_button_text || 'Start Free Trial';
+    const subtitle = sectionData.subtitle || 'A practical WiFi and ISP billing platform for packages, customers, MikroTik provisioning, wallets, and M-Pesa-ready payment workflows.';
+    const primaryButtonText = sectionData.primary_button_text || t('Start Free Trial');
     const primaryButtonLink = sectionData.primary_button_link || route('register');
-    const secondaryButtonText = sectionData.secondary_button_text || 'Request Demo';
+    const secondaryButtonText = sectionData.secondary_button_text || t('Request Demo');
     const secondaryButtonLink = sectionData.secondary_button_link || route('login');
     const highlightText = sectionData.highlight_text;
     const heroImage = sectionData.image;
-    const colors = settings?.config_sections?.colors || { primary: '#10b981', secondary: '#059669', accent: '#f59e0b' };
+
+    const [heroImageFailed, setHeroImageFailed] = useState(false);
+    const hasImage = typeof heroImage === 'string' && heroImage.trim().length > 0 && !heroImageFailed;
 
     const renderTitle = () => {
         if (highlightText && title?.includes(highlightText)) {
@@ -83,108 +38,77 @@ export default function Hero({ settings }: HeroProps) {
         return title;
     };
 
-    const renderButtons = () => (
-        <div className={config.buttons}>
-            <button
-                className={config.primaryBtn}
-                style={{ backgroundColor: colors.primary }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.secondary}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = colors.primary}
-                onClick={() => window.location.href = primaryButtonLink}
-            >
-                {primaryButtonText}
-                {config.layout !== 'minimal' && <ArrowRight className="ms-3 h-6 w-6" />}
-            </button>
-            <button
-                className={config.secondaryBtn}
-                onClick={() => window.location.href = secondaryButtonLink}
-            >
-                {secondaryButtonText}
-            </button>
-        </div>
-    );
+    const renderVisual = () => {
+        if (!hasImage) return null;
 
-    const renderBackgroundImage = () => {
-        if (config.layout !== 'background') return null;
         return (
-            <>
-                {heroImage && (
-                    <div className="absolute inset-0">
-                        <img src={getImagePath(heroImage)} alt="Hero Background" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/40 to-black/60"></div>
+            <div className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-2 shadow-2xl shadow-slate-900/10">
+                <img
+                    src={heroImage.startsWith('http') ? heroImage : getImagePath(heroImage)}
+                    alt="Hero"
+                    onError={() => setHeroImageFailed(true)}
+                    className="h-[360px] w-full rounded-[1.5rem] object-cover"
+                />
+                <div className="absolute inset-x-6 bottom-6 rounded-2xl border border-white/40 bg-white/85 p-4 shadow-xl backdrop-blur-md">
+                    <div className="flex items-center justify-between gap-4">
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">{t('Live operations')}</p>
+                            <p className="mt-1 text-lg font-black text-slate-950">{t('Router and payment control')}</p>
+                        </div>
+                        <div className="rounded-full px-3 py-1 text-xs font-bold text-white" style={{ backgroundColor: colors.primary }}>{t('Online')}</div>
                     </div>
-                )}
-                {!heroImage && (
-                    <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-gray-800 to-black"></div>
-                )}
-                <div className="absolute inset-0">
-                    <div className="absolute top-10 left-10 w-32 h-32 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
-                    <div className="absolute bottom-20 right-20 w-48 h-48 bg-white/5 rounded-full blur-3xl animate-pulse delay-1000"></div>
-                    <div className="absolute top-1/2 left-1/3 w-24 h-24 bg-white/10 rounded-full blur-2xl animate-pulse delay-500"></div>
                 </div>
-            </>
-        );
-    };
-
-    const renderImage = () => {
-        if (!config.showImage || config.layout === 'background') return null;
-
-        return (
-            <div className="bg-gray-100 rounded-xl overflow-hidden shadow-lg">
-                {heroImage ? (
-                    <img src={getImagePath(heroImage)} alt="Hero" className="w-full h-full object-cover" />
-                ) : (
-                    <span className="text-gray-500">{t('Hero Image')}</span>
-                )}
             </div>
         );
     };
 
-    const renderContent = () => (
-        <div className={config.layout === 'split' || config.layout === 'right-split' ? '' : 'w-full text-center'}>
-            <h1 className={config.title}>
-                {renderTitle()}
-            </h1>
-            <p className={config.subtitle}>
-                {subtitle}
-            </p>
-            {renderButtons()}
-        </div>
-    );
-
     return (
-        <section className={config.section}>
-            {renderBackgroundImage()}
-            <div className={config.container}>
-                {config.layout === 'split' || config.layout === 'right-split' ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                        {config.layout === 'right-split' ? (
-                            <>
-                                {renderImage()}
-                                {renderContent()}
-                            </>
-                        ) : (
-                            <>
-                                {renderContent()}
-                                {renderImage()}
-                            </>
-                        )}
+        <section id="home" className="relative scroll-mt-28 overflow-hidden bg-[radial-gradient(circle_at_top_left,#f8fafc,white_45%,#f8fafc)] py-16 md:py-24">
+            <div className="absolute left-0 top-20 h-64 w-64 rounded-full blur-3xl" style={{ backgroundColor: `${colors.primary}14` }} />
+            <div className="absolute right-0 top-32 h-72 w-72 rounded-full blur-3xl" style={{ backgroundColor: `${colors.secondary}12` }} />
+            <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                {highlightText && (
+                    <div className="mb-8 inline-flex max-w-full items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 shadow-sm">
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: colors.primary }} />
+                        <span className="truncate">{highlightText}</span>
                     </div>
-                ) : config.layout === 'background' ? (
-                    <div className="relative">
-                        {renderContent()}
-                        <div className="absolute inset-0 pointer-events-none">
-                            <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-white rounded-full animate-ping"></div>
-                            <div className="absolute top-3/4 right-1/4 w-1 h-1 bg-white/70 rounded-full animate-ping delay-700"></div>
-                            <div className="absolute top-1/2 right-1/3 w-1.5 h-1.5 bg-white/50 rounded-full animate-ping delay-1000"></div>
+                )}
+                <div className={hasImage ? 'grid items-center gap-12 lg:grid-cols-[0.95fr_1.05fr]' : 'grid items-center gap-12'}>
+                    <div className={hasImage ? '' : 'max-w-4xl'}>
+                        <h1 className="max-w-3xl text-4xl font-black leading-[1.05] tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
+                            {renderTitle()}
+                        </h1>
+                        <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600 md:text-xl">
+                            {subtitle}
+                        </p>
+                        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                            <button
+                                type="button"
+                                onClick={() => window.location.href = primaryButtonLink}
+                                className="inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-black text-white shadow-lg transition hover:-translate-y-0.5"
+                                style={{ backgroundColor: colors.primary }}
+                            >
+                                {primaryButtonText}<ArrowRight className="ms-2 h-5 w-5" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => window.location.href = secondaryButtonLink}
+                                className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-black text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50"
+                            >
+                                {secondaryButtonText}
+                            </button>
+                        </div>
+                        <div className="mt-8 grid max-w-xl grid-cols-1 gap-3 text-sm font-semibold text-slate-600 sm:grid-cols-3">
+                            {[t('No card required'), t('Fast setup'), t('Cancel anytime')].map((item) => (
+                                <div key={item} className="flex items-center gap-2">
+                                    <CheckCircle2 className="h-4 w-4" style={{ color: colors.primary }} />
+                                    <span>{item}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
-                ) : (
-                    <>
-                        {renderContent()}
-                        {renderImage()}
-                    </>
-                )}
+                    {renderVisual()}
+                </div>
             </div>
         </section>
     );

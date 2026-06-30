@@ -1,300 +1,112 @@
 import { useState } from 'react';
-import { ChevronDown, Monitor } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { ArrowRight, CheckCircle2, Monitor, Router, WalletCards, Wifi } from 'lucide-react';
 import { getImagePath } from '@/utils/helpers';
 
 interface ModulesProps {
     settings?: any;
 }
 
-const MODULES_VARIANTS = {
-    modules1: {
-        section: 'bg-white py-20',
-        container: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8',
-        title: 'text-3xl md:text-4xl font-bold text-slate-900 mb-6 text-center',
-        subtitle: 'text-lg text-slate-700 mb-16 text-center max-w-3xl mx-auto',
-        layout: 'tabs'
-    },
-    modules2: {
-        section: 'bg-gray-50 py-20',
-        container: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8',
-        title: 'text-3xl md:text-4xl font-bold text-slate-900 mb-6 text-center',
-        subtitle: 'text-lg text-slate-700 mb-16 text-center',
-        layout: 'cards'
-    },
-    modules3: {
-        section: 'bg-white py-20',
-        container: 'max-w-5xl mx-auto px-4 sm:px-6 lg:px-8',
-        title: 'text-3xl md:text-4xl font-bold text-slate-900 mb-6 text-center',
-        subtitle: 'text-lg text-slate-700 mb-16 text-center',
-        layout: 'accordion'
-    },
-    modules4: {
-        section: 'bg-gray-900 py-20',
-        container: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8',
-        title: 'text-3xl md:text-4xl font-bold text-white mb-6 text-center',
-        subtitle: 'text-lg text-gray-300 mb-16 text-center',
-        layout: 'slider'
-    },
-    modules5: {
-        section: 'bg-white py-20',
-        container: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8',
-        title: 'text-3xl md:text-4xl font-bold text-slate-900 mb-6 text-center',
-        subtitle: 'text-lg text-slate-700 mb-16 text-center',
-        layout: 'grid'
-    }
-};
-
 export default function Modules({ settings }: ModulesProps) {
-    const { t } = useTranslation();
     const sectionData = settings?.config_sections?.sections?.modules || {};
-    const variant = sectionData.variant || 'modules1';
-    const config = MODULES_VARIANTS[variant as keyof typeof MODULES_VARIANTS] || MODULES_VARIANTS.modules1;
-     
-    // Check if modules section is enabled
-    const isModulesEnabled = settings?.config_sections?.section_visibility?.modules !== false;
-    
-    // If modules is disabled, don't render anything
-    if (!isModulesEnabled) {
-        return null;
-    }
-    
-    const title = sectionData.title;
-    const subtitle = sectionData.subtitle;
-    const colors = settings?.config_sections?.colors || { primary: '#10b981', secondary: '#059669', accent: '#f59e0b' };
+    const colors = settings?.config_sections?.colors || { primary: '#0f766e', secondary: '#0ea5e9', accent: '#f59e0b' };
     const [activeTab, setActiveTab] = useState(0);
-    const [openAccordion, setOpenAccordion] = useState(0);
-    const [currentSlide, setCurrentSlide] = useState(0);
-    
+
+    const title = sectionData.title || 'Built around the real ISP workflow';
+    const subtitle = sectionData.subtitle || 'From public landing page to payment, router command pull, customer activation, and admin reporting.';
+
     const defaultModules = [
-        { 
-            key: 'taskly', 
-            label: 'Project', 
-            title: 'ISP Billing Dashboard', 
-            description: 'Organize and track projects efficiently with comprehensive project management tools. Manage tasks, milestones, and deadlines with team collaboration in one centralized platform. Track progress with Gantt charts and Kanban boards, assign tasks and set priorities, monitor project timelines and deliverables, and generate detailed project reports. Perfect for teams of any size.', 
-            image: '' 
-        },
-        { 
-            key: 'account', 
-            label: 'ISP Billing', 
-            title: 'M-Pesa Ready Billing', 
-            description: 'Streamline your financial operations with our comprehensive accounting system. Manage invoices, bills, and payments, track income and expenses, perform bank account reconciliation, and generate detailed financial reports. Professional invoice generation, vendor and customer management, tax calculations and compliance, with real-time financial analytics.', 
-            image: '' 
-        },
-        { 
-            key: 'hrm', 
-            label: 'Field Staff', 
-            title: 'Human Resource Management System', 
-            description: 'Complete employee management solution for modern businesses. Manage employee records and profiles, attendance and leave management, payroll processing and automation, and performance evaluations. Handle department and designation management, recruitment process handling, employee benefits management, and comprehensive HR reporting.', 
-            image: '' 
-        },
-        { 
-            key: 'lead', 
-            label: 'Customer Accounts', 
-            title: 'Customer Relationship Management', 
-            description: 'Build stronger customer relationships and boost sales with our powerful Customer Accounts system. Manage leads and contacts, track sales pipeline, handle deal and opportunity management, and monitor customer interaction tracking. Automate follow-ups, analyze sales performance, forecast revenue, and maintain customer communication history.', 
-            image: '' 
-        },
-        { 
-            key: 'pos', 
-            label: 'M-Pesa Ready', 
-            title: 'Point of Sale System', 
-            description: 'Fast, reliable point-of-sale solution for retail and service businesses. Process transactions quickly, manage inventory in real-time, handle multiple payment methods, and generate instant receipts. Track product stock, support barcode scanning, handle returns and exchanges, and generate comprehensive sales reports.', 
-            image: '' 
-        },
-        { 
-            key: 'productservice', 
-            label: 'Product & Service', 
-            title: 'Product & Service Management', 
-            description: 'Efficiently manage your complete products and services catalog. Organize product categories, manage inventory levels, implement pricing strategies and variations, and handle product attributes. Manage stock across multiple locations, set up automated reorder points, track product performance, and maintain detailed product specifications.', 
-            image: '' 
-        }
+        { key: 'billing', label: 'Core Billing', title: 'WiFi & ISP Billing Core', description: 'Create internet packages, assign routers, manage customers, track billing status, and provisioning status.', image: '' },
+        { key: 'agent', label: 'Router Agent', title: 'MikroTik Agent Mode', description: 'RouterOS pulls queued commands from Laravel and provisions hotspot users safely.', image: '' },
+        { key: 'wallet', label: 'Wallets', title: 'Wallets & Settlements', description: 'Track ISP revenue, platform commission, wallet ledgers, and payout approvals.', image: '' },
     ];
-    
+
     const modules = sectionData.modules?.length > 0 ? sectionData.modules : defaultModules;
+    const activeModule = modules[Math.min(activeTab, Math.max(modules.length - 1, 0))] || modules[0];
 
-    const renderTabs = () => (
-        <div>
-            <div className="flex flex-wrap justify-center mb-12 border-b">
-                {modules.map((module: any, index: number) => (
-                    <button
-                        key={index}
-                        onClick={() => setActiveTab(index)}
-                        className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
-                            activeTab === index
-                                ? 'text-white rounded-t-lg'
-                                : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
-                        style={activeTab === index ? { backgroundColor: colors.primary, borderColor: colors.primary } : {}}
-                    >
-                        {module.label}
-                    </button>
-                ))}
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                <div>
-                    <h3 className="text-2xl font-bold text-slate-900 mb-4">{modules[activeTab]?.title}</h3>
-                    <div className="text-gray-600 text-lg">{modules[activeTab]?.description}</div>
-                </div>
-                <div className="bg-gray-100 rounded-lg h-80 flex items-center justify-center overflow-hidden">
-                    {modules[activeTab]?.image ? (
-                        <img src={modules[activeTab].image.startsWith('http') ? modules[activeTab].image : getImagePath(modules[activeTab].image)} alt={modules[activeTab].title} className="w-full h-full object-cover" />
-                    ) : (
-                        <Monitor className="h-16 w-16 text-gray-400" />
-                    )}
-                </div>
-            </div>
-        </div>
-    );
+    const moduleImage = activeModule?.image;
+    const hasImage = typeof moduleImage === 'string' && moduleImage.trim().length > 0;
 
-    const renderCards = () => (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {modules.map((module: any, index: number) => (
-                <div key={index} className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow">
-                    <div className="h-48 bg-gray-100 rounded-lg mb-6 flex items-center justify-center overflow-hidden">
-                        {module.image ? (
-                            <img src={module.image.startsWith('http') ? module.image : getImagePath(module.image)} alt={module.title} className="w-full h-full object-cover" />
-                        ) : (
-                            <Monitor className="h-12 w-12 text-gray-400" />
-                        )}
-                    </div>
-                    <h3 className="text-xl font-semibold text-slate-900 mb-3">{module.title}</h3>
-                    <div className="text-slate-700">{module.description}</div>
+    const renderPreview = () => {
+        if (hasImage) {
+            return (
+                <div className="h-full min-h-[330px] overflow-hidden rounded-[1.5rem] border border-slate-200 bg-slate-100 shadow-inner">
+                    <img src={moduleImage.startsWith('http') ? moduleImage : getImagePath(moduleImage)} alt={activeModule.title} className="h-full w-full object-cover" />
                 </div>
-            ))}
-        </div>
-    );
-
-    const renderAccordion = () => (
-        <div className="space-y-6 max-w-4xl mx-auto">
-            {modules.map((module: any, index: number) => (
-                <div key={index} className="bg-white border border-gray-200 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden">
-                    <button
-                        onClick={() => setOpenAccordion(openAccordion === index ? -1 : index)}
-                        className="w-full px-8 py-6 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
-                        style={{ backgroundColor: openAccordion === index ? `${colors.primary}08` : 'transparent' }}
-                    >
-                        <div className="flex items-center space-x-4">
-                            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${colors.primary}15` }}>
-                                <Monitor className="h-6 w-6" style={{ color: colors.primary }} />
-                            </div>
-                            <div>
-                                <span className="font-bold text-slate-900 text-lg">{module.label}</span>
-                                <p className="text-sm text-gray-500 mt-1">{module.description?.substring(0, 60)}...</p>
-                            </div>
-                        </div>
-                        <ChevronDown className={`h-6 w-6 text-gray-400 transition-transform duration-300 ${openAccordion === index ? 'rotate-180' : ''}`} style={{ color: openAccordion === index ? colors.primary : undefined }} />
-                    </button>
-                    {openAccordion === index && (
-                        <div className="px-8 pb-8 bg-gray-50">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center pt-6">
-                                <div className="space-y-4">
-                                    <h3 className="text-2xl font-bold text-slate-900">{module.title}</h3>
-                                    <div className="text-slate-700 leading-relaxed">{module.description}</div>
-                                </div>
-                                <div className="h-64 bg-gray-100 rounded-xl flex items-center justify-center overflow-hidden shadow-inner">
-                                    {module.image ? (
-                                        <img src={module.image.startsWith('http') ? module.image : getImagePath(module.image)} alt={module.title} className="w-full h-full object-cover" />
-                                    ) : (
-                                        <div className="text-center">
-                                            <Monitor className="h-16 w-16 text-gray-400 mx-auto mb-2" />
-                                            <p className="text-gray-500 text-sm">{t('Module Preview')}</p>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            ))}
-        </div>
-    );
-
-    const renderSlider = () => (
-        <div className="relative">
-            <div className="overflow-hidden rounded-xl">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center bg-gray-800 p-12 rounded-xl">
-                    <div>
-                        <h3 className="text-2xl font-bold text-white mb-4">{modules[currentSlide]?.title}</h3>
-                        <div className="text-gray-300 text-lg mb-6">{modules[currentSlide]?.description}</div>
-                        <div className="flex space-x-2">
-                            {modules.map((_: any, index: number) => (
-                                <button
-                                    key={index}
-                                    onClick={() => setCurrentSlide(index)}
-                                    className={`w-3 h-3 rounded-full transition-colors ${
-                                        currentSlide === index ? 'bg-white' : 'bg-gray-600'
-                                    }`}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                    <div className="h-80 bg-gray-700 rounded-lg flex items-center justify-center overflow-hidden">
-                        {modules[currentSlide]?.image ? (
-                            <img src={modules[currentSlide].image.startsWith('http') ? modules[currentSlide].image : getImagePath(modules[currentSlide].image)} alt={modules[currentSlide].title} className="w-full h-full object-cover" />
-                        ) : (
-                            <Monitor className="h-16 w-16 text-gray-400" />
-                        )}
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-
-    const renderGrid = () => (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {modules.map((module: any, index: number) => (
-                <div key={index} className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-gray-200 group relative overflow-hidden">
-                    <div className="p-8">
-                        <div className="flex items-start space-x-6">
-                            <div className="flex-shrink-0 relative">
-                                <div className="w-20 h-20 bg-gray-100 rounded-xl flex items-center justify-center overflow-hidden">
-                                    {module.image ? (
-                                        <img src={module.image.startsWith('http') ? module.image : getImagePath(module.image)} alt={module.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
-                                    ) : (
-                                        <Monitor className="h-10 w-10 text-gray-400" />
-                                    )}
-                                </div>
-                                <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: colors.primary }}>
-                                    {index + 1}
-                                </div>
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-gray-700 transition-colors">{module.title}</h3>
-                                <div className="text-slate-700 leading-relaxed mb-4">{module.description}</div>
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium" style={{ backgroundColor: `${colors.primary}15`, color: colors.primary }}>
-                                    {module.label}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="absolute bottom-0 left-0 h-1 w-0 group-hover:w-full transition-all duration-300" style={{ backgroundColor: colors.primary }}></div>
-                </div>
-            ))}
-        </div>
-    );
-
-    const renderContent = () => {
-        switch (config.layout) {
-            case 'cards':
-                return renderCards();
-            case 'accordion':
-                return renderAccordion();
-            case 'slider':
-                return renderSlider();
-            case 'grid':
-                return renderGrid();
-            default:
-                return renderTabs();
+            );
         }
+
+        return (
+            <div className="min-h-[330px] rounded-[1.5rem] border border-slate-200 bg-slate-950 p-5 text-white shadow-inner">
+                <div className="mb-5 flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+                    <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: colors.primary }}><Monitor className="h-5 w-5" /></span>
+                        <div>
+                            <p className="text-sm font-bold">{activeModule?.label}</p>
+                            <p className="text-xs text-slate-400">live workspace</p>
+                        </div>
+                    </div>
+                    <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-bold text-emerald-200">Synced</span>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                    {[Wifi, Router, WalletCards].map((Icon, index) => (
+                        <div key={index} className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+                            <Icon className="h-5 w-5 text-white/70" />
+                            <div className="mt-10 h-2 rounded-full bg-white/10" />
+                            <div className="mt-2 h-2 w-2/3 rounded-full bg-white/10" />
+                        </div>
+                    ))}
+                </div>
+                <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+                    <div className="mb-3 flex items-center justify-between text-xs text-slate-400"><span>Provisioning queue</span><span>healthy</span></div>
+                    <div className="space-y-2">
+                        {[78, 56, 88].map((width, index) => (
+                            <div key={index} className="h-3 overflow-hidden rounded-full bg-white/10">
+                                <div className="h-full rounded-full" style={{ width: `${width}%`, backgroundColor: index === 2 ? colors.secondary : colors.primary }} />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     return (
-        <section className={config.section}>
-            <div className={config.container}>
-                <h2 className={config.title}>{title}</h2>
-                <p className={config.subtitle}>{subtitle}</p>
-                {renderContent()}
+        <section id="modules" className="scroll-mt-28 bg-slate-50 py-16 md:py-24">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-3xl text-center">
+                    <h2 className="text-3xl font-black tracking-tight text-slate-950 md:text-5xl">{title}</h2>
+                    <p className="mt-5 text-lg leading-8 text-slate-600">{subtitle}</p>
+                </div>
+
+                <div className="mt-10 flex flex-wrap justify-center gap-2">
+                    {modules.map((module: any, index: number) => (
+                        <button
+                            key={module.key || module.label || index}
+                            type="button"
+                            onClick={() => setActiveTab(index)}
+                            className="rounded-full border px-5 py-2.5 text-sm font-black transition"
+                            style={activeTab === index
+                                ? { backgroundColor: colors.primary, borderColor: colors.primary, color: '#fff' }
+                                : { backgroundColor: '#fff', borderColor: '#e2e8f0', color: '#475569' }}
+                        >
+                            {module.label || module.title}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="mt-10 grid items-center gap-8 rounded-[2rem] border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/5 lg:grid-cols-[0.85fr_1.15fr] lg:p-8">
+                    <div className="p-2 lg:p-4">
+                        <div className="mb-5 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.24em]" style={{ backgroundColor: `${colors.primary}10`, color: colors.primary }}>
+                            <CheckCircle2 className="h-4 w-4" /> Active module
+                        </div>
+                        <h3 className="text-2xl font-black tracking-tight text-slate-950 md:text-3xl">{activeModule?.title}</h3>
+                        <p className="mt-5 text-lg leading-8 text-slate-600">{activeModule?.description}</p>
+                        <div className="mt-8 inline-flex items-center gap-2 text-sm font-black" style={{ color: colors.primary }}>
+                            View related add-ons <ArrowRight className="h-4 w-4" />
+                        </div>
+                    </div>
+                    {renderPreview()}
+                </div>
             </div>
         </section>
     );

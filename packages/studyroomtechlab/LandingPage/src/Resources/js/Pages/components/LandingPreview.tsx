@@ -1,4 +1,3 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface LandingPreviewProps {
@@ -7,223 +6,150 @@ interface LandingPreviewProps {
 
 export function LandingPreview({ settings }: LandingPreviewProps) {
   const { t } = useTranslation();
-  const getSectionData = (key: string) => {
-    return settings?.config_sections?.sections?.[key] || {};
-  };
-  
-  const isSectionVisible = (key: string) => {
-    return settings?.config_sections?.section_visibility?.[key] !== false;
-  };
 
   const colors = settings?.config_sections?.colors || {
-    primary: '#10b981',
-    secondary: '#059669',
-    accent: '#f59e0b'
+    primary: '#0f766e',
+    secondary: '#0ea5e9',
+    accent: '#f59e0b',
   };
 
-  const sectionOrder = settings?.config_sections?.section_order || 
-    ['header', 'hero', 'stats', 'features', 'modules', 'benefits', 'gallery', 'cta', 'footer'];
+  const getSectionData = (key: string) => settings?.config_sections?.sections?.[key] || {};
+  const isSectionVisible = (key: string) => settings?.config_sections?.section_visibility?.[key] !== false;
+  const sectionOrder = settings?.config_sections?.section_order || ['header', 'hero', 'stats', 'features', 'modules', 'benefits', 'gallery', 'cta', 'footer'];
 
   const renderMiniSection = (sectionKey: string) => {
     if (!isSectionVisible(sectionKey)) return null;
-    
     const sectionData = getSectionData(sectionKey);
-    
+
     switch (sectionKey) {
-      case 'header':
+      case 'header': {
+        const navItems = Array.isArray(sectionData.navigation_items) ? sectionData.navigation_items : [];
         return (
-          <div key={sectionKey} className="flex justify-between items-center p-3 bg-white border-b shadow-sm">
-            <div className="text-sm font-bold" style={{ color: colors.primary }}>
-              {sectionData.company_name || settings?.company_name || 'StudyRoomTechLab WiFi Billing'}
+          <div key={sectionKey} className="border-b border-slate-100 bg-white p-3">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="truncate text-sm font-black text-slate-950">{sectionData.company_name || settings?.company_name || 'StudyRoomTechLab WiFi Billing'}</div>
+              <div className="rounded-full px-3 py-1 text-[10px] font-black text-white" style={{ backgroundColor: colors.primary }}>{sectionData.cta_text || t('Get Started')}</div>
             </div>
-            <div className="text-xs text-white px-3 py-1 rounded-full shadow-sm transition-colors" style={{ backgroundColor: colors.primary }}>
-              {sectionData.cta_text || t('Get Started')}
+            <div className="flex gap-1 overflow-hidden">
+              {navItems.slice(0, 4).map((item: any, i: number) => <span key={i} className="rounded-full bg-slate-100 px-2 py-1 text-[9px] font-bold text-slate-500">{item.text}</span>)}
             </div>
           </div>
         );
-        
+      }
+
       case 'hero':
         return (
-          <div key={sectionKey} className="p-4 text-white text-center relative overflow-hidden" style={{ background: `linear-gradient(135deg, ${colors.primary}, ${colors.secondary}, ${colors.accent})` }}>
-            <div className="absolute inset-0 bg-black/10"></div>
-            <div className="relative z-10">
-              <div className="text-sm font-bold mb-2 leading-tight">
-                {sectionData.title || t('Transform Your Business')}
-              </div>
-              <div className="text-xs opacity-90 mb-3 leading-relaxed">
-                {sectionData.subtitle?.substring(0, 60) || t('Complete business solution')}...
-              </div>
-              <div className="flex gap-2 justify-center">
-                <div className="text-xs bg-white px-3 py-1.5 rounded-full font-medium shadow-lg hover:shadow-xl transition-shadow" style={{ color: colors.primary }}>
-                  {sectionData.primary_button_text || t('Start Trial')}
-                </div>
-                <div className="text-xs border border-white/50 px-3 py-1.5 rounded-full backdrop-blur-sm hover:bg-white/10 transition-colors">
-                  {sectionData.secondary_button_text || t('Login')}
-                </div>
+          <div key={sectionKey} className="bg-slate-50 p-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              {sectionData.highlight_text && <div className="mb-2 truncate rounded-full bg-slate-50 px-2 py-1 text-[9px] font-bold text-slate-500">{sectionData.highlight_text}</div>}
+              <div className="text-sm font-black leading-tight text-slate-950">{sectionData.title || t('Landing hero title')}</div>
+              <div className="mt-2 line-clamp-2 text-[11px] leading-5 text-slate-600">{sectionData.subtitle || t('Landing hero subtitle')}</div>
+              <div className="mt-3 flex gap-2">
+                <span className="rounded-lg px-2 py-1 text-[10px] font-black text-white" style={{ backgroundColor: colors.primary }}>{sectionData.primary_button_text || t('Start')}</span>
+                <span className="rounded-lg border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600">{sectionData.secondary_button_text || t('Login')}</span>
               </div>
             </div>
           </div>
         );
-        
-      case 'stats':
+
+      case 'stats': {
+        const stats = sectionData.stats?.length > 0 ? sectionData.stats : [{ value: '10K+', label: 'Businesses' }, { value: '99.9%', label: 'Uptime' }];
         return (
-          <div key={sectionKey} className="p-4 text-white" style={{ background: `linear-gradient(to right, ${colors.primary}, ${colors.secondary})` }}>
-            <div className="grid grid-cols-2 gap-3 text-center">
-              <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm">
-                <div className="text-sm font-bold">{sectionData.businesses || '10K+'}</div>
-                <div className="text-xs opacity-90">{t('Businesses')}</div>
-              </div>
-              <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm">
-                <div className="text-sm font-bold">{sectionData.uptime || '99.9%'}</div>
-                <div className="text-xs opacity-90">{t('Uptime')}</div>
-              </div>
-              <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm">
-                <div className="text-sm font-bold">{sectionData.support || '24/7'}</div>
-                <div className="text-xs opacity-90">{t('Support')}</div>
-              </div>
-              <div className="bg-white/10 rounded-lg p-2 backdrop-blur-sm">
-                <div className="text-sm font-bold">{sectionData.countries || '50+'}</div>
-                <div className="text-xs opacity-90">{t('Countries')}</div>
-              </div>
-            </div>
-          </div>
-        );
-        
-      case 'features':
-        return (
-          <div key={sectionKey} className="p-4 bg-gray-50">
-            <div className="text-sm font-bold text-center mb-3 text-gray-800">
-              {sectionData.title || t('Powerful Features')}
-            </div>
+          <div key={sectionKey} className="bg-white p-3">
             <div className="grid grid-cols-2 gap-2">
-              {(sectionData.features || [{}, {}, {}, {}]).slice(0, 4).map((feature: any, i: number) => (
-                <div key={i} className="bg-white p-2 rounded-lg shadow-sm border hover:shadow-md transition-shadow">
-                  <div className="w-4 h-4 rounded-lg mx-auto mb-1" style={{ background: `linear-gradient(135deg, ${colors.primary}, ${colors.secondary})` }}></div>
-                  <div className="text-xs text-center font-medium text-gray-700">{feature.title?.substring(0, 10) || `Feature ${i+1}`}</div>
+              {stats.slice(0, 4).map((stat: any, i: number) => (
+                <div key={i} className="rounded-xl border border-slate-100 bg-slate-50 p-2">
+                  <div className="text-sm font-black text-slate-950">{stat.value}</div>
+                  <div className="truncate text-[10px] text-slate-500">{stat.label}</div>
                 </div>
               ))}
             </div>
           </div>
         );
-        
+      }
+
+      case 'features': {
+        const features = sectionData.features?.length > 0 ? sectionData.features : [{ title: 'Feature' }, { title: 'Feature' }, { title: 'Feature' }];
+        return (
+          <div key={sectionKey} className="bg-white p-4">
+            <div className="text-center text-xs font-black text-slate-950">{sectionData.title || t('Features')}</div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {features.slice(0, 4).map((feature: any, i: number) => (
+                <div key={i} className="rounded-xl border border-slate-100 bg-white p-2 shadow-sm">
+                  <div className="mb-2 h-6 w-6 rounded-lg" style={{ backgroundColor: `${colors.primary}20` }} />
+                  <div className="truncate text-[10px] font-bold text-slate-700">{feature.title}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
       case 'modules':
         return (
-          <div key={sectionKey} className="p-2 bg-white">
-            <div className="text-xs font-bold text-center mb-1">
-              {sectionData.title || t('Business Solutions')}
+          <div key={sectionKey} className="bg-slate-50 p-4">
+            <div className="text-center text-xs font-black text-slate-950">{sectionData.title || t('Modules')}</div>
+            <div className="mt-3 flex gap-1 overflow-hidden">
+              {(sectionData.modules || []).slice(0, 4).map((module: any, i: number) => <span key={i} className="rounded-full bg-white px-2 py-1 text-[9px] font-bold text-slate-500 shadow-sm">{module.label}</span>)}
             </div>
-            <div className="flex gap-1 justify-center">
-              {['ERP', 'Customer Accounts', 'Field Staff', 'M-Pesa Ready'].map((module, i) => (
-                <div key={i} className="text-xs bg-gray-100 px-1 py-0.5 rounded">
-                  {module}
-                </div>
-              ))}
-            </div>
+            <div className="mt-3 h-20 rounded-xl bg-slate-900" />
           </div>
         );
-        
+
       case 'benefits':
         return (
-          <div key={sectionKey} className="p-2 bg-gray-50">
-            <div className="text-xs font-bold text-center mb-1">
-              {sectionData.title}
-            </div>
-            <div className="space-y-1">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-1">
-                  <div className="w-1 h-1 bg-green-500 rounded-full"></div>
-                  <div className="text-xs text-gray-600">{t('Benefit')} {i + 1}</div>
-                </div>
-              ))}
+          <div key={sectionKey} className="bg-white p-4">
+            <div className="text-center text-xs font-black text-slate-950">{sectionData.title || t('Benefits')}</div>
+            <div className="mt-3 space-y-2">
+              {(sectionData.benefits || [{ title: 'Benefit' }, { title: 'Benefit' }, { title: 'Benefit' }]).slice(0, 3).map((benefit: any, i: number) => <div key={i} className="rounded-xl border border-slate-100 p-2 text-[10px] font-bold text-slate-600">{benefit.title}</div>)}
             </div>
           </div>
         );
-        
+
       case 'gallery':
         return (
-          <div key={sectionKey} className="p-2 bg-white">
-            <div className="text-xs font-bold text-center mb-1">
-              {sectionData.title || 'Gallery'}
-            </div>
-            <div className="grid grid-cols-3 gap-1">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="aspect-square bg-gray-200 rounded"></div>
-              ))}
+          <div key={sectionKey} className="bg-slate-50 p-4">
+            <div className="text-center text-xs font-black text-slate-950">{sectionData.title || t('Gallery')}</div>
+            <div className="mt-3 rounded-xl border border-slate-200 bg-white p-2">
+              <div className="h-24 rounded-lg bg-slate-200" />
             </div>
           </div>
         );
-        
+
       case 'cta':
         return (
-          <div key={sectionKey} className="p-2 text-white text-center" style={{ backgroundColor: colors.primary }}>
-            <div className="text-xs font-bold mb-1">
-              {sectionData.title || t('Ready to Transform?')}
-            </div>
-            <div className="flex gap-1 justify-center">
-              <div className="text-xs bg-white px-2 py-1 rounded" style={{ color: colors.primary }}>
-                {sectionData.primary_button || t('Start Trial')}
-              </div>
-              <div className="text-xs border border-white px-2 py-1 rounded">
-                {sectionData.secondary_button || t('Contact')}
-              </div>
+          <div key={sectionKey} className="bg-slate-50 p-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center">
+              <div className="text-xs font-black text-slate-950">{sectionData.title || t('Ready to start?')}</div>
+              <div className="mt-3 inline-flex rounded-lg px-3 py-1 text-[10px] font-black text-white" style={{ backgroundColor: colors.primary }}>{sectionData.primary_button || t('Start')}</div>
             </div>
           </div>
         );
-        
+
       case 'footer':
         return (
-          <div key={sectionKey} className="p-4 bg-gradient-to-r from-gray-900 to-gray-800 text-white">
-            <div className="grid grid-cols-1 gap-3 text-xs">
-              <div className="text-center border-b border-gray-700 pb-2">
-                <div className="font-bold text-sm" style={{ color: colors.accent }}>
-                  {settings?.company_name || t('StudyRoomTechLab WiFi Billing')}
-                </div>
-                <div className="text-gray-400 text-xs mt-1">
-                  {sectionData.description?.substring(0, 30) || t('Business solution')}...
-                </div>
-              </div>
-              <div className="flex justify-between text-gray-400">
-                <span>{t('Product')}</span>
-                <span>{t('Company')}</span>
-                <span>{t('Support')}</span>
-              </div>
-            </div>
+          <div key={sectionKey} className="bg-slate-950 p-4 text-white">
+            <div className="text-xs font-black">{settings?.company_name || 'StudyRoomTechLab WiFi Billing'}</div>
+            <div className="mt-2 line-clamp-2 text-[10px] leading-4 text-slate-400">{sectionData.description || t('Footer description')}</div>
           </div>
         );
-        
+
       default:
         return null;
     }
   };
 
   return (
-    <div className="border rounded-lg overflow-hidden bg-white shadow-lg">
-      <div className="px-3 py-2 border-b" style={{ background: `linear-gradient(to right, ${colors.primary}, ${colors.secondary})` }}>
-        <div className="text-sm font-semibold text-white flex items-center gap-2">
-          <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-          {t('Live Preview')}
-        </div>
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
+      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-3 py-2">
+        <div className="flex items-center gap-2 text-xs font-black text-slate-700"><span className="h-2 w-2 rounded-full" style={{ backgroundColor: colors.primary }} />{t('Live Preview')}</div>
+        <div className="text-[10px] font-bold text-slate-400">{t('Mobile')}</div>
       </div>
-      <div className="relative">
-        <div className="absolute top-2 right-2 z-10">
-          <div className="bg-black/20 backdrop-blur-sm rounded-full px-2 py-1">
-            <div className="text-xs text-white font-medium">{t('Mobile View')}</div>
-          </div>
-        </div>
-        <div className="max-h-[500px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-          <div className="space-y-0">
-            {sectionOrder.map(sectionKey => renderMiniSection(sectionKey))}
-          </div>
-        </div>
+      <div className="max-h-[520px] overflow-y-auto">
+        {sectionOrder.map((sectionKey: string) => renderMiniSection(sectionKey))}
       </div>
-      <div className="bg-gray-50 px-3 py-2 border-t">
-        <div className="flex items-center justify-between text-xs text-gray-500">
-          <span>{sectionOrder.filter(key => isSectionVisible(key)).length} {t('sections active')}</span>
-          <div className="flex gap-1">
-            <div className="w-1 h-1 bg-green-500 rounded-full"></div>
-            <span>{t('Live')}</span>
-          </div>
-        </div>
+      <div className="border-t border-slate-100 bg-white px-3 py-2 text-[10px] font-bold text-slate-500">
+        {sectionOrder.filter((key: string) => isSectionVisible(key)).length} {t('sections active')}
       </div>
     </div>
   );

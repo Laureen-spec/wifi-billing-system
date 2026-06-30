@@ -1,5 +1,5 @@
 import { Menu, X } from 'lucide-react';
-import { useState } from 'react';
+import { type MouseEvent, useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import { getAdminSetting, getImagePath } from '@/utils/helpers';
 import { useTranslation } from 'react-i18next';
@@ -9,312 +9,239 @@ interface HeaderProps {
     settings?: any;
 }
 
-const HEADER_VARIANTS = {
-    header1: {
-        nav: 'bg-white border-b border-gray-200 sticky top-0 z-50',
-        container: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8',
-        wrapper: 'flex justify-between items-center h-16 [direction:ltr]',
-        logo: 'text-2xl font-bold',
-        desktop: 'hidden md:flex items-center gap-2',
-        mobile: 'md:hidden text-gray-600 p-2 transition-colors',
-        mobileMenu: 'md:hidden bg-white border-t'
-    },
-    header2: {
-        nav: 'bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm',
-        container: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8',
-        wrapper: 'flex flex-col items-center py-6 gap-6',
-        logo: 'text-3xl font-bold',
-        desktop: 'flex items-center gap-2 bg-gray-50 px-6 py-3 rounded-full',
-        mobile: 'md:hidden text-gray-600 p-2 transition-colors absolute top-4 end-4 hover:bg-gray-100 rounded-lg',
-        mobileMenu: 'md:hidden bg-white border-t w-full shadow-lg'
-    },
-    header3: {
-        nav: 'bg-white/95 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50',
-        container: 'max-w-6xl mx-auto px-6 sm:px-8 lg:px-10',
-        wrapper: 'flex justify-between items-center h-14 py-2 [direction:ltr]',
-        logo: 'text-xl font-bold',
-        desktop: 'hidden md:flex items-center gap-2',
-        mobile: 'md:hidden text-gray-600 p-2 transition-colors hover:bg-gray-100 rounded-md',
-        mobileMenu: 'md:hidden bg-white/95 backdrop-blur-md border-t'
-    },
-    header4: {
-        nav: 'bg-black/20 backdrop-blur-md absolute top-0 left-0 right-0 z-50 border-b border-white/10',
-        container: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8',
-        wrapper: 'flex justify-between items-center h-20 py-4 [direction:ltr]',
-        logo: 'text-2xl font-bold text-white drop-shadow-lg',
-        desktop: 'hidden md:flex items-center gap-2',
-        mobile: 'md:hidden text-white p-2 transition-colors hover:bg-white/10 rounded-lg',
-        mobileMenu: 'md:hidden bg-black/90 backdrop-blur-md border-t border-white/10'
-    },
-    header5: {
-        nav: 'sticky top-0 z-50 shadow-xl',
-        container: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8',
-        wrapper: 'flex justify-between items-center h-20 py-4 [direction:ltr]',
-        logo: 'text-2xl font-bold text-white drop-shadow-lg',
-        desktop: 'hidden md:flex items-center gap-2',
-        mobile: 'md:hidden text-white p-2 transition-colors hover:bg-white/10 rounded-lg',
-        mobileMenu: 'md:hidden border-t border-white/20'
-    }
-};
-
 export default function Header({ settings }: HeaderProps) {
     const sectionData = settings?.config_sections?.sections?.header || {};
+    const colors = settings?.config_sections?.colors || { primary: '#0f766e', secondary: '#0ea5e9', accent: '#f59e0b' };
     const { t } = useTranslation();
-    const variant = sectionData.variant || 'header1';
-    const config = HEADER_VARIANTS[variant as keyof typeof HEADER_VARIANTS] || HEADER_VARIANTS.header1;
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     const companyName = sectionData.company_name || settings?.company_name || 'StudyRoomTechLab WiFi Billing';
     const isAuthenticated = settings?.is_authenticated;
-    const ctaText = isAuthenticated ? 'dashboard' : (sectionData.cta_text || 'Get Started');
-    const colors = settings?.config_sections?.colors || { primary: '#10b981', secondary: '#059669', accent: '#f59e0b' };
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const ctaText = isAuthenticated ? t('Dashboard') : (sectionData.cta_text || t('Get Started'));
+    const enableRegistration = settings?.enable_registration !== false;
 
-    const logoKey = 'logo_dark';
-    const logoPath = getAdminSetting(logoKey);
+    const logoPath = getAdminSetting('logo_dark');
     const logoUrl = logoPath ? getImagePath(logoPath) : null;
 
-    // Use dynamic navigation items from settings or empty array
-    const navigationItems = sectionData.navigation_items || [];
+    const getDefaultHrefForText = (text?: string) => {
+        const cleanText = String(text || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    const renderNavItems = (isMobile = false) => {
-        const isTransparentOrGradient = variant === 'header4' || variant === 'header5';
-        const textColor = isTransparentOrGradient ? 'text-white' : 'text-slate-700';
-        const hoverBg = variant === 'header2' ? 'hover:bg-white hover:shadow-sm' : variant === 'header3' ? 'hover:bg-gray-50' : isTransparentOrGradient ? 'hover:bg-white/10' : 'hover:bg-gray-50';
+        if (cleanText === 'home') return '#home';
+        if (cleanText === 'features') return '#features';
+        if (cleanText === 'modules') return '#modules';
+        if (cleanText === 'pricing') return route('pricing.page');
+        if (cleanText === 'addons') return route('addons.page');
+        if (cleanText === 'addon') return route('addons.page');
 
-        return navigationItems.map((item) => {
-            const href = item.href?.startsWith('/page/') ? route('custom-page.show', item.href.replace('/page/', '')) : item.href;
-            return item.target === '_blank' ? (
-                <a
-                    key={item.text}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={isMobile
-                        ? `block px-4 py-3 text-base font-medium ${textColor} ${hoverBg} rounded-lg transition-all`
-                        : `${textColor} px-4 py-2 text-sm font-medium ${hoverBg} rounded-lg transition-all duration-200`
-                    }
-                    style={!isMobile ? { '--hover-color': isTransparentOrGradient ? 'white' : colors.primary } as React.CSSProperties : {}}
-                    onMouseEnter={!isMobile ? (e) => {
-                        if (!isTransparentOrGradient) {
-                            e.currentTarget.style.color = colors.primary;
-                        }
-                    } : undefined}
-                    onMouseLeave={!isMobile ? (e) => e.currentTarget.style.color = '' : undefined}
-                >
-                    {item.text}
-                </a>
-            ) : (
-                <Link
-                    key={item.text}
-                    href={href}
-                    className={isMobile
-                        ? `block px-4 py-3 text-base font-medium ${textColor} ${hoverBg} rounded-lg transition-all`
-                        : `${textColor} px-4 py-2 text-sm font-medium ${hoverBg} rounded-lg transition-all duration-200`
-                    }
-                    style={!isMobile ? { '--hover-color': isTransparentOrGradient ? 'white' : colors.primary } as React.CSSProperties : {}}
-                    onMouseEnter={!isMobile ? (e) => {
-                        if (!isTransparentOrGradient) {
-                            e.currentTarget.style.color = colors.primary;
-                        }
-                    } : undefined}
-                    onMouseLeave={!isMobile ? (e) => e.currentTarget.style.color = '' : undefined}
-                >
-                    {item.text}
-                </Link>
-            );
-        });
+        return '#';
     };
 
-    const renderCTAButtons = (isMobile = false) => {
-        const enableRegistration = settings?.enable_registration !== false;
+    const normalizeHref = (href?: string, text?: string) => {
+        if (!href || href === '#') return getDefaultHrefForText(text);
+        return href.startsWith('/page/') ? route('custom-page.show', href.replace('/page/', '')) : href;
+    };
 
-        if (isAuthenticated) {
+    const defaultNavigationItems = [
+        { text: t('Home'), href: '#home' },
+        { text: t('Features'), href: '#features' },
+        { text: t('Modules'), href: '#modules' },
+        { text: t('Pricing'), href: route('pricing.page') },
+        { text: t('Add-ons'), href: route('addons.page') },
+    ];
+
+    const baseNavigationItems = Array.isArray(sectionData.navigation_items) && sectionData.navigation_items.length > 0
+        ? sectionData.navigation_items
+        : defaultNavigationItems;
+
+    const navigationItems = [...baseNavigationItems];
+    const hasHref = (needle: string) => navigationItems.some((item: any) => String(item?.href || '').toLowerCase().includes(needle));
+    const hasText = (needle: string) => navigationItems.some((item: any) => String(item?.text || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(needle));
+
+    if (sectionData?.enable_addon_link !== false && !hasHref('/addons') && !hasText('addons')) {
+        navigationItems.push({ text: t('Add-ons'), href: route('addons.page') });
+    }
+
+    if (sectionData?.enable_pricing_link !== false && !hasHref('/pricing') && !hasText('pricing')) {
+        navigationItems.push({ text: t('Pricing'), href: route('pricing.page') });
+    }
+
+    const handleHashNavigation = (event: MouseEvent<HTMLAnchorElement>, href: string, text?: string) => {
+        if (!href.startsWith('#')) return;
+
+        const element = document.querySelector(href);
+
+        if (element) {
+            event.preventDefault();
+            setMobileMenuOpen(false);
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            window.history.replaceState(null, '', href);
+            return;
+        }
+
+        const fallbackHref = getDefaultHrefForText(text);
+        if (fallbackHref && !fallbackHref.startsWith('#')) {
+            event.preventDefault();
+            setMobileMenuOpen(false);
+            router.visit(fallbackHref);
+        }
+    };
+
+    const renderNavItem = (item: any, isMobile = false) => {
+        const href = normalizeHref(item.href, item.text);
+        const className = isMobile
+            ? 'block rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50'
+            : 'rounded-full px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white hover:shadow-sm';
+
+        const content = item.text;
+
+        if (href.startsWith('#')) {
             return (
-                <button
-                    onClick={() => router.visit(route('dashboard'))}
-                    className={`text-white rounded-md font-medium transition-colors ${
-                        isMobile ? 'px-4 py-2 text-sm w-full' :
-                        variant === 'header3' ? 'px-3 py-1 text-xs' : 'px-4 py-2 text-sm'
-                    }`}
-                    style={{ backgroundColor: colors.primary }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.secondary}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = colors.primary}
+                <a
+                    key={`${item.text}-${href}`}
+                    href={href}
+                    className={className}
+                    onClick={(event) => handleHashNavigation(event, href, item.text)}
+                    onMouseEnter={(e) => e.currentTarget.style.color = colors.primary}
+                    onMouseLeave={(e) => e.currentTarget.style.color = ''}
                 >
-                    {t('dashboard')}
-                </button>
+                    {content}
+                </a>
             );
         }
 
-        if (enableRegistration) {
+        if (item.target === '_blank') {
             return (
-                <div className={`flex ${isMobile ? 'flex-col gap-2' : 'gap-2'}`}>
-                    <button
-                        onClick={() => router.visit(route('login'))}
-                        className={`border rounded-md font-medium transition-colors ${
-                            isMobile ? 'px-4 py-2 text-sm w-full' :
-                            variant === 'header3' ? 'px-3 py-1 text-xs' : 'px-4 py-2 text-sm'
-                        }`}
-                        style={{ borderColor: colors.primary, color: colors.primary }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = colors.primary;
-                            e.currentTarget.style.color = 'white';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                            e.currentTarget.style.color = colors.primary;
-                        }}
-                    >
-                        {t('Sign In')}
-                    </button>
-                    <button
-                        onClick={() => router.visit(route('register'))}
-                        className={`text-white rounded-md font-medium transition-colors ${
-                            isMobile ? 'px-4 py-2 text-sm w-full' :
-                            variant === 'header3' ? 'px-3 py-1 text-xs' : 'px-4 py-2 text-sm'
-                        }`}
-                        style={{ backgroundColor: colors.primary }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.secondary}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = colors.primary}
-                    >
-                        {ctaText}
-                    </button>
-                </div>
+                <a key={`${item.text}-${href}`} href={href} target="_blank" rel="noopener noreferrer" className={className}
+                    onMouseEnter={(e) => e.currentTarget.style.color = colors.primary}
+                    onMouseLeave={(e) => e.currentTarget.style.color = ''}
+                >
+                    {content}
+                </a>
             );
         }
 
         return (
-            <button
-                onClick={() => router.visit(route('login'))}
-                className={`text-white rounded-md font-medium transition-colors ${
-                    isMobile ? 'px-4 py-2 text-sm w-full' :
-                    variant === 'header3' ? 'px-3 py-1 text-xs' : 'px-4 py-2 text-sm'
-                }`}
-                style={{ backgroundColor: colors.primary }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.secondary}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = colors.primary}
+            <Link key={`${item.text}-${href}`} href={href} className={className}
+                onMouseEnter={(e) => e.currentTarget.style.color = colors.primary}
+                onMouseLeave={(e) => e.currentTarget.style.color = ''}
             >
-                {t('Sign In')}
-            </button>
+                {content}
+            </Link>
         );
     };
 
-    const getGradientStyle = () => {
-        if (variant === 'header5') {
-            return {
-                background: `linear-gradient(to right, ${colors.primary}, ${colors.secondary}, ${colors.accent})`
-            };
+    const renderActions = (isMobile = false) => {
+        if (isAuthenticated) {
+            return (
+                <button
+                    type="button"
+                    onClick={() => router.visit(route('dashboard'))}
+                    className={isMobile ? 'w-full rounded-xl px-4 py-3 text-sm font-bold text-white shadow-sm transition' : 'rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-sm transition'}
+                    style={{ backgroundColor: colors.primary }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.secondary}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = colors.primary}
+                >
+                    {ctaText}
+                </button>
+            );
         }
-        return {};
-    };
 
-    const getMobileMenuStyle = () => {
-        if (variant === 'header5') {
-            return {
-                background: `linear-gradient(to right, ${colors.primary}, ${colors.secondary})`
-            };
+        if (!enableRegistration) {
+            return (
+                <button
+                    type="button"
+                    onClick={() => router.visit(route('login'))}
+                    className={isMobile ? 'w-full rounded-xl px-4 py-3 text-sm font-bold text-white shadow-sm transition' : 'rounded-full px-5 py-2.5 text-sm font-bold text-white shadow-sm transition'}
+                    style={{ backgroundColor: colors.primary }}
+                >
+                    {t('Sign In')}
+                </button>
+            );
         }
-        return {};
+
+        return (
+            <div className={isMobile ? 'grid gap-2' : 'flex items-center gap-2'}>
+                <button
+                    type="button"
+                    onClick={() => router.visit(route('login'))}
+                    className={isMobile ? 'w-full rounded-xl border px-4 py-3 text-sm font-bold transition' : 'rounded-xl border px-4 py-2.5 text-sm font-bold transition'}
+                    style={{ borderColor: colors.primary, color: colors.primary }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = colors.primary;
+                        e.currentTarget.style.color = '#fff';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                        e.currentTarget.style.color = colors.primary;
+                    }}
+                >
+                    {t('Sign In')}
+                </button>
+                <button
+                    type="button"
+                    onClick={() => router.visit(route('register'))}
+                    className={isMobile ? 'w-full rounded-xl px-4 py-3 text-sm font-bold text-white shadow-sm transition' : 'rounded-xl px-5 py-2.5 text-sm font-bold text-white shadow-sm transition'}
+                    style={{ backgroundColor: colors.primary }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.secondary}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = colors.primary}
+                >
+                    {sectionData.cta_text || t('Get Started')}
+                </button>
+            </div>
+        );
     };
 
     return (
-        <nav className={`${config.nav} relative`} style={getGradientStyle()}>
-            <div className={config.container}>
-                <div className={config.wrapper}>
-                    <Link href={route('landing.page')} className={config.logo} style={{ color: colors.primary }}>
+        <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/90 backdrop-blur-xl">
+            <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+                <div className="flex items-center justify-between gap-4">
+                    <Link href={route('landing.page')} className="flex min-w-0 items-center gap-3">
                         {logoUrl ? (
-                            <img src={logoUrl} alt={companyName} className="w-auto max-w-24 object-contain" />
+                            <img src={logoUrl} alt={companyName} className="h-10 w-auto max-w-[180px] object-contain" />
                         ) : (
-                            companyName
+                            <>
+                                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border bg-white shadow-sm" style={{ borderColor: `${colors.primary}30`, color: colors.primary }}>
+                                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: colors.primary }} />
+                                </span>
+                                <span className="truncate text-lg font-black tracking-tight text-slate-950">{companyName}</span>
+                            </>
                         )}
                     </Link>
 
-                    <div className={config.desktop}>
-                        {renderNavItems()}
-                        {sectionData?.enable_addon_link !== false && (
-                        <Link
-                            href={route("addons.page")}
-                            className={`px-4 py-2 text-sm font-medium transition-all duration-200 rounded-lg ${
-                                variant === 'header4' || variant === 'header5'
-                                    ? 'text-white hover:bg-white/10'
-                                    : variant === 'header2'
-                                        ? 'text-slate-700 hover:bg-white hover:shadow-sm'
-                                        : 'text-slate-700 hover:bg-slate-50'
-                            }`}
-                            onMouseEnter={(e) => {
-                                if (variant !== 'header4' && variant !== 'header5') {
-                                    e.currentTarget.style.color = colors.primary;
-                                }
-                            }}
-                            onMouseLeave={(e) => e.currentTarget.style.color = ''}
-                        >
-                            {t('Add-Ons')}
-                        </Link>
-                        )}
-                        {sectionData?.enable_pricing_link !== false && (
-                            <Link
-                                href={route("pricing.page")}
-                                className={`px-4 py-2 text-sm font-medium transition-all duration-200 rounded-lg ${
-                                    variant === 'header4' || variant === 'header5'
-                                        ? 'text-white hover:bg-white/10'
-                                        : variant === 'header2'
-                                            ? 'text-slate-700 hover:bg-white hover:shadow-sm'
-                                            : 'text-slate-700 hover:bg-slate-50'
-                                }`}
-                                onMouseEnter={(e) => {
-                                    if (variant !== 'header4' && variant !== 'header5') {
-                                        e.currentTarget.style.color = colors.primary;
-                                    }
-                                }}
-                                onMouseLeave={(e) => e.currentTarget.style.color = ''}
-                            >
-                                {t('Pricing')}
-                            </Link>
-                        )}
-                        {renderCTAButtons()}
-                        <div className="w-px h-5 bg-gray-200 mx-2" />
+                    <nav className="hidden items-center gap-1 rounded-full border border-slate-200 bg-slate-50/80 p-1.5 shadow-sm lg:flex">
+                        {navigationItems.map((item: any) => renderNavItem(item))}
+                    </nav>
+
+                    <div className="hidden items-center gap-3 lg:flex">
+                        {renderActions()}
+                        <div className="h-8 w-px bg-slate-200" />
                         <LanguageSwitcher />
                     </div>
 
                     <button
-                        className={config.mobile}
-                        onMouseEnter={(e) => e.currentTarget.style.color = colors.primary}
-                        onMouseLeave={(e) => e.currentTarget.style.color = ''}
+                        type="button"
+                        aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 lg:hidden"
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                     >
-                        {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                        {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
                     </button>
                 </div>
-            </div>
 
-            {mobileMenuOpen && (
-                <div className={config.mobileMenu} style={getMobileMenuStyle()}>
-                    <div className="px-2 pt-2 pb-3 space-y-1">
-                        {renderNavItems(true)}
-                        <div className="px-3 py-2 space-y-2">
-                            {sectionData?.enable_addon_link !== false && (
-                                <Link
-                                    href={route("addons.page")}
-                                    className="block px-3 py-2 text-base font-medium text-slate-700"
-                                >
-                                    {t('Addons')}
-                                </Link>
-                            )}
-                            {sectionData?.enable_pricing_link !== false && (
-                                <Link
-                                    href={route("pricing.page")}
-                                    className="block px-3 py-2 text-base font-medium text-slate-700"
-                                >
-                                    {t('Pricing')}
-                                </Link>
-                            )}
-                            {renderCTAButtons(true)}
-                            <div className="pt-1">
+                {mobileMenuOpen && (
+                    <div className="mt-3 rounded-3xl border border-slate-200 bg-white p-3 shadow-xl lg:hidden">
+                        <div className="grid gap-1">
+                            {navigationItems.map((item: any) => renderNavItem(item, true))}
+                        </div>
+                        <div className="mt-3 border-t border-slate-100 pt-3">
+                            {renderActions(true)}
+                            <div className="mt-3">
                                 <LanguageSwitcher />
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </nav>
+                )}
+            </div>
+        </header>
     );
 }
