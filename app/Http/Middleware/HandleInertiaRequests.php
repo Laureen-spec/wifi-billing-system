@@ -8,6 +8,9 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\File;
 use App\Classes\Module;
 use App\Services\MenuVisibilityService;
+use App\Models\UserMenuLabelPreference;
+use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -71,6 +74,9 @@ class HandleInertiaRequests extends Middleware
                 'menuVisibility' => $request->user()
                     ? app(MenuVisibilityService::class)->visibilityPayload($request->user())
                     : ['role' => 'guest', 'hidden' => []],
+                'menuLabelPreferences' => $request->user()
+                    ? $this->getUserMenuLabelPreferences($request->user()->id)
+                    : ['labels' => [], 'defaults' => []],
                 'impersonating' => $request->session()->has('impersonator_id'),
                 'lang' => $locale,
                 'layout_direction' => $layoutDirection,
@@ -120,6 +126,27 @@ class HandleInertiaRequests extends Middleware
     /**
      * Get superadmin language if user lang is not set
      */
+
+    private function getUserMenuLabelPreferences(int $userId): array
+    {
+        try {
+            if (!Schema::hasTable('user_menu_label_preferences')) {
+                return ['labels' => [], 'defaults' => []];
+            }
+
+            $preferences = UserMenuLabelPreference::query()
+                ->where('user_id', $userId)
+                ->get();
+
+            return [
+                'labels' => $preferences->pluck('custom_label', 'menu_key')->toArray(),
+                'defaults' => $preferences->pluck('default_label', 'menu_key')->filter()->toArray(),
+            ];
+        } catch (Throwable) {
+            return ['labels' => [], 'defaults' => []];
+        }
+    }
+
     private function getSuperAdminLang(): string
     {
         return admin_setting('defaultLanguage') ? admin_setting('defaultLanguage') : 'en';

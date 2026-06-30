@@ -20,6 +20,11 @@ export interface NavItem {
     parent?: string;
     name?: string;
     order?: number;
+    menuKey?: string;
+    routeName?: string;
+    menuLabelKey?: string;
+    defaultTitle?: string;
+    customTitle?: string;
 }
 
 export type PageProps<

@@ -1,4 +1,4 @@
-import { Palette, Building, Settings as SettingsIcon, Search, HardDrive, Mail, Cookie, Trash2, DollarSign, CreditCard, FileText, Radio } from 'lucide-react';
+import { Palette, Settings as SettingsIcon, Search, HardDrive, Mail, Cookie, Trash2, DollarSign, CreditCard, Radio, PanelLeft } from 'lucide-react';
 
 export interface SettingMenuItem {
   order: number;
@@ -25,6 +25,14 @@ export const getSuperAdminSettings = (t: (key: string) => string): SettingMenuIt
     icon: SettingsIcon,
     permission: 'manage-system-settings',
     component: 'system-settings'
+  },
+  {
+    order: 25,
+    title: t('Menu Preferences'),
+    href: '#menu-preferences',
+    icon: PanelLeft,
+    permission: 'manage-settings',
+    component: 'menu-preferences'
   },
   {
     order: 30,

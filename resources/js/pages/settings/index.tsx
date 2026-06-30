@@ -35,6 +35,10 @@ const settingDescription = (component?: string, t?: (key: string) => string) => 
     return t('Manage system preferences and platform behavior.');
   }
 
+  if (component === 'menu-preferences') {
+    return t('Rename sidebar menu labels for your own account and reset them any time.');
+  }
+
   return t('Update the selected system configuration page.');
 };
 

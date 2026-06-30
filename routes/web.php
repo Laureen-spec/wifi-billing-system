@@ -39,6 +39,7 @@ use App\Http\Controllers\SalesReturnController;
 use App\Http\Controllers\MetaController;
 use App\Http\Controllers\AIAgentChatPageController;
 use App\Http\Controllers\AIAgentChatController;
+use App\Http\Controllers\MenuPreferenceController;
 use App\Http\Controllers\SuperAdmin\MenuVisibilityController;
 use App\Http\Middleware\MenuRouteVisibilityMiddleware;
 use Inertia\Inertia;
@@ -201,6 +202,9 @@ Route::middleware(['auth', 'verified', 'PlanModuleCheck', MenuRouteVisibilityMid
     Route::post('settings/pusher', [SettingController::class, 'updatePusherSettings'])->name('settings.pusher.update');
     Route::post('settings/bank-transfer', [SettingController::class, 'updateBankTransferSettings'])->name('settings.bank-transfer.update');
     Route::post('settings/ai-agent', [SettingController::class, 'updateAIAgentSettings'])->name('settings.ai-agent.update');
+    Route::put('settings/menu-preferences', [MenuPreferenceController::class, 'update'])->name('settings.menu-preferences.update');
+    Route::delete('settings/menu-preferences', [MenuPreferenceController::class, 'reset'])->name('settings.menu-preferences.reset');
+    Route::delete('settings/menu-preferences/{menuKey}', [MenuPreferenceController::class, 'resetOne'])->name('settings.menu-preferences.reset-one');
     Route::get('settings/ai-agent/providers', [SettingController::class, 'getAIAgentProviders'])->name('settings.ai-agent.providers');
     Route::post('email-notification-settings-save', [SettingController::class, 'mailNotificationStore'])->name('email.notification.setting.store');
 

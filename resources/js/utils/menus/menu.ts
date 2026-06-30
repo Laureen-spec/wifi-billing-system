@@ -301,6 +301,46 @@ const filterByPermission = (items: NavItem[], userPermissions: string[]): NavIte
     });
 };
 
+
+const firstMenuLabelKey = (item: NavItem): string => {
+    return visibilityCandidates(item)[0] || normalizeVisibilityKey(item.title);
+};
+
+const applyMenuLabelPreferences = (
+    items: NavItem[],
+    labels: Record<string, string> = {},
+    storedDefaults: Record<string, string> = {}
+): NavItem[] => {
+    const normalizedLabels = Object.entries(labels || {}).reduce<Record<string, string>>((carry, [key, label]) => {
+        const normalizedKey = normalizeVisibilityKey(key);
+        const cleanLabel = String(label || '').trim();
+
+        if (normalizedKey && cleanLabel) {
+            carry[normalizedKey] = cleanLabel;
+        }
+
+        return carry;
+    }, {});
+
+    return items.map((item) => {
+        const candidates = visibilityCandidates(item);
+        const menuLabelKey = candidates.find((candidate) => normalizedLabels[candidate]) || firstMenuLabelKey(item);
+        const defaultTitle = storedDefaults[menuLabelKey] || item.title;
+        const customTitle = normalizedLabels[menuLabelKey];
+
+        return {
+            ...item,
+            title: customTitle || item.title,
+            defaultTitle,
+            customTitle,
+            menuLabelKey,
+            children: item.children
+                ? applyMenuLabelPreferences(item.children, normalizedLabels, storedDefaults)
+                : item.children,
+        } as NavItem;
+    });
+};
+
 // Main function to get filtered menu items
 export const allMenuItems = (): NavItem[] => {
     const { auth } = usePage().props as any;
@@ -310,6 +350,9 @@ export const allMenuItems = (): NavItem[] => {
     const activatedPackages = auth?.user?.activatedPackages || [];
     const hiddenMenuKeys = auth?.menuVisibility?.hidden || [];
     const visibilityItems = auth?.menuVisibility?.items || {};
+    const menuLabelPreferences = auth?.menuLabelPreferences || {};
+    const customMenuLabels = menuLabelPreferences?.labels || {};
+    const storedMenuDefaults = menuLabelPreferences?.defaults || {};
 
     const coreMenuItems = getCoreMenuItems(userRoles, t);
 
@@ -334,5 +377,5 @@ export const allMenuItems = (): NavItem[] => {
 
     const finalMenuItems = filterByPermission(visibilityFilteredItems, userPermissions);
 
-    return finalMenuItems;
+    return applyMenuLabelPreferences(finalMenuItems, customMenuLabels, storedMenuDefaults);
 };
