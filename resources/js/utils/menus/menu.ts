@@ -17,6 +17,7 @@ const getCoreMenuItems = (userRoles: string[], t: (key: string) => string): NavI
 const packageNameCandidates = (packageName: string): string[] => {
     const raw = String(packageName || '').trim();
     const normalized = raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const compact = raw.toLowerCase().replace(/[^a-z0-9]/g, '');
     const pascalFromSeparators = raw
         .split(/[^a-zA-Z0-9]+/)
         .filter(Boolean)
@@ -30,13 +31,26 @@ const packageNameCandidates = (packageName: string): string[] => {
         'isp-sms': 'IspSms',
         'ispsms': 'IspSms',
         'sms': 'IspSms',
+        'isp-report': 'IspReport',
+        'isp-reports': 'IspReport',
+        'ispreport': 'IspReport',
+        'reports': 'IspReport',
+        'tr069': 'tr069',
+        'tr-069': 'tr069',
+        'cwmp': 'tr069',
+        'loyalty': 'loyalty',
+        'rewards': 'loyalty',
+        'reward': 'loyalty',
+        'loyalty-points': 'loyalty',
+        'expenses': 'Expenses',
+        'leads': 'Leads',
     };
 
     return Array.from(new Set([
         raw,
         normalized,
         knownAliases[normalized],
-        knownAliases[raw.toLowerCase().replace(/[^a-z0-9]/g, '')],
+        knownAliases[compact],
         pascalFromSeparators,
     ].filter(Boolean) as string[]));
 };
@@ -48,22 +62,38 @@ const getPackageMenuItems = (userRoles: string[], activatedPackages: string[], t
 
     const packageRoots = ['studyroomtechlab', 'workdo'];
     const allModules = {
-        ...import.meta.glob('../../../packages/studyroomtechlab/*/src/Resources/js/menus/*.ts', { eager: true }),
-        ...import.meta.glob('../../../packages/workdo/*/src/Resources/js/menus/*.ts', { eager: true }),
+        ...import.meta.glob('../../../../packages/studyroomtechlab/*/src/Resources/js/menus/*.ts', { eager: true }),
+        ...import.meta.glob('../../../../packages/workdo/*/src/Resources/js/menus/*.ts', { eager: true }),
     };
 
-    // Ensure activatedPackages is an array before iterating
-    if (!Array.isArray(activatedPackages)) {
-        return menuItems;
-    }
+    // Ensure activatedPackages is an array before iterating.
+    // Some workspace add-ons can exist on disk before the database activation
+    // rows/user_active_modules rows are synced. Load these package menu files
+    // when they exist, then visibility/permissions can still hide restricted items.
+    const packageList = Array.isArray(activatedPackages) ? activatedPackages : [];
+    const alwaysAvailableWorkspacePackages = [
+        'IspSms',
+        'isp-sms',
+        'IspReport',
+        'isp-report',
+        'Tr069',
+        'tr069',
+        'loyalty',
+        'Loyalty',
+        'IspPaymentCenter',
+        'isp-payment-center',
+        'Expenses',
+        'Leads',
+    ];
+    const effectivePackages = Array.from(new Set([...packageList, ...alwaysAvailableWorkspacePackages]));
 
-    activatedPackages.forEach(packageName => {
+    effectivePackages.forEach(packageName => {
         if (['wifibilling', 'wifi-billing'].includes(String(packageName).toLowerCase())) {
             return;
         }
 
         const module = packageNameCandidates(String(packageName))
-            .flatMap((candidate) => packageRoots.map((packageRoot) => allModules[`../../../packages/${packageRoot}/${candidate}/src/Resources/js/menus/${menuType}.ts`] as any))
+            .flatMap((candidate) => packageRoots.map((packageRoot) => allModules[`../../../../packages/${packageRoot}/${candidate}/src/Resources/js/menus/${menuType}.ts`] as any))
             .find(Boolean);
 
         if (module) {
@@ -132,6 +162,47 @@ const groupMenusByParent = (menuItems: NavItem[], packageMenuItems: NavItem[]): 
     });
 
     return groupedItems;
+};
+
+
+const menuDedupeKey = (item: NavItem): string => {
+    const menuItem = item as NavItem & { menuKey?: string; routeName?: string };
+    // Use the concrete item identity first. Some children intentionally share
+    // the parent menuKey, so using menuKey first can collapse valid children
+    // such as SMS Settings, Compose SMS, and SMS Templates into one item.
+    const rawKey = item.name || menuItem.routeName || item.href || item.title || menuItem.menuKey;
+    return String(rawKey || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+};
+
+const dedupeMenuItems = (items: NavItem[]): NavItem[] => {
+    const seen = new Set<string>();
+    const deduped: NavItem[] = [];
+
+    items.forEach((item) => {
+        const key = menuDedupeKey(item);
+
+        if (key && seen.has(key)) {
+            const existing = deduped.find((candidate) => menuDedupeKey(candidate) === key);
+            if (existing) {
+                existing.children = dedupeMenuItems([
+                    ...(existing.children || []),
+                    ...(item.children || []),
+                ]).sort((a, b) => (a.order || 999) - (b.order || 999));
+            }
+            return;
+        }
+
+        if (key) {
+            seen.add(key);
+        }
+
+        deduped.push({
+            ...item,
+            children: item.children ? dedupeMenuItems(item.children) : item.children,
+        });
+    });
+
+    return deduped;
 };
 
 const normalizeVisibilityKey = (value?: string | null): string => {
@@ -306,12 +377,8 @@ const firstMenuLabelKey = (item: NavItem): string => {
     return visibilityCandidates(item)[0] || normalizeVisibilityKey(item.title);
 };
 
-const applyMenuLabelPreferences = (
-    items: NavItem[],
-    labels: Record<string, string> = {},
-    storedDefaults: Record<string, string> = {}
-): NavItem[] => {
-    const normalizedLabels = Object.entries(labels || {}).reduce<Record<string, string>>((carry, [key, label]) => {
+const normalizeLabelPreferences = (labels: Record<string, string> = {}): Record<string, string> => {
+    return Object.entries(labels || {}).reduce<Record<string, string>>((carry, [key, label]) => {
         const normalizedKey = normalizeVisibilityKey(key);
         const cleanLabel = String(label || '').trim();
 
@@ -321,12 +388,37 @@ const applyMenuLabelPreferences = (
 
         return carry;
     }, {});
+};
 
-    return items.map((item) => {
+const normalizePositionPreferences = (positions: Record<string, number | string | null | undefined> = {}): Record<string, number> => {
+    return Object.entries(positions || {}).reduce<Record<string, number>>((carry, [key, position]) => {
+        const normalizedKey = normalizeVisibilityKey(key);
+        const numericPosition = Number(position);
+
+        if (normalizedKey && Number.isFinite(numericPosition) && numericPosition > 0) {
+            carry[normalizedKey] = numericPosition;
+        }
+
+        return carry;
+    }, {});
+};
+
+const applyMenuPreferences = (
+    items: NavItem[],
+    labels: Record<string, string> = {},
+    storedDefaults: Record<string, string> = {},
+    positions: Record<string, number | string | null | undefined> = {}
+): NavItem[] => {
+    const normalizedLabels = normalizeLabelPreferences(labels);
+    const normalizedPositions = normalizePositionPreferences(positions);
+
+    const decoratedItems = items.map((item) => {
         const candidates = visibilityCandidates(item);
         const menuLabelKey = candidates.find((candidate) => normalizedLabels[candidate]) || firstMenuLabelKey(item);
+        const menuPositionKey = candidates.find((candidate) => normalizedPositions[candidate] !== undefined) || menuLabelKey;
         const defaultTitle = storedDefaults[menuLabelKey] || item.title;
         const customTitle = normalizedLabels[menuLabelKey];
+        const customSortOrder = normalizedPositions[menuPositionKey];
 
         return {
             ...item,
@@ -334,10 +426,23 @@ const applyMenuLabelPreferences = (
             defaultTitle,
             customTitle,
             menuLabelKey,
+            menuPositionKey,
+            customSortOrder,
             children: item.children
-                ? applyMenuLabelPreferences(item.children, normalizedLabels, storedDefaults)
+                ? applyMenuPreferences(item.children, normalizedLabels, storedDefaults, normalizedPositions)
                 : item.children,
         } as NavItem;
+    });
+
+    return decoratedItems.sort((a, b) => {
+        const aPosition = typeof a.customSortOrder === 'number' ? a.customSortOrder : (a.order || 999);
+        const bPosition = typeof b.customSortOrder === 'number' ? b.customSortOrder : (b.order || 999);
+
+        if (aPosition !== bPosition) {
+            return aPosition - bPosition;
+        }
+
+        return (a.order || 999) - (b.order || 999);
     });
 };
 
@@ -352,6 +457,7 @@ export const allMenuItems = (): NavItem[] => {
     const visibilityItems = auth?.menuVisibility?.items || {};
     const menuLabelPreferences = auth?.menuLabelPreferences || {};
     const customMenuLabels = menuLabelPreferences?.labels || {};
+    const customMenuPositions = menuLabelPreferences?.positions || {};
     const storedMenuDefaults = menuLabelPreferences?.defaults || {};
 
     const coreMenuItems = getCoreMenuItems(userRoles, t);
@@ -369,7 +475,7 @@ export const allMenuItems = (): NavItem[] => {
     
     // Then group all children (package + custom children) with their parents
     const allChildMenus = [...packageMenuItems, ...customChildMenus];
-    const finalGroupedMenuItems = groupMenusByParent(coreWithCustomParents, allChildMenus);
+    const finalGroupedMenuItems = dedupeMenuItems(groupMenusByParent(coreWithCustomParents, allChildMenus));
 
     const sortedMenuItems = finalGroupedMenuItems.sort((a, b) => (a.order || 999) - (b.order || 999));
 
@@ -377,5 +483,5 @@ export const allMenuItems = (): NavItem[] => {
 
     const finalMenuItems = filterByPermission(visibilityFilteredItems, userPermissions);
 
-    return applyMenuLabelPreferences(finalMenuItems, customMenuLabels, storedMenuDefaults);
+    return applyMenuPreferences(finalMenuItems, customMenuLabels, storedMenuDefaults, customMenuPositions);
 };

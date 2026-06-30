@@ -25,7 +25,10 @@ export interface NavItem {
     menuLabelKey?: string;
     defaultTitle?: string;
     customTitle?: string;
+    menuPositionKey?: string;
+    customSortOrder?: number;
 }
+
 
 export type PageProps<
     T extends Record<string, unknown> = Record<string, unknown>,

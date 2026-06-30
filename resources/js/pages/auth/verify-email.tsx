@@ -1,3 +1,4 @@
+
 import { Button } from '@/components/ui/button';
 import AuthLayout from '@/layouts/auth-layout';
 import { Head, Link, useForm } from '@inertiajs/react';

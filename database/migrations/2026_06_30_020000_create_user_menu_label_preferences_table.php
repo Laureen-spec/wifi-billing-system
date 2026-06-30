@@ -17,7 +17,8 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('menu_key', 160);
             $table->string('default_label')->nullable();
-            $table->string('custom_label', 80);
+            $table->string('custom_label', 80)->default('');
+            $table->unsignedInteger('sort_order')->nullable();
             $table->timestamps();
 
             $table->unique(['user_id', 'menu_key'], 'user_menu_label_preferences_unique');

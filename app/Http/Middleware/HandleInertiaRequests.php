@@ -76,7 +76,7 @@ class HandleInertiaRequests extends Middleware
                     : ['role' => 'guest', 'hidden' => []],
                 'menuLabelPreferences' => $request->user()
                     ? $this->getUserMenuLabelPreferences($request->user()->id)
-                    : ['labels' => [], 'defaults' => []],
+                    : ['labels' => [], 'defaults' => [], 'positions' => []],
                 'impersonating' => $request->session()->has('impersonator_id'),
                 'lang' => $locale,
                 'layout_direction' => $layoutDirection,
@@ -131,19 +131,24 @@ class HandleInertiaRequests extends Middleware
     {
         try {
             if (!Schema::hasTable('user_menu_label_preferences')) {
-                return ['labels' => [], 'defaults' => []];
+                return ['labels' => [], 'defaults' => [], 'positions' => []];
             }
 
             $preferences = UserMenuLabelPreference::query()
                 ->where('user_id', $userId)
                 ->get();
 
+            $positions = Schema::hasColumn('user_menu_label_preferences', 'sort_order')
+                ? $preferences->pluck('sort_order', 'menu_key')->filter(fn ($value) => $value !== null)->toArray()
+                : [];
+
             return [
-                'labels' => $preferences->pluck('custom_label', 'menu_key')->toArray(),
+                'labels' => $preferences->pluck('custom_label', 'menu_key')->filter()->toArray(),
                 'defaults' => $preferences->pluck('default_label', 'menu_key')->filter()->toArray(),
+                'positions' => $positions,
             ];
         } catch (Throwable) {
-            return ['labels' => [], 'defaults' => []];
+            return ['labels' => [], 'defaults' => [], 'positions' => []];
         }
     }
 

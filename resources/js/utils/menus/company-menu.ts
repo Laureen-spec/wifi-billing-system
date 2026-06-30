@@ -120,13 +120,13 @@ export const getCompanyMenu = (t: (key: string) => string): NavItem[] => [
                 permission: 'manage-plans',
             },
             {
-                title: t('Bank Transfer Requests'),
-                href: route('bank-transfer.index'),
-                permission: 'manage-bank-transfer-requests',
-            },
-            {
                 title: t('Orders'),
                 href: route('orders.index'),
+                permission: 'manage-orders',
+            },
+            {
+                title: t('Invoices'),
+                href: `${route('orders.index')}?view=invoices`,
                 permission: 'manage-orders',
             }
         ]

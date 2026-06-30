@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use StudyRoomTechLab\IspReport\Http\Controllers\IspReportController;
 
-Route::middleware(['web', 'auth', 'verified', 'PlanModuleCheck:IspReport'])
+Route::middleware(['web', 'auth', 'verified'])
     ->prefix('wifi-billing/isp-reports')
     ->name('isp-reports.')
     ->group(function () {

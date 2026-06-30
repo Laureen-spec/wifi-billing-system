@@ -424,7 +424,36 @@ class PlanController extends Controller
             // Use assignPlan method similar to old code
             $result = assignPlan($plan->id, 'Trial', implode(',', $plan->modules ?? []),$counter,  $user->id);
             if ($result['is_success']) {
-                return back()->with('success', __('Your trial has been started.'));
+                $orderId = strtoupper(substr(uniqid('TR'), -12));
+
+                Order::firstOrCreate(
+                    [
+                        'order_id' => $orderId,
+                        'created_by' => $user->id,
+                    ],
+                    [
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'card_number' => null,
+                        'card_exp_month' => null,
+                        'card_exp_year' => null,
+                        'plan_name' => $plan->name ?: 'Trial Package',
+                        'plan_id' => $plan->id,
+                        'price' => 0,
+                        'discount_amount' => 0,
+                        'currency' => admin_setting('defaultCurrency') ?? 'KES',
+                        'txn_id' => 'TRIAL-' . now()->format('YmdHis'),
+                        'payment_type' => 'Trial',
+                        'payment_status' => 'succeeded',
+                        'receipt' => json_encode([
+                            'invoice_type' => 'trial',
+                            'duration_days' => $plan->trial_days ?? null,
+                            'issued_from' => 'plan_free_trial',
+                        ]),
+                    ]
+                );
+
+                return back()->with('success', __('Your trial has been started. Invoice created under Plan Orders.'));
             } else {
                 return back()->with('error', $result['error'] ?? __('Failed to start trial.'));
             }
@@ -462,9 +491,13 @@ class PlanController extends Controller
             $order->price = 0;
             $order->currency = admin_setting('defaultCurrency') ?? 'USD';
             $order->txn_id = '';
-            $order->payment_type = '-';
+            $order->payment_type = 'Free Plan';
             $order->payment_status = 'succeeded';
-            $order->receipt = null;
+            $order->receipt = json_encode([
+                'invoice_type' => 'free_plan',
+                'duration' => $duration,
+                'issued_from' => 'plan_free_subscription',
+            ]);
             $order->created_by = $user->id;
             $order->save();
             return back()->with('success', __('Free plan has been assigned successfully.'));

@@ -11,5 +11,5 @@
     ],
     "package_name": "isp-report",
     "display": true,
-    "for_admin": false
+    "for_admin": true
 }

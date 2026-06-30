@@ -4,7 +4,10 @@ namespace StudyRoomTechLab\MpesaPayment\Services;
 
 use App\Models\Customer;
 use App\Models\InternetPackage;
+use App\Models\Order;
+use App\Models\Plan;
 use App\Models\ProvisioningToken;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -18,6 +21,115 @@ class MpesaPaymentService
     public function __construct(
         private readonly MpesaDarajaService $daraja
     ) {
+    }
+
+    public function initiateStkForPlanSubscription(
+        User $user,
+        Plan $plan,
+        string $duration = 'Month',
+        ?string $phone = null,
+        ?string $couponCode = null
+    ): MpesaTransaction {
+        $setting = $this->resolvePlatformSetting();
+        $duration = $duration === 'Year' ? 'Year' : 'Month';
+
+        $baseAmount = $duration === 'Year'
+            ? (float) ($plan->package_price_yearly ?? 0)
+            : (float) ($plan->package_price_monthly ?? 0);
+
+        $discountAmount = 0.0;
+        $finalAmount = $baseAmount;
+        $couponCode = trim((string) $couponCode) ?: null;
+
+        if ($couponCode) {
+            $validation = applyCouponDiscount($couponCode, $baseAmount, $user->id);
+
+            if (! ($validation['valid'] ?? false)) {
+                throw new \RuntimeException($validation['message'] ?? 'Invalid coupon code.');
+            }
+
+            $discountAmount = (float) ($validation['discount_amount'] ?? 0);
+            $finalAmount = (float) ($validation['final_amount'] ?? max(0, $baseAmount - $discountAmount));
+        }
+
+        if ($finalAmount <= 0) {
+            throw new \RuntimeException('M-Pesa cannot process a zero balance subscription. Please use a free plan or start a free trial.');
+        }
+
+        if (empty($phone)) {
+            throw new \RuntimeException('M-Pesa phone number is required for subscription payment.');
+        }
+
+        $modules = is_array($plan->modules) ? $plan->modules : (json_decode($plan->modules ?? '[]', true) ?: []);
+        $orderId = strtoupper(substr(uniqid('MP'), -12));
+        $metadata = [
+            'kind' => 'plan_subscription',
+            'order_id' => $orderId,
+            'user_id' => $user->id,
+            'plan_id' => $plan->id,
+            'plan_name' => $plan->name,
+            'duration' => $duration,
+            'user_module' => implode(',', $modules),
+            'counter' => [
+                'user_counter' => $plan->number_of_users ?? 0,
+                'storage_limit' => 0,
+            ],
+            'coupon_code' => $couponCode,
+            'base_amount' => $baseAmount,
+            'discount_amount' => $discountAmount,
+            'final_amount' => $finalAmount,
+            'invoice_type' => 'subscription',
+        ];
+
+        $transaction = MpesaTransaction::create([
+            'isp_id' => $user->id,
+            'customer_id' => null,
+            'internet_package_id' => null,
+            'mikrotik_router_id' => null,
+            'mpesa_setting_id' => $setting->id,
+            'collection_mode' => 'platform',
+            'environment' => $setting->environment,
+            'payment_type' => 'plan_subscription',
+            'phone' => $this->daraja->normalizePhone($phone),
+            'amount' => $finalAmount,
+            'currency' => 'KES',
+            'account_reference' => $orderId,
+            'transaction_desc' => 'ISP plan subscription payment',
+            'status' => 'pending',
+            'created_by' => $user->id,
+            'request_payload' => [
+                'plan_subscription' => $metadata,
+            ],
+        ]);
+
+        try {
+            $result = $this->daraja->stkPush(
+                $setting,
+                $transaction->phone,
+                (float) $transaction->amount,
+                $transaction->account_reference ?: $orderId,
+                $transaction->transaction_desc ?: 'ISP plan subscription payment'
+            );
+
+            $transaction->forceFill([
+                'request_payload' => [
+                    'plan_subscription' => $metadata,
+                    'daraja_payload' => $result['payload'],
+                ],
+            ])->save();
+
+            $transaction->markStkSent($result['response']);
+
+            return $transaction;
+        } catch (\Throwable $e) {
+            $transaction->forceFill([
+                'status' => 'failed',
+                'result_desc' => $e->getMessage(),
+                'failed_at' => now(),
+            ])->save();
+
+            throw $e;
+        }
     }
 
     public function initiateStkForCustomer(
@@ -140,6 +252,11 @@ class MpesaPaymentService
 
             $transaction->markPaid($payload, $receipt);
 
+            if ($transaction->payment_type === 'plan_subscription') {
+                $this->activatePlanSubscriptionIfNeeded($transaction);
+                return $transaction->refresh();
+            }
+
             $this->postWalletIfNeeded($transaction);
             $this->triggerProvisioningIfNeeded($transaction);
 
@@ -166,6 +283,11 @@ class MpesaPaymentService
                     'paid_at' => now()->toDateTimeString(),
                 ],
             ])->save();
+
+            if ($transaction->payment_type === 'plan_subscription') {
+                $this->activatePlanSubscriptionIfNeeded($transaction);
+                return $transaction->refresh();
+            }
 
             $this->postWalletIfNeeded($transaction);
             $this->triggerProvisioningIfNeeded($transaction);
@@ -371,6 +493,104 @@ class MpesaPaymentService
             'provisioning_token_id' => $token?->id,
             'provisioned_at' => now(),
         ])->save();
+    }
+
+    public function resolvePlatformSetting(): MpesaSetting
+    {
+        $platformSetting = MpesaSetting::whereNull('isp_id')
+            ->where('owner_type', 'platform')
+            ->where('is_active', true)
+            ->orderByDesc('is_default')
+            ->first();
+
+        if (! $platformSetting) {
+            throw new \RuntimeException('Payment gateway is not configured. Please contact platform support.');
+        }
+
+        return $platformSetting;
+    }
+
+    private function activatePlanSubscriptionIfNeeded(MpesaTransaction $transaction): void
+    {
+        if ($transaction->payment_type !== 'plan_subscription' || ! $transaction->isPaid()) {
+            return;
+        }
+
+        $metadata = data_get($transaction->request_payload, 'plan_subscription', []);
+        $orderId = $metadata['order_id'] ?? $transaction->account_reference;
+
+        if ($orderId && Order::where('order_id', $orderId)->exists()) {
+            return;
+        }
+
+        if ($transaction->mpesa_receipt_number && Order::where('txn_id', $transaction->mpesa_receipt_number)->exists()) {
+            return;
+        }
+
+        $plan = Plan::find($metadata['plan_id'] ?? null);
+        $user = User::find($metadata['user_id'] ?? $transaction->created_by);
+
+        if (! $plan || ! $user) {
+            Log::warning('M-Pesa plan subscription paid but plan/user was not found.', [
+                'transaction_id' => $transaction->id,
+                'metadata' => $metadata,
+            ]);
+            return;
+        }
+
+        $duration = ($metadata['duration'] ?? 'Month') === 'Year' ? 'Year' : 'Month';
+        $userModule = (string) ($metadata['user_module'] ?? '');
+        $counter = is_array($metadata['counter'] ?? null)
+            ? $metadata['counter']
+            : [
+                'user_counter' => $plan->number_of_users ?? 0,
+                'storage_limit' => 0,
+            ];
+
+        $assignPlan = assignPlan($plan->id, $duration, $userModule, $counter, $user->id);
+
+        if (! ($assignPlan['is_success'] ?? false)) {
+            Log::error('M-Pesa plan subscription paid but plan assignment failed.', [
+                'transaction_id' => $transaction->id,
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+                'error' => $assignPlan['error'] ?? null,
+            ]);
+            return;
+        }
+
+        Order::create([
+            'order_id' => $orderId ?: strtoupper(substr(uniqid('MP'), -12)),
+            'name' => $user->name,
+            'email' => $user->email,
+            'card_number' => null,
+            'card_exp_month' => null,
+            'card_exp_year' => null,
+            'plan_name' => ! empty($plan->name) ? $plan->name : 'ISP Package',
+            'plan_id' => $plan->id,
+            'price' => $transaction->amount,
+            'discount_amount' => (float) ($metadata['discount_amount'] ?? 0),
+            'currency' => $transaction->currency ?: 'KES',
+            'txn_id' => $transaction->mpesa_receipt_number ?: $transaction->checkout_request_id,
+            'payment_type' => 'M-Pesa',
+            'payment_status' => 'succeeded',
+            'receipt' => json_encode([
+                'invoice_type' => 'subscription',
+                'duration' => $duration,
+                'base_amount' => $metadata['base_amount'] ?? null,
+                'discount_amount' => $metadata['discount_amount'] ?? 0,
+                'mpesa_receipt' => $transaction->mpesa_receipt_number,
+                'issued_from' => 'mpesa_plan_subscription',
+            ]),
+            'created_by' => $user->id,
+        ]);
+
+        if (! empty($metadata['coupon_code']) && class_exists(\App\Models\Coupon::class)) {
+            $coupon = \App\Models\Coupon::where('code', $metadata['coupon_code'])->first();
+            if ($coupon) {
+                recordCouponUsage($coupon->id, $user->id, $orderId);
+            }
+        }
     }
 
     private function resolveAmount(Customer $customer, ?InternetPackage $package): float

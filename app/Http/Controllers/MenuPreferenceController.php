@@ -18,25 +18,40 @@ class MenuPreferenceController extends Controller
         }
 
         $validated = $request->validate([
-            'labels' => ['required', 'array'],
+            'labels' => ['sometimes', 'array'],
             'labels.*' => ['nullable', 'string', 'max:80'],
+            'positions' => ['sometimes', 'array'],
+            'positions.*' => ['nullable', 'integer', 'min:1', 'max:9999'],
             'defaults' => ['sometimes', 'array'],
             'defaults.*' => ['nullable', 'string', 'max:120'],
         ]);
 
         $userId = (int) $request->user()->id;
+        $labels = $validated['labels'] ?? [];
+        $positions = $validated['positions'] ?? [];
         $defaults = $validated['defaults'] ?? [];
+        $keys = collect(array_keys($labels))
+            ->merge(array_keys($positions))
+            ->unique()
+            ->values();
+        $hasSortOrderColumn = Schema::hasColumn('user_menu_label_preferences', 'sort_order');
 
-        foreach ($validated['labels'] as $key => $label) {
+        foreach ($keys as $key) {
             $menuKey = $this->normalizeMenuKey((string) $key);
             if ($menuKey === '') {
                 continue;
             }
 
-            $customLabel = trim((string) $label);
+            $customLabel = trim((string) ($labels[$key] ?? $labels[$menuKey] ?? ''));
             $defaultLabel = trim((string) ($defaults[$key] ?? $defaults[$menuKey] ?? ''));
+            $sortOrder = $hasSortOrderColumn && isset($positions[$key]) && is_numeric($positions[$key])
+                ? max(1, min(9999, (int) $positions[$key]))
+                : null;
 
-            if ($customLabel === '' || ($defaultLabel !== '' && Str::lower($customLabel) === Str::lower($defaultLabel))) {
+            $hasCustomLabel = $customLabel !== '' && ($defaultLabel === '' || Str::lower($customLabel) !== Str::lower($defaultLabel));
+            $hasCustomPosition = $sortOrder !== null;
+
+            if (! $hasCustomLabel && ! $hasCustomPosition) {
                 UserMenuLabelPreference::query()
                     ->where('user_id', $userId)
                     ->where('menu_key', $menuKey)
@@ -44,19 +59,25 @@ class MenuPreferenceController extends Controller
                 continue;
             }
 
+            $payload = [
+                'default_label' => $defaultLabel ?: null,
+                'custom_label' => $hasCustomLabel ? $customLabel : '',
+            ];
+
+            if ($hasSortOrderColumn) {
+                $payload['sort_order'] = $sortOrder;
+            }
+
             UserMenuLabelPreference::query()->updateOrCreate(
                 [
                     'user_id' => $userId,
                     'menu_key' => $menuKey,
                 ],
-                [
-                    'default_label' => $defaultLabel ?: null,
-                    'custom_label' => $customLabel,
-                ]
+                $payload
             );
         }
 
-        return back()->with('success', __('Menu names updated for your account.'));
+        return back()->with('success', __('Menu preferences updated for your account.'));
     }
 
     public function reset(Request $request): RedirectResponse
@@ -67,7 +88,7 @@ class MenuPreferenceController extends Controller
                 ->delete();
         }
 
-        return back()->with('success', __('Menu names reset to system defaults.'));
+        return back()->with('success', __('Menu preferences reset to system defaults.'));
     }
 
     public function resetOne(Request $request, string $menuKey): RedirectResponse
@@ -79,7 +100,7 @@ class MenuPreferenceController extends Controller
                 ->delete();
         }
 
-        return back()->with('success', __('Menu name reset to default.'));
+        return back()->with('success', __('Menu preference reset to default.'));
     }
 
     private function normalizeMenuKey(string $value): string

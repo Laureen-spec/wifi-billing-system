@@ -15,6 +15,11 @@ class UserMenuLabelPreference extends Model
         'menu_key',
         'default_label',
         'custom_label',
+        'sort_order',
+    ];
+
+    protected $casts = [
+        'sort_order' => 'integer',
     ];
 
     public function user(): BelongsTo

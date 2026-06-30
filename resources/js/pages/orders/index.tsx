@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Pagination } from '@/components/ui/pagination';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { FileText, ReceiptText, Search, ShoppingCart, WalletCards } from 'lucide-react';
+import { Download, FileText, ReceiptText, Search, ShoppingCart, WalletCards } from 'lucide-react';
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatAdminCurrency, formatDate } from '@/utils/helpers';
@@ -310,6 +310,7 @@ function InvoiceTable({ records, pageProps, statusBadge }: { records: Order[]; p
                         <th className="px-5 py-4">Amount</th>
                         <th className="px-5 py-4">Status</th>
                         <th className="px-5 py-4">Issued</th>
+                        <th className="px-5 py-4 text-right">Action</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -337,6 +338,12 @@ function InvoiceTable({ records, pageProps, statusBadge }: { records: Order[]; p
                             <td className="px-5 py-4 font-semibold text-foreground">{formatAdminCurrency(record.price, pageProps)}</td>
                             <td className="px-5 py-4">{statusBadge(record.payment_status)}</td>
                             <td className="px-5 py-4 text-muted-foreground">{formatDate(record.created_at, pageProps)}</td>
+                            <td className="px-5 py-4 text-right">
+                                <Button type="button" variant="outline" size="sm" onClick={() => downloadInvoice(record, pageProps)}>
+                                    <Download className="h-4 w-4" />
+                                    Download
+                                </Button>
+                            </td>
                         </tr>
                     ))}
                 </tbody>
@@ -379,6 +386,12 @@ function OrderTable({ records, pageProps, statusBadge }: { records: Order[]; pag
                             <td className="px-5 py-4 text-muted-foreground">{record.payment_type || '-'}</td>
                             <td className="px-5 py-4">{statusBadge(record.payment_status)}</td>
                             <td className="px-5 py-4 text-muted-foreground">{formatDate(record.created_at, pageProps)}</td>
+                            <td className="px-5 py-4 text-right">
+                                <Button type="button" variant="outline" size="sm" onClick={() => downloadInvoice(record, pageProps)}>
+                                    <Download className="h-4 w-4" />
+                                    Download
+                                </Button>
+                            </td>
                         </tr>
                     ))}
                 </tbody>
@@ -398,6 +411,103 @@ function SourceBadge({ source, label }: { source: string; label: string }) {
                 : 'border-emerald-200 bg-emerald-50 text-emerald-700';
 
     return <Badge variant="outline" className={className}>{label}</Badge>;
+}
+
+function downloadInvoice(record: Order, pageProps: any) {
+    const invoiceNumber = record.invoice_number || record.order_id || 'invoice';
+    const amount = formatAdminCurrency(record.price, pageProps);
+    const issued = formatDate(record.created_at, pageProps);
+    const html = `<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>${escapeHtml(invoiceNumber)}</title>
+    <style>
+        body { font-family: Arial, sans-serif; color: #0f172a; margin: 0; background: #f8fafc; }
+        .page { max-width: 820px; margin: 32px auto; background: white; border: 1px solid #e2e8f0; border-radius: 18px; overflow: hidden; }
+        .header { padding: 28px 32px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; gap: 24px; }
+        .brand { font-size: 20px; font-weight: 700; }
+        .muted { color: #64748b; font-size: 13px; }
+        .badge { display: inline-block; padding: 6px 10px; border-radius: 999px; background: #ecfdf5; color: #047857; font-size: 12px; font-weight: 700; }
+        .content { padding: 32px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 28px; }
+        .card { border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; }
+        .label { color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+        .value { font-size: 15px; font-weight: 700; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 14px; border-bottom: 1px solid #e2e8f0; text-align: left; font-size: 14px; }
+        th { color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; background: #f8fafc; }
+        .total { font-size: 22px; font-weight: 800; text-align: right; padding-top: 24px; }
+        .footer { padding: 20px 32px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="header">
+            <div>
+                <div class="brand">StudyRoom Connect</div>
+                <div class="muted">System billing invoice</div>
+            </div>
+            <div style="text-align:right">
+                <div class="badge">${escapeHtml(statusLabel(String(record.payment_status || 'paid').toLowerCase()))}</div>
+                <div class="muted" style="margin-top:8px">${escapeHtml(invoiceNumber)}</div>
+            </div>
+        </div>
+        <div class="content">
+            <div class="grid">
+                <div class="card">
+                    <div class="label">Bill to</div>
+                    <div class="value">${escapeHtml(record.name || record.user?.name || '-')}</div>
+                    <div class="muted">${escapeHtml(record.email || record.user?.email || '-')}</div>
+                </div>
+                <div class="card">
+                    <div class="label">Invoice details</div>
+                    <div class="value">${escapeHtml(record.invoice_type || record.source_label || 'Subscription')}</div>
+                    <div class="muted">Issued: ${escapeHtml(issued)}</div>
+                    <div class="muted">Reference: ${escapeHtml(record.order_id || '-')}</div>
+                </div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th>Payment</th>
+                        <th style="text-align:right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>${escapeHtml(record.plan_name || record.source_label || 'System billing record')}</td>
+                        <td>${escapeHtml(record.payment_type || '-')}</td>
+                        <td style="text-align:right">${escapeHtml(amount)}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="total">Total: ${escapeHtml(amount)}</div>
+        </div>
+        <div class="footer">Generated from Plan → Invoices. Keep this invoice for your subscription records.</div>
+    </div>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${invoiceNumber}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+function escapeHtml(value: string | number | null | undefined) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 function statusGroup(status: string) {

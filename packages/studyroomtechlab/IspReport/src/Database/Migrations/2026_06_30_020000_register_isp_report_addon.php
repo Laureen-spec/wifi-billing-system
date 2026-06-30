@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         $this->syncAddonRow();
+        $this->syncActiveModuleRows();
         $this->syncMenuVisibilityRows();
     }
 
@@ -44,7 +45,7 @@ return new class extends Migration
         $this->setAddonValue($record, 'description', 'Reporting workspace for ISP overview, staff logs, connection logs, and payment logs.');
         $this->setAddonValue($record, 'package_name', 'isp-report');
         $this->setAddonValue($record, 'is_enable', 1);
-        $this->setAddonValue($record, 'for_admin', 0);
+        $this->setAddonValue($record, 'for_admin', 1);
         $this->setAddonValue($record, 'display', 1);
         $this->setAddonValue($record, 'status', 1);
         $this->setAddonValue($record, 'priority', 56);
@@ -82,6 +83,51 @@ return new class extends Migration
         }
 
         DB::table('add_ons')->insert($record);
+    }
+
+
+    private function syncActiveModuleRows(): void
+    {
+        if (! Schema::hasTable('user_active_modules') || ! Schema::hasTable('users')) {
+            return;
+        }
+
+        $userIdColumn = Schema::hasColumn('user_active_modules', 'user_id') ? 'user_id' : null;
+        $moduleColumn = Schema::hasColumn('user_active_modules', 'module') ? 'module' : null;
+
+        if (! $userIdColumn || ! $moduleColumn) {
+            return;
+        }
+
+        $companyUsers = DB::table('users')
+            ->when(Schema::hasColumn('users', 'type'), fn ($query) => $query->where('type', 'company'))
+            ->pluck('id');
+
+        foreach ($companyUsers as $userId) {
+            $exists = DB::table('user_active_modules')
+                ->where($userIdColumn, $userId)
+                ->where($moduleColumn, 'IspReport')
+                ->exists();
+
+            if ($exists) {
+                continue;
+            }
+
+            $record = [
+                $userIdColumn => $userId,
+                $moduleColumn => 'IspReport',
+            ];
+
+            if (Schema::hasColumn('user_active_modules', 'created_at')) {
+                $record['created_at'] = now();
+            }
+
+            if (Schema::hasColumn('user_active_modules', 'updated_at')) {
+                $record['updated_at'] = now();
+            }
+
+            DB::table('user_active_modules')->insert($record);
+        }
     }
 
     private function syncMenuVisibilityRows(): void
