@@ -220,9 +220,9 @@ export default function SuperAdminDashboard({ stats, chartData, ticketChartData,
                     <div className="relative">
                         <div className="space-y-5">
                             <div className="flex flex-wrap items-center gap-3">
-                                <Badge className="border-emerald-200 bg-white/75 px-3 py-1 text-emerald-700 shadow-sm backdrop-blur">
-                                    <span className="mr-2 h-2 w-2 rounded-full bg-emerald-500" />
-                                    {t('Super Admin Command Center')}
+                                <Badge variant="outline" className="border-emerald-200 bg-emerald-50/95 px-3 py-1 text-emerald-800 shadow-sm backdrop-blur hover:bg-emerald-100">
+                                    <span className="mr-2 h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+                                    <span className="text-emerald-800">{t('Super Admin Command Center')}</span>
                                 </Badge>
                                 <Badge variant="outline" className="bg-white/70 px-3 py-1 text-slate-600 shadow-sm backdrop-blur">
                                     {t('Latest order month')}: {latestOrderMonth}

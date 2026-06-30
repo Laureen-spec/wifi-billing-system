@@ -76,34 +76,31 @@ function AuthenticatedLayoutContent({
                 dir={settings.layoutDirection === 'rtl' ? 'rtl' : 'ltr'}
             >
                 <header
-                    className={`bg-background/95 backdrop-blur-md flex min-h-16 shrink-0 items-center gap-3 px-6 py-2 border-b shadow-sm mb-2 justify-between`}
-                    >
+                    className="sticky top-0 z-30 flex min-h-[64px] shrink-0 items-center justify-between gap-3 border-b border-slate-200/80 bg-white/90 px-5 py-2.5 backdrop-blur-xl dark:border-slate-800/80 dark:bg-slate-950/85"
+                >
                     {/* Sidebar + Breadcrumb */}
-                    <div className={`flex min-w-0 items-center gap-2 ${ settings.layoutDirection === "rtl" ? "order-2 flex-row-reverse" : "order-1" }`} >
-                        {/* SidebarTrigger */}
-                        <SidebarTrigger className={`-ml-1 ${ settings.layoutDirection === "rtl" ? "order-3" : "order-1" }`} />
+                    <div className={`flex min-w-0 items-center gap-3 ${ settings.layoutDirection === "rtl" ? "order-2 flex-row-reverse" : "order-1" }`}>
+                        <SidebarTrigger className={`h-9 w-9 rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 ${ settings.layoutDirection === "rtl" ? "order-3" : "order-1" }`} />
 
-                        {/* Separator */}
-                        <Separator orientation="vertical" className="mr-2 h-4 order-2" />
+                        <Separator orientation="vertical" className="order-2 hidden h-6 bg-slate-200 md:block dark:bg-slate-800" />
 
-                        {/* Breadcrumb */}
-                        <Breadcrumb className={`${ settings.layoutDirection === "rtl" ? "order-1" : "order-3" } hidden md:block`} >
-                            <BreadcrumbList className={`flex text-sm ${ settings.layoutDirection === "rtl" ? "justify-end" : "justify-start" }`} >
+                        <Breadcrumb className={`${ settings.layoutDirection === "rtl" ? "order-1" : "order-3" } hidden min-w-0 md:block`}>
+                            <BreadcrumbList className={`flex text-sm font-medium text-slate-500 ${ settings.layoutDirection === "rtl" ? "justify-end" : "justify-start" }`}>
                             <BreadcrumbItem>
                                 <BreadcrumbLink asChild>
-                                    <Link href={route("dashboard")}>{t('Dashboard')}</Link>
+                                    <Link className="text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100" href={route("dashboard")}>{t('Dashboard')}</Link>
                                 </BreadcrumbLink>
                             </BreadcrumbItem>
                             {breadcrumbs?.map((crumb, index) => (
                                 <Fragment key={index}>
-                                <BreadcrumbSeparator className={settings.layoutDirection === 'rtl' ? 'rotate-180' : ''} />
+                                <BreadcrumbSeparator className={settings.layoutDirection === 'rtl' ? 'rotate-180 text-slate-300' : 'text-slate-300'} />
                                 <BreadcrumbItem>
                                     {crumb.url ? (
                                     <BreadcrumbLink asChild>
-                                        <Link href={crumb.url}>{crumb.label}</Link>
+                                        <Link className="text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100" href={crumb.url}>{crumb.label}</Link>
                                     </BreadcrumbLink>
                                     ) : (
-                                    <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                                    <BreadcrumbPage className="font-semibold text-slate-900 dark:text-slate-100">{crumb.label}</BreadcrumbPage>
                                     )}
                                 </BreadcrumbItem>
                                 </Fragment>
@@ -112,19 +109,17 @@ function AuthenticatedLayoutContent({
                         </Breadcrumb>
                     </div>
 
-                    {/* NavUser */}
                     <div
-                        className={`flex items-center gap-2 ${
+                        className={`flex min-w-0 shrink-0 items-center justify-end gap-2 ${
                         settings.layoutDirection === "rtl" ? "order-1 flex-row-reverse" : "order-2"
                         }`}
                     >
-                        {/* Leave Impersonation Button */}
                         {auth.impersonating && (
                             <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => router.post(route('users.leave-impersonation'))}
-                                className="text-orange-600 border-orange-600 hover:bg-transparent hover:text-orange-600"
+                                className="h-9 rounded-xl border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 hover:text-orange-800"
                             >
                                 <UserX className="h-4 w-4 mr-2" />
                                 {t('Leave Login As User')}
@@ -135,7 +130,7 @@ function AuthenticatedLayoutContent({
                     </div>
                 </header>
 
-                <main className="p-4 md:pt-0 h-full">
+                <main className="h-full p-4">
                     {pageTitle && (
                         <div className="flex items-center mb-6" dir={settings.layoutDirection}>
                             <h1 className="text-xl font-semibold text-gray-900 dark:text-white flex-1">{pageTitle}</h1>

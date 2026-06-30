@@ -130,8 +130,8 @@ export function NavMain({ items = [], searchQuery = "" }: { items: NavItem[], se
                                                 className="group/menu-item h-11 rounded-2xl px-2.5 text-[14px] font-semibold"
                                             >
                                                 {renderIcon(item, shouldBeActive)}
-                                                <span className="min-w-0 flex-1 truncate">{item.title}</span>
-                                                <ChevronDown className="ml-auto h-4 w-4 text-slate-500 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                                                <span className="min-w-0 flex-1 truncate group-data-[collapsible=icon]:hidden">{item.title}</span>
+                                                <ChevronDown className="ml-auto h-4 w-4 text-slate-500 transition-transform group-data-[collapsible=icon]:hidden group-data-[state=open]/collapsible:rotate-180" />
                                             </SidebarMenuButton>
                                         </CollapsibleTrigger>
                                         <CollapsibleContent className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
@@ -205,10 +205,9 @@ export function NavMain({ items = [], searchQuery = "" }: { items: NavItem[], se
                                             <SidebarMenuButton
                                                 tooltip={item.title}
                                                 isActive={shouldBeActive}
-                                                className="group/menu-item rounded-xl font-semibold"
+                                                className="group/menu-item mx-auto h-10 w-10 justify-center rounded-xl p-0 font-semibold"
                                             >
                                                 {item.icon && <item.icon className="h-4 w-4" />}
-                                                <span>{item.title}</span>
                                             </SidebarMenuButton>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent side="right" align="start" className="w-56 rounded-2xl border-slate-300 bg-white p-2 shadow-xl">
@@ -263,7 +262,7 @@ export function NavMain({ items = [], searchQuery = "" }: { items: NavItem[], se
                             >
                                 <Link href={item.href!}>
                                     {renderIcon(item, shouldBeActive)}
-                                    <span className="min-w-0 flex-1 truncate">{item.title}</span>
+                                    <span className="min-w-0 flex-1 truncate group-data-[collapsible=icon]:hidden">{item.title}</span>
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>

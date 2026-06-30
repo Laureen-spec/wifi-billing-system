@@ -58,7 +58,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const activeSettings = isSuperAdmin ? (pageProps as any)?.adminAllSetting : (pageProps as any)?.companyAllSetting;
     const brandTitle = activeSettings?.titleText || settings.titleText || (isSuperAdmin ? 'Platform Workspace' : 'Company Workspace');
     const brandSubtitle = isSuperAdmin ? 'Platform control' : 'Company control';
-    const searchPlaceholder = `Search ${brandTitle}...`;
+    const searchPlaceholder = 'Search';
 
     return (
     <Sidebar
@@ -137,7 +137,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <div className="group-data-[collapsible=icon]:hidden">
+        <div className="mt-5 group-data-[collapsible=icon]:hidden">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <SidebarInput
