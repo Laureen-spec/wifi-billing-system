@@ -145,12 +145,106 @@
             line-height: 1.55;
         }
 
+        .package-grid {
+            display: grid;
+            gap: 12px;
+            margin-top: 14px;
+        }
+
         .package {
+            width: 100%;
             border: 1px solid #e5e7eb;
             border-radius: 18px;
             padding: 16px;
-            margin-top: 12px;
             background: #fff;
+            text-align: left;
+            cursor: pointer;
+            transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+        }
+
+        .package:hover {
+            border-color: rgba(15, 23, 42, .24);
+            box-shadow: 0 14px 34px rgba(15, 23, 42, .08);
+            transform: translateY(-1px);
+        }
+
+        .package-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .package-meta {
+            margin-top: 6px;
+        }
+
+        .package-cta {
+            margin-top: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, .06);
+            color: var(--sr-text);
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            background: rgba(15, 23, 42, .48);
+            padding: 14px;
+        }
+
+        .modal-backdrop.is-open {
+            display: flex;
+        }
+
+        .modal-panel {
+            width: 100%;
+            max-width: 480px;
+            max-height: calc(100vh - 28px);
+            overflow-y: auto;
+            border-radius: 24px;
+            border: 1px solid #e5e7eb;
+            background: #fff;
+            padding: 20px;
+            box-shadow: 0 28px 80px rgba(15, 23, 42, .28);
+        }
+
+        .modal-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+            align-items: flex-start;
+            margin-bottom: 14px;
+        }
+
+        .modal-close {
+            width: 38px;
+            height: 38px;
+            border: 1px solid #e5e7eb;
+            border-radius: 999px;
+            background: #fff;
+            color: #64748b;
+            font-size: 22px;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .modal-summary {
+            border: 1px solid #e5e7eb;
+            border-radius: 18px;
+            padding: 14px;
+            margin-bottom: 14px;
+            background: #f8fafc;
         }
 
         .free-access-card {
@@ -367,71 +461,105 @@
 
     <div class="card">
         <h3 style="margin-top:0;">Available Packages</h3>
+        <p class="muted">Tap a plan to enter your M-Pesa number and complete payment.</p>
 
-        @forelse($packages as $package)
-            @php
-                $name = $package->name ?? ('Package #' . $package->id);
-                $price = $package->price ?? 0;
-                $download = $package->download_speed_mbps ?? null;
-                $upload = $package->upload_speed_mbps ?? null;
-                $validity = $package->validity_days ?? null;
-            @endphp
+        <div class="package-grid">
+            @forelse($packages as $package)
+                @php
+                    $name = $package->name ?? ('Package #' . $package->id);
+                    $price = $package->price ?? 0;
+                    $download = $package->download_speed_mbps ?? null;
+                    $upload = $package->upload_speed_mbps ?? null;
+                    $validity = $package->validity_days ?? null;
+                    $speedText = trim(($download ? $download . ' Mbps down' : '') . ($upload ? ' / ' . $upload . ' Mbps up' : ''));
+                    $validityText = $validity ? $validity . ' day(s)' : '';
+                @endphp
 
-            <div class="package">
-                <strong>{{ $name }}</strong>
+                <button type="button"
+                        class="package select-package-btn"
+                        data-package-id="{{ $package->id }}"
+                        data-package-name="{{ $name }}"
+                        data-package-price="KES {{ number_format((float) $price, 2) }}"
+                        data-package-speed="{{ $speedText }}"
+                        data-package-validity="{{ $validityText }}">
+                    <div class="package-top">
+                        <div>
+                            <strong>{{ $name }}</strong>
 
-                @if($download || $upload)
-                    <div class="muted">
-                        Speed:
-                        {{ $download ? $download . ' Mbps down' : '' }}
-                        {{ $upload ? ' / ' . $upload . ' Mbps up' : '' }}
+                            <div class="package-meta muted">
+                                @if($speedText)
+                                    <div>Speed: {{ $speedText }}</div>
+                                @endif
+
+                                @if($validityText)
+                                    <div>Validity: {{ $validityText }}</div>
+                                @endif
+                            </div>
+                        </div>
+
+                        <div class="price" style="margin-top:0; white-space:nowrap;">KES {{ number_format((float) $price, 2) }}</div>
                     </div>
-                @endif
 
-                @if($validity)
-                    <div class="muted">Validity: {{ $validity }} day(s)</div>
-                @endif
+                    <span class="package-cta">Select plan</span>
+                </button>
+            @empty
+                <p>No active WiFi packages found.</p>
+            @endforelse
+        </div>
+    </div>
 
-                <div class="price">KES {{ number_format((float) $price, 2) }}</div>
-
-                <div style="margin-top:10px;">
-                    <input type="text"
-                           class="customer-name input"
-                           placeholder="Your name optional">
-
-                    <input type="tel"
-                           class="customer-phone input"
-                           placeholder="M-Pesa phone e.g. 0712345678">
-
-                    <button type="button"
-                            class="btn btn-secondary validate-phone-btn">
-                        Validate Number
-                    </button>
-
-                    <input type="hidden" class="validated-phone">
-
-                    <div class="phone-validation-status status"></div>
-
-                    <button type="button"
-                            class="btn pay-btn"
-                            data-package-id="{{ $package->id }}">
-                        Pay with M-Pesa
-                    </button>
-
-                    @if(config('app.debug'))
-                        <button type="button"
-                                class="btn btn-success simulate-pay-btn"
-                                data-package-id="{{ $package->id }}">
-                            Simulate Payment Success
-                        </button>
-                    @endif
-
-                    <div class="pay-status status"></div>
+    <div id="package-payment-modal" class="modal-backdrop" aria-hidden="true">
+        <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-package-name">
+            <div class="modal-head">
+                <div>
+                    <h3 id="modal-package-name" style="margin:0 0 4px;">Package</h3>
+                    <p id="modal-package-meta" class="muted"></p>
                 </div>
+                <button type="button" class="modal-close" id="package-modal-close" aria-label="Close payment form">&times;</button>
             </div>
-        @empty
-            <p>No active WiFi packages found.</p>
-        @endforelse
+
+            <div class="modal-summary">
+                <div class="muted">Amount to pay</div>
+                <div id="modal-package-price" class="price">KES 0.00</div>
+            </div>
+
+            <input type="text"
+                   id="modal-customer-name"
+                   class="input"
+                   placeholder="Your name optional">
+
+            <input type="tel"
+                   id="modal-customer-phone"
+                   class="input"
+                   placeholder="M-Pesa phone e.g. 0712345678">
+
+            <input type="hidden" id="modal-validated-phone">
+            <input type="hidden" id="modal-package-id">
+
+            <button type="button"
+                    class="btn btn-secondary"
+                    id="modal-validate-phone-btn">
+                Validate Number
+            </button>
+
+            <div id="modal-phone-validation-status" class="status"></div>
+
+            <button type="button"
+                    class="btn"
+                    id="modal-pay-btn">
+                Pay with M-Pesa
+            </button>
+
+            @if(config('app.debug'))
+                <button type="button"
+                        class="btn btn-success"
+                        id="modal-simulate-pay-btn">
+                    Simulate Payment Success
+                </button>
+            @endif
+
+            <div id="modal-pay-status" class="status"></div>
+        </div>
     </div>
 
     <p class="footer">{{ $footerText }}</p>
@@ -546,22 +674,89 @@ function startFreeAccess() {
     });
 }
 
-document.querySelectorAll('.validate-phone-btn').forEach(function (button) {
-    button.addEventListener('click', function () {
-        const box = button.closest('.package');
-        const phoneInput = box.querySelector('.customer-phone');
-        const validatedPhone = box.querySelector('.validated-phone');
-        const status = box.querySelector('.phone-validation-status');
+const packageModal = document.getElementById('package-payment-modal');
+const packageModalClose = document.getElementById('package-modal-close');
+const modalPackageName = document.getElementById('modal-package-name');
+const modalPackageMeta = document.getElementById('modal-package-meta');
+const modalPackagePrice = document.getElementById('modal-package-price');
+const modalPackageId = document.getElementById('modal-package-id');
+const modalCustomerName = document.getElementById('modal-customer-name');
+const modalCustomerPhone = document.getElementById('modal-customer-phone');
+const modalValidatedPhone = document.getElementById('modal-validated-phone');
+const modalPhoneStatus = document.getElementById('modal-phone-validation-status');
+const modalPayStatus = document.getElementById('modal-pay-status');
+const modalValidateButton = document.getElementById('modal-validate-phone-btn');
+const modalPayButton = document.getElementById('modal-pay-btn');
+const modalSimulateButton = document.getElementById('modal-simulate-pay-btn');
 
-        const phone = phoneInput.value.trim();
+function openPackageModal(button) {
+    const speed = button.dataset.packageSpeed || '';
+    const validity = button.dataset.packageValidity || '';
+    const meta = [speed ? 'Speed: ' + speed : '', validity ? 'Validity: ' + validity : ''].filter(Boolean).join(' · ');
+
+    modalPackageId.value = button.dataset.packageId || '';
+    modalPackageName.textContent = button.dataset.packageName || 'Selected package';
+    modalPackagePrice.textContent = button.dataset.packagePrice || 'KES 0.00';
+    modalPackageMeta.textContent = meta || 'Enter your phone number to pay with M-Pesa.';
+    modalCustomerName.value = '';
+    modalCustomerPhone.value = '';
+    modalValidatedPhone.value = '';
+    modalPhoneStatus.innerHTML = '';
+    modalPayStatus.innerHTML = '';
+    modalValidateButton.disabled = false;
+    modalPayButton.disabled = false;
+    if (modalSimulateButton) {
+        modalSimulateButton.disabled = false;
+    }
+
+    packageModal.classList.add('is-open');
+    packageModal.setAttribute('aria-hidden', 'false');
+    setTimeout(function () {
+        modalCustomerPhone.focus();
+    }, 80);
+}
+
+function closePackageModal() {
+    packageModal.classList.remove('is-open');
+    packageModal.setAttribute('aria-hidden', 'true');
+}
+
+document.querySelectorAll('.select-package-btn').forEach(function (button) {
+    button.addEventListener('click', function () {
+        openPackageModal(button);
+    });
+});
+
+if (packageModalClose) {
+    packageModalClose.addEventListener('click', closePackageModal);
+}
+
+if (packageModal) {
+    packageModal.addEventListener('click', function (event) {
+        if (event.target === packageModal) {
+            closePackageModal();
+        }
+    });
+}
+
+document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && packageModal.classList.contains('is-open')) {
+        closePackageModal();
+    }
+});
+
+if (modalValidateButton) {
+    modalValidateButton.addEventListener('click', function () {
+        const phone = modalCustomerPhone.value.trim();
 
         if (!phone) {
-            setStatus(status, 'Enter phone number first.', false);
+            setStatus(modalPhoneStatus, 'Enter phone number first.', false);
             return;
         }
 
-        button.disabled = true;
-        setStatus(status, 'Validating phone number...', true);
+        modalValidateButton.disabled = true;
+        modalValidatedPhone.value = '';
+        setStatus(modalPhoneStatus, 'Validating phone number...', true);
 
         fetch("{{ route('mpesa-payment.hotspot.validate-phone') }}", {
             method: 'POST',
@@ -576,43 +771,44 @@ document.querySelectorAll('.validate-phone-btn').forEach(function (button) {
         })
         .then(response => response.json())
         .then(data => {
-            button.disabled = false;
+            modalValidateButton.disabled = false;
 
             if (!data.valid) {
-                validatedPhone.value = '';
-                setStatus(status, data.message || 'Invalid phone number.', false);
+                modalValidatedPhone.value = '';
+                setStatus(modalPhoneStatus, data.message || 'Invalid phone number.', false);
                 return;
             }
 
-            validatedPhone.value = data.phone;
-            phoneInput.value = data.phone;
-            setStatus(status, 'Valid number: ' + data.display_phone, true);
+            modalValidatedPhone.value = data.phone;
+            modalCustomerPhone.value = data.phone;
+            setStatus(modalPhoneStatus, 'Valid number: ' + data.display_phone, true);
         })
         .catch(() => {
-            button.disabled = false;
-            validatedPhone.value = '';
-            setStatus(status, 'Could not validate number.', false);
+            modalValidateButton.disabled = false;
+            modalValidatedPhone.value = '';
+            setStatus(modalPhoneStatus, 'Could not validate number.', false);
         });
     });
-});
+}
 
-document.querySelectorAll('.pay-btn').forEach(function (button) {
-    button.addEventListener('click', function () {
-        const box = button.closest('.package');
-        const phoneInput = box.querySelector('.customer-phone');
-        const validatedPhone = box.querySelector('.validated-phone');
-        const name = box.querySelector('.customer-name').value.trim();
-        const status = box.querySelector('.pay-status');
+if (modalPayButton) {
+    modalPayButton.addEventListener('click', function () {
+        const phone = modalValidatedPhone.value || modalCustomerPhone.value.trim();
+        const name = modalCustomerName.value.trim();
+        const packageId = modalPackageId.value;
 
-        const phone = validatedPhone.value || phoneInput.value.trim();
-
-        if (!phone) {
-            setStatus(status, 'Validate your M-Pesa number first.', false);
+        if (!packageId) {
+            setStatus(modalPayStatus, 'Select a package first.', false);
             return;
         }
 
-        button.disabled = true;
-        setStatus(status, 'Sending STK Push...', true);
+        if (!phone) {
+            setStatus(modalPayStatus, 'Validate your M-Pesa number first.', false);
+            return;
+        }
+
+        modalPayButton.disabled = true;
+        setStatus(modalPayStatus, 'Sending STK Push...', true);
 
         fetch("{{ route('mpesa-payment.hotspot.stk-push') }}", {
             method: 'POST',
@@ -622,7 +818,7 @@ document.querySelectorAll('.pay-btn').forEach(function (button) {
                 'X-CSRF-TOKEN': "{{ csrf_token() }}"
             },
             body: JSON.stringify({
-                internet_package_id: button.dataset.packageId,
+                internet_package_id: packageId,
                 phone: phone,
                 name: name
             })
@@ -630,41 +826,42 @@ document.querySelectorAll('.pay-btn').forEach(function (button) {
         .then(response => response.json())
         .then(data => {
             if (!data.success) {
-                button.disabled = false;
-                setStatus(status, data.message || 'Failed to send STK Push.', false);
+                modalPayButton.disabled = false;
+                setStatus(modalPayStatus, data.message || 'Failed to send STK Push.', false);
                 return;
             }
 
-            setStatus(status, 'STK Push sent. Enter your M-Pesa PIN.', true);
+            setStatus(modalPayStatus, 'STK Push sent. Enter your M-Pesa PIN.', true);
 
             if (data.transaction_id) {
-                pollStatus(data.transaction_id, status, button);
+                pollStatus(data.transaction_id, modalPayStatus, modalPayButton);
             }
         })
         .catch(() => {
-            button.disabled = false;
-            setStatus(status, 'Payment request failed. Try again.', false);
+            modalPayButton.disabled = false;
+            setStatus(modalPayStatus, 'Payment request failed. Try again.', false);
         });
     });
-});
+}
 
-document.querySelectorAll('.simulate-pay-btn').forEach(function (button) {
-    button.addEventListener('click', function () {
-        const box = button.closest('.package');
-        const phoneInput = box.querySelector('.customer-phone');
-        const validatedPhone = box.querySelector('.validated-phone');
-        const name = box.querySelector('.customer-name').value.trim();
-        const status = box.querySelector('.pay-status');
+if (modalSimulateButton) {
+    modalSimulateButton.addEventListener('click', function () {
+        const phone = modalValidatedPhone.value || modalCustomerPhone.value.trim();
+        const name = modalCustomerName.value.trim();
+        const packageId = modalPackageId.value;
 
-        const phone = validatedPhone.value || phoneInput.value.trim();
-
-        if (!phone) {
-            setStatus(status, 'Validate or enter your M-Pesa number first.', false);
+        if (!packageId) {
+            setStatus(modalPayStatus, 'Select a package first.', false);
             return;
         }
 
-        button.disabled = true;
-        setStatus(status, 'Simulating payment success...', true);
+        if (!phone) {
+            setStatus(modalPayStatus, 'Validate or enter your M-Pesa number first.', false);
+            return;
+        }
+
+        modalSimulateButton.disabled = true;
+        setStatus(modalPayStatus, 'Simulating payment success...', true);
 
         fetch("{{ route('mpesa-payment.hotspot.simulate-payment') }}", {
             method: 'POST',
@@ -674,7 +871,7 @@ document.querySelectorAll('.simulate-pay-btn').forEach(function (button) {
                 'X-CSRF-TOKEN': "{{ csrf_token() }}"
             },
             body: JSON.stringify({
-                internet_package_id: button.dataset.packageId,
+                internet_package_id: packageId,
                 phone: phone,
                 name: name
             })
@@ -682,23 +879,23 @@ document.querySelectorAll('.simulate-pay-btn').forEach(function (button) {
         .then(response => response.json())
         .then(data => {
             if (!data.success) {
-                button.disabled = false;
-                setStatus(status, data.message || 'Simulation failed.', false);
+                modalSimulateButton.disabled = false;
+                setStatus(modalPayStatus, data.message || 'Simulation failed.', false);
                 return;
             }
 
-            setStatus(status, data.message + ' Receipt: ' + data.receipt, true);
+            setStatus(modalPayStatus, data.message + ' Receipt: ' + data.receipt, true);
 
             setTimeout(function () {
                 window.location.href = hotspotSuccessRedirectUrl;
             }, 2000);
         })
         .catch(() => {
-            button.disabled = false;
-            setStatus(status, 'Simulation request failed.', false);
+            modalSimulateButton.disabled = false;
+            setStatus(modalPayStatus, 'Simulation request failed.', false);
         });
     });
-});
+}
 
 function pollStatus(transactionId, status, button) {
     let attempts = 0;
