@@ -1,0 +1,15 @@
+{
+    "name": "IspWhatsapp",
+    "alias": "WhatsApp Desk",
+    "description": "WhatsApp customer desk, provider settings, templates, billing usage, bot flows, and payment self-service for ISP workspaces.",
+    "priority": 54,
+    "version": 1.0,
+    "monthly_price": 0,
+    "yearly_price": 0,
+    "parent_module": [
+        "WifiBilling"
+    ],
+    "package_name": "isp-whatsapp",
+    "display": true,
+    "for_admin": false
+}

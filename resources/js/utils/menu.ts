@@ -8,6 +8,7 @@ import * as LucideIcons from 'lucide-react';
 
 const WORKSPACE_PARENT_ADDON_PACKAGES = [
     'IspSms',
+    'IspWhatsapp',
     'IspReport',
     'tr069',
     'loyalty',
@@ -49,6 +50,10 @@ const packageNameCandidates = (packageName: string): string[] => {
         'isp-sms': 'IspSms',
         'ispsms': 'IspSms',
         'sms': 'IspSms',
+        'isp-whatsapp': 'IspWhatsapp',
+        'ispwhatsapp': 'IspWhatsapp',
+        'whatsapp': 'IspWhatsapp',
+        'whatsapp-desk': 'IspWhatsapp',
         'isp-report': 'IspReport',
         'ispreport': 'IspReport',
         'reports': 'IspReport',

@@ -1,0 +1,22 @@
+{
+    "name": "studyroomtechlab/isp-whatsapp",
+    "description": "WhatsApp Desk add-on for StudyRoom WiFi Billing.",
+    "type": "library",
+    "license": "proprietary",
+    "autoload": {
+        "psr-4": {
+            "StudyRoomTechLab\\IspWhatsapp\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "StudyRoomTechLab\\IspWhatsapp\\Providers\\IspWhatsappServiceProvider"
+            ]
+        }
+    },
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^12.0"
+    }
+}
