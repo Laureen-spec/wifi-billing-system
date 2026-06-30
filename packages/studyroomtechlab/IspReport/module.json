@@ -1,0 +1,15 @@
+{
+    "name": "IspReport",
+    "alias": "ISP Report",
+    "description": "ISP Report - Professional reporting workspace for billing overview, staff logs, connection logs, and payment logs.",
+    "priority": 56,
+    "version": 1.0,
+    "monthly_price": 0,
+    "yearly_price": 0,
+    "parent_module": [
+        "WifiBilling"
+    ],
+    "package_name": "isp-report",
+    "display": true,
+    "for_admin": false
+}

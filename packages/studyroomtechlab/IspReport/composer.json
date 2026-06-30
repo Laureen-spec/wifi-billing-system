@@ -1,0 +1,22 @@
+{
+    "name": "studyroomtechlab/isp-report",
+    "description": "ISP Report add-on for StudyRoom WiFi Billing dashboards, staff logs, connection logs, and payment logs.",
+    "type": "library",
+    "license": "proprietary",
+    "autoload": {
+        "psr-4": {
+            "StudyRoomTechLab\\IspReport\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "StudyRoomTechLab\\IspReport\\Providers\\IspReportServiceProvider"
+            ]
+        }
+    },
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^12.0"
+    }
+}
