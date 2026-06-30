@@ -209,15 +209,32 @@ export default function SmsSettings({ pageTitle, subtitle, setting, platformSett
 
                         {usingSystemSms && !isPlatform ? (
                             <Card>
-                                <CardHeader className="border-b py-4"><CardTitle className="text-base">System SMS balance and alerts</CardTitle></CardHeader>
-                                <CardContent className="grid gap-4 p-5 md:grid-cols-3">
-                                    <div className="space-y-2"><Label htmlFor="free-sms">Free SMS remaining</Label><Input id="free-sms" type="number" min="0" value={data.free_sms_remaining} onChange={(e) => setData('free_sms_remaining', Number(e.target.value || 0))} /><InputError message={errors.free_sms_remaining} /></div>
-                                    <div className="space-y-2"><Label htmlFor="sms-balance">SMS balance</Label><Input id="sms-balance" type="number" min="0" step="0.01" value={data.sms_balance} onChange={(e) => setData('sms_balance', e.target.value)} /><InputError message={errors.sms_balance} /></div>
-                                    <div className="space-y-2"><Label htmlFor="sms-cost">Cost per SMS</Label><Input id="sms-cost" type="number" min="0" step="0.01" value={data.estimated_cost_per_sms} onChange={(e) => setData('estimated_cost_per_sms', e.target.value)} /><InputError message={errors.estimated_cost_per_sms} /></div>
-                                    <div className="flex items-center gap-3 rounded-xl border p-4 md:col-span-3"><Checkbox checked={data.low_balance_alert_enabled} onCheckedChange={(value) => setData('low_balance_alert_enabled', Boolean(value))} /><div><p className="font-medium">Send low-balance SMS alert</p><p className="text-xs text-muted-foreground">When balance drops below your threshold, notify the configured phone number.</p></div></div>
-                                    <div className="space-y-2"><Label htmlFor="alert-phone">Alert phone number</Label><Input id="alert-phone" value={data.low_balance_alert_phone} onChange={(e) => setData('low_balance_alert_phone', e.target.value)} placeholder="0712345678" /><InputError message={errors.low_balance_alert_phone} /></div>
-                                    <div className="space-y-2"><Label htmlFor="alert-threshold">Alert below balance</Label><Input id="alert-threshold" type="number" min="0" step="0.01" value={data.low_balance_alert_threshold} onChange={(e) => setData('low_balance_alert_threshold', e.target.value)} /><InputError message={errors.low_balance_alert_threshold} /></div>
-                                    <div className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground"><p className="font-medium text-foreground">Top-up rule</p><p className="mt-1">After free SMS are depleted, every system SMS is deducted from this balance. Use the top-up button when balance is low.</p></div>
+                                <CardHeader className="border-b py-4">
+                                    <CardTitle className="text-base">System SMS balance and alerts</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-5 p-5">
+                                    <div className="rounded-2xl border bg-muted/20 p-4">
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                            <div>
+                                                <p className="font-medium text-foreground">Platform-managed SMS wallet</p>
+                                                <p className="mt-1 text-sm text-muted-foreground">Managed by the platform. Contact support or top up SMS balance to increase usage.</p>
+                                            </div>
+                                            <Badge variant="outline" className="w-fit">Read only</Badge>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid gap-4 md:grid-cols-3">
+                                        <ReadOnlyBalanceCard label="Free SMS remaining" value={String(data.free_sms_remaining)} hint="Starter SMS credits controlled by Super Admin." />
+                                        <ReadOnlyBalanceCard label="SMS balance" value={balance.toFixed(2)} hint="Top-up wallet for system SMS charges." />
+                                        <ReadOnlyBalanceCard label="Cost per SMS" value={Number(data.estimated_cost_per_sms || 0).toFixed(2)} hint="Platform SMS rate set by Super Admin." />
+                                    </div>
+
+                                    <div className="grid gap-4 md:grid-cols-3">
+                                        <div className="flex items-center gap-3 rounded-xl border p-4 md:col-span-3"><Checkbox checked={data.low_balance_alert_enabled} onCheckedChange={(value) => setData('low_balance_alert_enabled', Boolean(value))} /><div><p className="font-medium">Send low-balance SMS alert</p><p className="text-xs text-muted-foreground">When balance drops below your threshold, notify the configured phone number.</p></div></div>
+                                        <div className="space-y-2"><Label htmlFor="alert-phone">Alert phone number</Label><Input id="alert-phone" value={data.low_balance_alert_phone} onChange={(e) => setData('low_balance_alert_phone', e.target.value)} placeholder="0712345678" /><InputError message={errors.low_balance_alert_phone} /></div>
+                                        <div className="space-y-2"><Label htmlFor="alert-threshold">Alert below balance</Label><Input id="alert-threshold" type="number" min="0" step="0.01" value={data.low_balance_alert_threshold} onChange={(e) => setData('low_balance_alert_threshold', e.target.value)} /><InputError message={errors.low_balance_alert_threshold} /></div>
+                                        <div className="rounded-xl border bg-muted/30 p-4 text-sm text-muted-foreground"><p className="font-medium text-foreground">Top-up rule</p><p className="mt-1">After free SMS are depleted, every system SMS is deducted from this balance. Use the top-up button when balance is low.</p></div>
+                                    </div>
                                 </CardContent>
                             </Card>
                         ) : (
@@ -296,6 +313,17 @@ export default function SmsSettings({ pageTitle, subtitle, setting, platformSett
                 </form>
             </div>
         </AuthenticatedLayout>
+    );
+}
+
+
+function ReadOnlyBalanceCard({ label, value, hint }: { label: string; value: string; hint: string }) {
+    return (
+        <div className="rounded-2xl border bg-card p-4 shadow-sm">
+            <p className="text-sm font-medium text-muted-foreground">{label}</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">{hint}</p>
+        </div>
     );
 }
 

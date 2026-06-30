@@ -125,9 +125,15 @@ class IspSmsSettingsController extends Controller
             'is_active' => $request->boolean('is_active', true),
             'allow_system_sms' => $allowSystemSms,
             'allow_own_sms' => $allowOwnSms,
-            'free_sms_remaining' => $data['free_sms_remaining'] ?? ($setting->free_sms_remaining ?? 5),
-            'sms_balance' => $data['sms_balance'] ?? ($setting->sms_balance ?? 0),
-            'estimated_cost_per_sms' => $data['estimated_cost_per_sms'] ?? ($setting->estimated_cost_per_sms ?? 1),
+            'free_sms_remaining' => $isPlatform
+                ? ($data['free_sms_remaining'] ?? ($setting->free_sms_remaining ?? 5))
+                : ($setting->free_sms_remaining ?? 5),
+            'sms_balance' => $isPlatform
+                ? ($data['sms_balance'] ?? ($setting->sms_balance ?? 0))
+                : ($setting->sms_balance ?? 0),
+            'estimated_cost_per_sms' => $isPlatform
+                ? ($data['estimated_cost_per_sms'] ?? ($setting->estimated_cost_per_sms ?? 1))
+                : ($setting->estimated_cost_per_sms ?? 1),
             'low_balance_alert_enabled' => $request->boolean('low_balance_alert_enabled', true),
             'low_balance_alert_threshold' => $data['low_balance_alert_threshold'] ?? ($setting->low_balance_alert_threshold ?? 10),
             'low_balance_alert_phone' => $data['low_balance_alert_phone'] ?? null,
