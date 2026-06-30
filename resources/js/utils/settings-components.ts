@@ -16,6 +16,7 @@ const coreComponents = {
   'cache-settings': lazy(() => import('@/pages/settings/components/cache-settings')),
   'ai-agent-settings': lazy(() => import('@/pages/settings/components/ai-agent-settings')),
   'menu-preferences': lazy(() => import('@/pages/settings/components/menu-preferences')),
+  'admin-module-settings': lazy(() => import('@/pages/settings/components/admin-module-settings')),
 };
 
 let packageComponentsCache: Record<string, any> | null = null;

@@ -1,20 +1,17 @@
-import { Gauge, UserCog, Images, WalletCards, TicketCheck, ShoppingBag, MessagesSquare, FileSignature, ReceiptText, Bot } from 'lucide-react';
+import { LayoutGrid, Users, Warehouse,ArrowRightLeft, Package, Tag, Tags, Shield, Image, CreditCard, Headphones, ShoppingCart, Kanban, Calendar, MessageCircle, Replace ,Receipt, Bot, Settings } from 'lucide-react';
 import { NavItem } from '@/types';
-
-const routeUrl = (name: string) => String(route(name));
 
 export const getCompanyMenu = (t: (key: string) => string): NavItem[] => [
     {
         title: t('Dashboard'),
-        icon: Gauge,
+        icon: LayoutGrid,
         permission: 'manage-dashboard',
-        href: routeUrl('dashboard'),
         name: 'dashboard',
         order: 1,
     },
     {
         title: t('User Management'),
-        icon: UserCog,
+        icon: Users,
         permission: 'manage-users',
         order: 10,
         children: [
@@ -24,7 +21,7 @@ export const getCompanyMenu = (t: (key: string) => string): NavItem[] => [
                 permission: 'manage-roles',
             },
             {
-                title: t('Staff'),
+                title: t('Users'),
                 href: route('users.index'),
                 permission: 'manage-users',
             },
@@ -33,13 +30,13 @@ export const getCompanyMenu = (t: (key: string) => string): NavItem[] => [
     {
         title: t('Proposal'),
         href: route('sales-proposals.index'),
-        icon: FileSignature,
+        icon: Replace,
         permission: 'manage-sales-proposals',
         order: 20,
     },
     {
         title: t('Sales Invoice'),
-        icon: ReceiptText,
+        icon: Receipt,
         permission: 'manage-sales-invoices',
         order: 35,
         children: [
@@ -57,7 +54,7 @@ export const getCompanyMenu = (t: (key: string) => string): NavItem[] => [
     },
     {
         title: t('Purchase'),
-        icon: ShoppingBag,
+        icon: ShoppingCart,
         permission: 'manage-purchase-invoices',
         order: 40,
         children: [
@@ -86,14 +83,14 @@ export const getCompanyMenu = (t: (key: string) => string): NavItem[] => [
     {
         title: t('Media Library'),
         href: route('media-library'),
-        icon: Images,
+        icon: Image,
         permission: 'manage-media',
         order: 2900,
     },
     {
         title: t('Messenger'),
         href: route('messenger.index'),
-        icon: MessagesSquare,
+        icon: MessageCircle,
         permission: 'manage-messenger',
         order: 2940,
     },
@@ -105,15 +102,15 @@ export const getCompanyMenu = (t: (key: string) => string): NavItem[] => [
         order: 2945,
     },
     {
-        title: t('Tickets'),
+        title: t('Helpdesk'),
         href: route('helpdesk-tickets.index'),
-        icon: TicketCheck,
+        icon: Headphones,
         permission: 'manage-helpdesk-tickets',
         order: 2950,
     },
     {
         title: t('Plan'),
-        icon: WalletCards,
+        icon: CreditCard,
         permission: 'manage-plans',
         order: 2980,
         children: [
@@ -133,5 +130,13 @@ export const getCompanyMenu = (t: (key: string) => string): NavItem[] => [
                 permission: 'manage-orders',
             }
         ]
+    },
+
+    {
+        title: t('Settings'),
+        href: route('settings.index') + '#admin-settings',
+        icon: Settings,
+        permission: 'manage-dashboard',
+        order: 3090,
     },
 ];

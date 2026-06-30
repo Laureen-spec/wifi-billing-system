@@ -16,39 +16,67 @@ class SettingController extends Controller
 {
     public function index()
     {
-        if(!Auth::user()->hasRole('superadmin'))
-        {
-            return back()->with('error', __('Only super admin can access settings.'));
+        $user = Auth::user();
+
+        if (! $user || ! $this->userCanAccessSettings($user)) {
+            return back()->with('error', __('Permission denied'));
         }
 
-        if(Auth::user()->can('manage-settings'))
+        $globalSettings = getCompanyAllSetting();
+        $emailProviders = config('email-providers');
+
+        if($user->hasRole('superadmin'))
         {
-            $globalSettings = getCompanyAllSetting();
-            $emailProviders = config('email-providers');
-
-            if(Auth::user()->hasRole('superadmin'))
-            {
-               $notifications = \App\Models\Notification::where('type','mail')->where('module', 'general')->get()->groupBy('module');
-            }
-            else
-            {
-               $notifications = \App\Models\Notification::where('type','mail')->get()->groupBy('module');
-            }
-
-
-
-            return Inertia::render('settings/index', [
-                'globalSettings' => $globalSettings,
-                'emailProviders' => $emailProviders,
-                'notifications' => $notifications,
-                'cacheSize' => $this->getCacheSize(),
-                'mpesaPaymentSettings' => $this->getPlatformMpesaSettings(),
-            ]);
+           $notifications = \App\Models\Notification::where('type','mail')->where('module', 'general')->get()->groupBy('module');
         }
         else
         {
-            return back()->with('error', __('Permission denied'));
+           $notifications = \App\Models\Notification::where('type','mail')->get()->groupBy('module');
         }
+
+        return Inertia::render('settings/index', [
+            'globalSettings' => $globalSettings,
+            'emailProviders' => $emailProviders,
+            'notifications' => $notifications,
+            'cacheSize' => $this->getCacheSize(),
+            'mpesaPaymentSettings' => $this->getPlatformMpesaSettings(),
+        ]);
+    }
+
+    private function userCanAccessSettings($user): bool
+    {
+        if ($user->hasRole('superadmin') || $user->can('manage-settings')) {
+            return true;
+        }
+
+        $adminSettingPermissions = [
+            'manage-dashboard',
+            'manage-company-settings',
+            'manage-brand-settings',
+            'manage-system-settings',
+            'manage-currency-settings',
+            'manage-email-settings',
+            'manage-bank-transfer-settings',
+            'manage-ai-agent-settings',
+            'manage-wifi-billing',
+            'manage-internet-packages',
+            'manage-hotspot-settings',
+            'manage-hotspot-template',
+            'manage-mpesa-payment',
+            'manage-payment-settings',
+            'manage-sms',
+            'manage-isp-sms',
+            'manage-sms-settings',
+            'manage-sms-templates',
+        ];
+
+        foreach ($adminSettingPermissions as $permission) {
+            if ($user->can($permission)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function updateBrandSettings(Request $request)
