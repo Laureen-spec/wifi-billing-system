@@ -93,7 +93,7 @@ export function AdminSettingLauncher({ settingKey, compact = false }: { settingK
           <p className="text-sm leading-6 text-muted-foreground">{t(item.helper)}</p>
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">
-              {t('This setting affects only the current ISP/admin workspace. Platform settings remain controlled by Super Admin.')}
+              {t('Changes apply to your current workspace.')}
             </p>
             <Button asChild className="rounded-2xl">
               <Link href={href}>
@@ -119,7 +119,7 @@ export default function AdminModuleSettings() {
             <div>
               <CardTitle className="text-xl font-semibold text-foreground">{t('Admin Settings')}</CardTitle>
               <CardDescription className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                {t('Manage the settings available to your ISP workspace. Super Admin-only settings such as brand, system, currency, email, and AI agent settings are hidden from admin accounts.')}
+                {t('Manage the settings available to your workspace. Only the tools enabled for this account are shown here.')}
               </CardDescription>
             </div>
             <div className="inline-flex items-center gap-2 rounded-2xl border bg-background px-3 py-2 text-xs font-medium text-muted-foreground">
